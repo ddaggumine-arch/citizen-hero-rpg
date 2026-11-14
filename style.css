@@ -824,13 +824,13 @@ body {
 }
 
 .partner-sprite.chloe-pos {
-  left: 56px;
+  left: 78px;
   height: 69% !important;
   z-index: 5;
 }
 
 .partner-sprite.chloe-pos.with-yuki {
-  left: 94px;
+  left: 118px;
 }
 
 .partner-sprite.kongi-pos {
