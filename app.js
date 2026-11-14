@@ -6,6 +6,7 @@ import { ENDINGS, evaluateEnding } from './data/endings.js';
 import { HEROINES, LANG_QUIZZES, DATE_EVENTS } from './data/romance.js';
 import { CARS, GEAR_UPGRADES, ACHIEVEMENTS } from './data/lifestyle.js';
 import { STREAM_MISSIONS, ROOM_UPGRADES, GUERRILLA_VILLAINS, STOCKS, HEROINE_GIFTS } from './data/v16Systems.js';
+import { COURT_CASES, COSTUMES, CAPSULE_POOL, PET_WALK_EVENTS } from './data/v17Systems.js';
 import { sfx } from './sound.js';
 
 const SAVE_KEY = 'citizen_hero_gta_save_v4';
@@ -104,6 +105,11 @@ function createNewGameState() {
     stockPrices: { cider_pharma: 30, manner_ent: 45, hanriver_ev: 60 },
     stockHoldings: { cider_pharma: 0, manner_ent: 0, hanriver_ev: 0 },
     streamMission: null,
+    costume: 'default',
+    towerFloor: 0,
+    bestTowerFloor: 0,
+    courtCaseIdx: 0,
+    petWalkEventIdx: 0,
   };
 }
 
@@ -588,7 +594,17 @@ function showEnemyVisual(enemy) {
 }
 
 function startBattle(enemyId) {
-  const enemy = getEnemyById(enemyId);
+  const baseEnemy = getEnemyById(enemyId);
+  const floor = state.towerFloor || 0;
+  const enemy = floor > 0
+    ? {
+        ...baseEnemy,
+        name: `[타워 ${floor}층] ${baseEnemy.name}`,
+        maxHp: baseEnemy.maxHp + floor * 18,
+        atk: baseEnemy.atk + floor * 2,
+        reward: 25 + floor * 12,
+      }
+    : baseEnemy;
   const rep = getReputationInfo();
   let startHp = enemy.maxHp;
   let extraLog = '';
@@ -597,6 +613,11 @@ function startBattle(enemyId) {
     const scareDmg = Math.round(enemy.maxHp * 0.15);
     startHp = Math.max(10, enemy.maxHp - scareDmg);
     extraLog = `\n😈 [맑은 눈의 광인] 소문에 빌런이 쫄아서 멘탈 -${scareDmg} 상태로 시작!`;
+  }
+  if (state.costume === 'dark') {
+    const darkDmg = Math.round(enemy.maxHp * 0.20);
+    startHp = Math.max(10, startHp - darkDmg);
+    extraLog += `\n🕶️ [다크 히어로 코트] 선제 기습으로 멘탈 -${darkDmg} 추가 감소!`;
   }
 
   state.phase = 'combat';
@@ -741,6 +762,18 @@ function handleEnemyDefeated(enemy) {
   checkAchievements();
   sfx.victory();
   vibrate([50, 40, 50, 40, 150]);
+
+  if ((state.towerFloor || 0) > 0) {
+    const cleared = state.towerFloor;
+    state.points += cleared * 12;
+    if (cleared > (state.bestTowerFloor || 0)) state.bestTowerFloor = cleared;
+    state.phase = 'tower_clear';
+    state.log = `🏢 [배틀타워 ${cleared}층 격파!!] 보너스 +${cleared * 12} P! 다음 층으로 올라갈까요?`;
+    saveGame();
+    render();
+    return;
+  }
+
   advanceTime();
 
   const currentCh = STORY_CHAPTERS[state.chapterIndex];
@@ -840,7 +873,8 @@ function performAttack(type) {
     sfx.dice();
     const roll = Math.floor(Math.random() * 20) + 1;
     const repBonus = rep.mode === 'lawful' ? 2 : 0;
-    const total = roll + state.stats.law + state.diceBonus + repBonus;
+    const costumeLawBonus = state.costume === 'police' ? 3 : 0;
+    const total = roll + state.stats.law + state.diceBonus + repBonus + costumeLawBonus;
     const isWeak = enemy.weakness === 'law';
     hitWeakness = isWeak;
     state.lawful += 10;
@@ -1246,6 +1280,21 @@ function render() {
       render();
     });
     elChoicesPanel.appendChild(lifeBtn);
+
+    const towerBtn = document.createElement('button');
+    towerBtn.className = 'choice-btn row-btn';
+    towerBtn.style.gridColumn = 'span 2';
+    towerBtn.style.background = 'linear-gradient(180deg, #f9ecec 0%, #f1d4d4 100%)';
+    towerBtn.style.borderColor = '#9e2a2b';
+    towerBtn.innerHTML = `<span>🏢 서울 빌런 배틀타워 (최고 ${state.bestTowerFloor || 0}층)</span><span class="choice-sub" style="color:#9e2a2b;">무한 연승 도전 ▶</span>`;
+    towerBtn.addEventListener('click', () => {
+      sfx.powerup();
+      state.towerFloor = 1;
+      const pool = [...VILLAINS, ...GUERRILLA_VILLAINS];
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      startBattle(pick.id);
+    });
+    elChoicesPanel.appendChild(towerBtn);
     return;
   }
 
@@ -1283,8 +1332,9 @@ function render() {
 
     const tabRow = [
       { id: 'main', label: '🐶 펫·🚗·🔧' },
-      { id: 'room', label: `🏠 자취방 (${(state.roomUpgrades || []).length}/4)` },
-      { id: 'stock', label: '📈 서울 주식' },
+      { id: 'room', label: `🏠 방(${(state.roomUpgrades || []).length}/4)` },
+      { id: 'stock', label: '📈 주식·🎰' },
+      { id: 'costume', label: '🧥 코스튬' },
     ];
     const tabWrap = document.createElement('div');
     tabWrap.style.gridColumn = 'span 2';
@@ -1343,9 +1393,67 @@ function render() {
       return;
     }
 
+    if (state.lifeTab === 'costume') {
+      COSTUMES.forEach((ct) => {
+        const unlocked = ct.check(state);
+        const equipped = (state.costume || 'default') === ct.id;
+        const cBtn = document.createElement('button');
+        cBtn.className = 'choice-btn';
+        cBtn.disabled = !unlocked || equipped;
+        cBtn.innerHTML = `<span>${equipped ? '✅ ' : (unlocked ? '' : '🔒 ')}${ct.name}</span><span class="choice-sub">${unlocked ? ct.desc : ct.unlockText}</span>`;
+        cBtn.addEventListener('click', () => {
+          state.costume = ct.id;
+          sfx.powerup();
+          showToast(`🧥 [${ct.name}] 장착 완료!`, 'good');
+          state.log = `🧥 [${ct.name}]을(를) 장착했습니다! (${ct.desc})`;
+          saveGame();
+          render();
+        });
+        elChoicesPanel.appendChild(cBtn);
+      });
+      const backBtn = document.createElement('button');
+      backBtn.className = 'choice-btn row-btn';
+      backBtn.style.gridColumn = 'span 2';
+      backBtn.innerHTML = '<span>◀ 서울 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
+      backBtn.addEventListener('click', () => { sfx.click(); state.phase = 'map'; render(); });
+      elChoicesPanel.appendChild(backBtn);
+      return;
+    }
+
     if (state.lifeTab === 'stock') {
       if (!state.stockPrices) state.stockPrices = { cider_pharma: 30, manner_ent: 45, hanriver_ev: 60 };
       if (!state.stockHoldings) state.stockHoldings = { cider_pharma: 0, manner_ent: 0, hanriver_ev: 0 };
+
+      const capBtn = document.createElement('button');
+      capBtn.className = 'choice-btn row-btn';
+      capBtn.style.gridColumn = 'span 2';
+      capBtn.style.background = 'linear-gradient(180deg, #fff6df 0%, #fde4a6 100%)';
+      capBtn.style.borderColor = '#b07d2b';
+      capBtn.innerHTML = '<span>🎰 도파민 럭키 캡슐 뽑기 (35P)</span><span class="choice-sub">150P 잭팟 · 영약 · 사이다원액!</span>';
+      capBtn.addEventListener('click', () => {
+        if (state.points < 35) {
+          sfx.damage();
+          state.log = '💸 캡슐 뽑기 비용(35 P)이 부족합니다!';
+          render();
+          return;
+        }
+        state.points -= 35;
+        const totalW = CAPSULE_POOL.reduce((acc, c) => acc + c.weight, 0);
+        let r = Math.random() * totalW;
+        let picked = CAPSULE_POOL[CAPSULE_POOL.length - 1];
+        for (const item of CAPSULE_POOL) {
+          r -= item.weight;
+          if (r <= 0) { picked = item; break; }
+        }
+        picked.apply(state);
+        sfx.victory();
+        showToast(`🎰 뽑기 결과: ${picked.name}`, 'good');
+        state.log = `🎰 [도파민 럭키 캡슐!] ${picked.name}`;
+        saveGame();
+        render();
+      });
+      elChoicesPanel.appendChild(capBtn);
+
       STOCKS.forEach((st) => {
         const price = state.stockPrices[st.id] || st.basePrice;
         const hold = state.stockHoldings[st.id] || 0;
@@ -1392,6 +1500,33 @@ function render() {
       return;
     }
 
+    if (state.lifeTab === 'costume') {
+      COSTUMES.forEach((ct) => {
+        const unlocked = ct.check(state);
+        const equipped = (state.costume || 'default') === ct.id;
+        const cBtn = document.createElement('button');
+        cBtn.className = 'choice-btn';
+        cBtn.disabled = !unlocked || equipped;
+        cBtn.innerHTML = `<span>${equipped ? '✅ ' : (unlocked ? '' : '🔒 ')}${ct.name}</span><span class="choice-sub">${unlocked ? ct.desc : ct.unlockText}</span>`;
+        cBtn.addEventListener('click', () => {
+          state.costume = ct.id;
+          sfx.powerup();
+          showToast(`🧥 [${ct.name}] 장착 완료!`, 'good');
+          state.log = `🧥 [${ct.name}]을(를) 장착했습니다! (${ct.desc})`;
+          saveGame();
+          render();
+        });
+        elChoicesPanel.appendChild(cBtn);
+      });
+      const backBtn = document.createElement('button');
+      backBtn.className = 'choice-btn row-btn';
+      backBtn.style.gridColumn = 'span 2';
+      backBtn.innerHTML = '<span>◀ 서울 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
+      backBtn.addEventListener('click', () => { sfx.click(); state.phase = 'map'; render(); });
+      elChoicesPanel.appendChild(backBtn);
+      return;
+    }
+
     const petBtn = document.createElement('button');
     petBtn.className = 'choice-btn';
     if (!state.pet.adopted) {
@@ -1425,9 +1560,16 @@ function render() {
         state.sp = clamp(state.sp + 12, 0, state.maxSp);
         state.hp = clamp(state.hp + 8, 1, state.maxHp);
         if (state.pet.level < 5) state.pet.level += 1;
-        advanceTime();
         sfx.powerup();
         checkAchievements();
+        if (Math.random() < 0.45) {
+          state.petWalkEventIdx = Math.floor(Math.random() * PET_WALK_EVENTS.length);
+          state.phase = 'pet_walk_event';
+          saveGame();
+          render();
+          return;
+        }
+        advanceTime();
         state.log = `🐕 콩이와 한강 산책 완료! (콩이 Lv.${state.pet.level} · HP+8 · 사이다+12)`;
         saveGame();
         render();
@@ -2398,11 +2540,154 @@ function render() {
 
     const tagBtn = document.createElement('button');
     tagBtn.className = 'choice-btn';
-    tagBtn.disabled = state.sp < 50;
+    const tagCost = state.costume === 'couple' ? 35 : 50;
+    tagBtn.disabled = state.sp < tagCost;
     const partnerLabel = state.lovers?.includes('yuki') ? '유키' : (state.lovers?.includes('chloe') ? '클로이' : '김순경');
-    tagBtn.innerHTML = `<span>🤝 합동 필살기 (${partnerLabel})</span><span class="choice-sub sp">${state.sp >= 50 ? '사이다 50 · 극딜+기절!' : `사이다 부족 (${state.sp}/50)`}</span>`;
+    tagBtn.innerHTML = `<span>🤝 합동 필살기 (${partnerLabel})</span><span class="choice-sub sp">${state.sp >= tagCost ? `사이다 ${tagCost} · 극딜+기절!` : `사이다 부족 (${state.sp}/${tagCost})`}</span>`;
     tagBtn.addEventListener('click', () => performTagSkill());
     elChoicesPanel.appendChild(tagBtn);
+    return;
+  }
+
+  // 7-1. V17.0 배틀타워 층 클리어 화면
+  if (state.phase === 'tower_clear') {
+    const floor = state.towerFloor || 1;
+    elLocation.textContent = `🏢 서울 빌런 배틀타워 · ${floor}층`;
+    elSceneTag.textContent = '타워 승리';
+    elSceneTag.className = 'scene-tag event';
+    elSceneTitle.textContent = `🏢 ${floor}층 격파 완료!`;
+    elWeaknessPill.classList.add('hidden');
+    elEnemyHpWrap.classList.add('hidden');
+    elQuoteBubble.classList.add('hidden');
+    showSceneCard(
+      `🏆 BATTLE TOWER · ${floor}F CLEAR`,
+      ` 현재 연승: ${floor}층 · 역대 최고: ${state.bestTowerFloor || floor}층\n` +
+      ` 다음 층 보상: 기본 보상 + ${(floor + 1) * 12} P\n` +
+      ` ─────────────────────────────────\n` +
+      ` 계속 올라가시겠습니까, 아니면 안전하게 귀환할까요?`,
+      '무한 연승 도전! 패배 전에 안전 귀환하면 모든 보상을 지킵니다.'
+    );
+    elBattleLog.textContent = state.log;
+    elChoicesPanel.className = 'choices-panel';
+
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'choice-btn row-btn story-main-btn';
+    nextBtn.innerHTML = `<span>🔥 ${floor + 1}층 계속 도전하기!</span><span class="choice-sub">더 강한 빌런 · 보상 UP</span>`;
+    nextBtn.addEventListener('click', () => {
+      sfx.powerup();
+      state.towerFloor = floor + 1;
+      const pool = [...VILLAINS, ...GUERRILLA_VILLAINS];
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      startBattle(pick.id);
+    });
+    elChoicesPanel.appendChild(nextBtn);
+
+    const exitBtn = document.createElement('button');
+    exitBtn.className = 'choice-btn row-btn';
+    exitBtn.innerHTML = '<span>🏠 보상 챙기고 서울 지도로 복귀</span><span class="choice-sub">안전 귀환</span>';
+    exitBtn.addEventListener('click', () => {
+      sfx.click();
+      state.towerFloor = 0;
+      advanceTime();
+      state.phase = 'map';
+      state.log = `🏢 배틀타워 ${floor}층까지 정복하고 안전하게 복귀했습니다!`;
+      saveGame();
+      render();
+    });
+    elChoicesPanel.appendChild(exitBtn);
+    return;
+  }
+
+  // 7-2. V17.0 시민 즉결 재판소
+  if (state.phase === 'court') {
+    const cs = COURT_CASES[(state.courtCaseIdx || 0) % COURT_CASES.length];
+    elLocation.textContent = `DAY ${state.day} · ⚖️ 시민 즉결 재판소`;
+    elSceneTag.textContent = '재판';
+    elSceneTag.className = 'scene-tag boss';
+    elSceneTitle.textContent = `⚖️ [피고인] ${cs.villain}`;
+    elWeaknessPill.classList.add('hidden');
+    elEnemyHpWrap.classList.add('hidden');
+    elQuoteBubble.textContent = cs.excuse;
+    elQuoteBubble.classList.remove('hidden');
+    showSceneCard(
+      '⚖️ CITIZEN COURT · 즉결 심판',
+      ` 사건: ${cs.villain} 약식 재판\n 보유 채증: ${state.pendingReports}건\n 성공 시 벌금 2.5배 (${Math.round(state.pendingReports * 25 * 2.5)} P) 몰수!`,
+      '피고인의 뻔뻔한 변명을 논리/증거로 반박하세요!'
+    );
+    elBattleLog.textContent = '피고인의 거짓말을 깨뜨릴 결정적 반박을 선택하세요!';
+    elChoicesPanel.className = 'choices-panel';
+
+    cs.options.forEach((opt, idx) => {
+      const btn = document.createElement('button');
+      btn.className = 'choice-btn row-btn';
+      btn.innerHTML = `<span>${opt}</span><span class="choice-sub">이의 있음!</span>`;
+      btn.addEventListener('click', () => {
+        const cnt = state.pendingReports || 1;
+        if (idx === cs.answer) {
+          const earned = Math.round(cnt * 25 * 2.5);
+          state.points += earned;
+          state.lawful += 15;
+          state.followers = (state.followers || 120) + 400;
+          state.chaosLevel = clamp((state.chaosLevel ?? 25) - cnt * 6, 0, 100);
+          state.pendingReports = 0;
+          sfx.victory();
+          showToast(`⚖️ 승소!! 벌금 +${earned} P · 팔로워 +400!`, 'good');
+          state.log = `${cs.okMsg}\n(+${earned} P · 모범시민 +15 · 팔로워 +400)`;
+        } else {
+          state.points += 5;
+          state.lawful += 3;
+          state.pendingReports = 0;
+          sfx.damage();
+          state.log = `${cs.failMsg}\n(소송 비용 5 P만 정산되었습니다.)`;
+        }
+        state.phase = 'map';
+        saveGame();
+        render();
+      });
+      elChoicesPanel.appendChild(btn);
+    });
+    return;
+  }
+
+  // 7-3. V17.0 콩이 산책 돌발 참교육
+  if (state.phase === 'pet_walk_event') {
+    const ev = PET_WALK_EVENTS[(state.petWalkEventIdx || 0) % PET_WALK_EVENTS.length];
+    elLocation.textContent = `DAY ${state.day} · 🐶 콩이 산책 돌발`;
+    elSceneTag.textContent = '돌발 이벤트';
+    elSceneTag.className = 'scene-tag event';
+    elSceneTitle.textContent = ev.title;
+    elWeaknessPill.classList.add('hidden');
+    elEnemyHpWrap.classList.add('hidden');
+    elQuoteBubble.classList.add('hidden');
+    elSceneImage.src = 'assets/images/pet_walk.jpg';
+    elSceneImage.classList.remove('hidden');
+    elBattleLog.textContent = ev.text;
+    elChoicesPanel.className = 'choices-panel';
+
+    ev.choices.forEach((ch) => {
+      const btn = document.createElement('button');
+      btn.className = 'choice-btn row-btn';
+      btn.innerHTML = `<span>${ch.text}</span><span class="choice-sub">${ch.sub}</span>`;
+      btn.addEventListener('click', () => {
+        const ef = ch.effect || {};
+        if (ef.points) state.points += ef.points;
+        if (ef.law) state.stats.law += ef.law;
+        if (ef.lawful) state.lawful += ef.lawful;
+        if (ef.chaotic) state.chaotic += ef.chaotic;
+        if (ef.sp) state.sp = clamp(state.sp + ef.sp, 0, state.maxSp);
+        if (ef.followers) state.followers = (state.followers || 120) + ef.followers;
+        if (ef.yukiLove) state.love.yuki = clamp((state.love.yuki || 0) + ef.yukiLove, 0, 100);
+        if (ef.chloeLove) state.love.chloe = clamp((state.love.chloe || 0) + ef.chloeLove, 0, 100);
+        sfx.victory();
+        showToast('🐶 콩이와 함께 무개념 견주 참교육 완료!', 'good');
+        advanceTime();
+        state.phase = 'map';
+        state.log = ch.reply;
+        saveGame();
+        render();
+      });
+      elChoicesPanel.appendChild(btn);
+    });
     return;
   }
 
@@ -2545,6 +2830,21 @@ function renderPhoneModal() {
     render();
   });
   reportCard.appendChild(rBtn);
+  if (state.pendingReports >= 2) {
+    const cBtn = document.createElement('button');
+    cBtn.className = 'use-btn';
+    cBtn.style.background = '#9e2a2b';
+    cBtn.style.marginLeft = '4px';
+    cBtn.textContent = '⚖️즉결재판';
+    cBtn.addEventListener('click', () => {
+      sfx.powerup();
+      elPhoneModal.classList.add('hidden');
+      state.courtCaseIdx = Math.floor(Math.random() * COURT_CASES.length);
+      state.phase = 'court';
+      render();
+    });
+    reportCard.appendChild(cBtn);
+  }
   elPhoneBody.appendChild(reportCard);
 
   // 2.5. 엔딩 도감 & 힌트 카드
@@ -2817,9 +3117,10 @@ function startTimingMinigame(onFinish) {
 }
 
 function performTagSkill() {
-  if (state.sp < 50) return;
+  const tagCost = state.costume === 'couple' ? 35 : 50;
+  if (state.sp < tagCost) return;
   const enemy = getEnemyById(state.currentEnemyId);
-  state.sp = clamp(state.sp - 50, 0, state.maxSp);
+  state.sp = clamp(state.sp - tagCost, 0, state.maxSp);
   const hasYuki = state.lovers?.includes('yuki');
   const hasChloe = state.lovers?.includes('chloe');
   const partnerName = hasYuki ? '🇯🇵 유키' : (hasChloe ? '🇺🇸 클로이' : '👮 김순경');
