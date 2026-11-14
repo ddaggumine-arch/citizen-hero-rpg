@@ -787,6 +787,44 @@ body {
   pointer-events: none;
   filter: drop-shadow(2px 4px 6px rgba(0, 0, 0, 0.55));
   animation: heroBreathe 1.8s ease-in-out infinite;
+  transition: left 0.2s ease;
+}
+
+.hero-sprite.with-both {
+  left: 26px;
+}
+
+.partner-sprite {
+  position: absolute;
+  bottom: 2px;
+  width: auto !important;
+  object-fit: contain !important;
+  pointer-events: none;
+  filter: drop-shadow(1px 3px 5px rgba(0, 0, 0, 0.5)) !important;
+  animation: heroBreathe 2.1s ease-in-out infinite;
+}
+
+.partner-sprite.yuki-pos {
+  left: -2px;
+  height: 62% !important;
+  z-index: 5;
+}
+
+.partner-sprite.yuki-pos.solo {
+  left: 52px;
+}
+
+.partner-sprite.chloe-pos {
+  left: 58px;
+  height: 63% !important;
+  z-index: 5;
+}
+
+.partner-sprite.kongi-pos {
+  left: 34px;
+  height: 28% !important;
+  z-index: 7;
+  animation: heroBreathe 1.4s ease-in-out infinite;
 }
 
 @keyframes heroBreathe {

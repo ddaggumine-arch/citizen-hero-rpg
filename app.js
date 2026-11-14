@@ -259,6 +259,9 @@ const elLiveFeedLikes = document.getElementById('live-feed-likes');
 const elLiveFeedTitle = document.getElementById('live-feed-title');
 const elLiveFeedComment = document.getElementById('live-feed-comment');
 const elHeroSprite = document.getElementById('hero-sprite');
+const elYukiSprite = document.getElementById('yuki-sprite');
+const elChloeSprite = document.getElementById('chloe-sprite');
+const elKongiSprite = document.getElementById('kongi-sprite');
 const elActivityModalImg = document.getElementById('activity-modal-img');
 const elSeoulMinimap = document.getElementById('seoul-minimap');
 const elMinimapChaos = document.getElementById('minimap-chaos');
@@ -1007,6 +1010,10 @@ function render() {
   elSceneImage.classList.add('hidden');
   elSceneImage.className = '';
   elHeroSprite.classList.add('hidden');
+  elHeroSprite.classList.remove('with-both');
+  if (elYukiSprite) elYukiSprite.classList.add('hidden');
+  if (elChloeSprite) elChloeSprite.classList.add('hidden');
+  if (elKongiSprite) elKongiSprite.classList.add('hidden');
   elSeoulMinimap.classList.add('hidden');
   elEnemyIntentBar.classList.add('hidden');
 
@@ -2455,6 +2462,16 @@ function render() {
 
     showEnemyVisual(enemy);
     elHeroSprite.classList.remove('hidden');
+    const hasYuki = !!state.lovers?.includes('yuki');
+    const hasChloe = !!state.lovers?.includes('chloe');
+    const hasPet = !!state.pet?.adopted;
+    elHeroSprite.classList.toggle('with-both', hasYuki && hasChloe);
+    if (elYukiSprite) {
+      elYukiSprite.classList.toggle('hidden', !hasYuki);
+      elYukiSprite.classList.toggle('solo', hasYuki && !hasChloe);
+    }
+    if (elChloeSprite) elChloeSprite.classList.toggle('hidden', !hasChloe);
+    if (elKongiSprite) elKongiSprite.classList.toggle('hidden', !hasPet);
     elQuoteBubble.textContent = state.quote;
     elQuoteBubble.classList.remove('hidden');
     elBattleLog.textContent = state.log;
@@ -2704,6 +2721,16 @@ function render() {
     elQuoteBubble.classList.remove('hidden');
     showEnemyVisual(enemy);
     elHeroSprite.classList.remove('hidden');
+    const hasYuki = !!state.lovers?.includes('yuki');
+    const hasChloe = !!state.lovers?.includes('chloe');
+    const hasPet = !!state.pet?.adopted;
+    elHeroSprite.classList.toggle('with-both', hasYuki && hasChloe);
+    if (elYukiSprite) {
+      elYukiSprite.classList.toggle('hidden', !hasYuki);
+      elYukiSprite.classList.toggle('solo', hasYuki && !hasChloe);
+    }
+    if (elChloeSprite) elChloeSprite.classList.toggle('hidden', !hasChloe);
+    if (elKongiSprite) elKongiSprite.classList.toggle('hidden', !hasPet);
     elBattleLog.textContent = state.log;
     elChoicesPanel.className = 'choices-panel';
 
