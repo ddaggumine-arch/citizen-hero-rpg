@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>시민영웅: 예절 수호자 - 서울 2026 텍스트 GTA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Serif+KR:wght@500;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <div class="book-page">
+      <div class="toast-container" id="toast-container"></div>
+      <!-- 상단 HUD -->
+      <header class="hud" id="main-hud">
+        <div class="hud-top">
+          <div class="location-badge" id="location-label">DAY 1 · 서울 2026</div>
+          <div class="hud-actions">
+            <button class="icon-btn phone-btn" id="btn-phone" title="스마트폰 열기">📱 <span class="phone-badge hidden" id="phone-badge">1</span></button>
+            <button class="icon-btn" id="btn-settings" title="설정 및 메뉴">⚙️</button>
+            <button class="icon-btn" id="btn-inventory" title="가방 열기">🎒 <span id="inv-count">0</span></button>
+            <button class="icon-btn" id="btn-traits" title="보유 특성">✨ <span id="trait-count">0</span></button>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-header">
+              <span>❤️ 인내심</span>
+              <span id="hp-text">100 / 100</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill hp-fill" id="hp-bar" style="width: 100%"></div>
+            </div>
+          </div>
+
+          <div class="stat-box">
+            <div class="stat-header">
+              <span>🫧 사이다</span>
+              <span id="sp-text">25 / 100</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill sp-fill" id="sp-bar" style="width: 25%"></div>
+            </div>
+          </div>
+
+          <div class="mini-stats">
+            <span title="언변">🗣️<b id="stat-speech">2</b></span>
+            <span title="깡다구">🦁<b id="stat-guts">2</b></span>
+            <span title="법지식">⚖️<b id="stat-law">2</b></span>
+            <span class="gold-pill" title="도덕점수">🏅<b id="stat-points">0</b></span>
+          </div>
+        </div>
+      </header>
+
+      <!-- 메인 콘텐츠 영역 -->
+      <main class="story-container" id="story-container">
+        <!-- 빌런/장면 타이틀 -->
+        <div class="scene-header">
+          <span class="scene-tag" id="scene-tag">타이틀</span>
+          <h1 class="scene-title" id="scene-title">시민영웅: 예절 수호자</h1>
+          <span class="weakness-pill hidden" id="weakness-pill"></span>
+        </div>
+
+        <!-- 적 멘탈 HP 바 -->
+        <div class="enemy-hp-wrap hidden" id="enemy-hp-wrap">
+          <div class="enemy-hp-header">
+            <span id="enemy-hp-label">💢 빌런 멘탈</span>
+            <span id="enemy-hp-text">80 / 80</span>
+          </div>
+          <div class="bar-track enemy-track">
+            <div class="bar-fill enemy-fill" id="enemy-hp-bar" style="width: 100%"></div>
+          </div>
+          <div class="enemy-intent-bar hidden" id="enemy-intent-bar"></div>
+          <div class="combat-badges" id="combat-badges"></div>
+        </div>
+
+        <!-- 고서적 삽화 / 현상수배 전단지 프레임 -->
+        <div class="illustration-frame" id="illustration-frame">
+          <img id="scene-image" src="assets/images/street_smoker.jpg" alt="장면 삽화" />
+          <img id="hero-sprite" class="hero-sprite hidden" src="assets/images/hero_idle.png" alt="시민영웅" />
+
+          <!-- 이미지 미보유 빌런용 현상수배 전단지 카드 -->
+          <div class="wanted-poster hidden" id="wanted-poster">
+            <div class="wanted-stamp">WANTED · 공공질서 파괴범</div>
+            <div class="wanted-emoji" id="wanted-emoji">🏋️‍♂️💥</div>
+            <div class="wanted-name" id="wanted-name">빌런 이름</div>
+            <div class="wanted-crime" id="wanted-crime">죄목 설명</div>
+            <div class="wanted-stars" id="wanted-stars">위험도: ★★★★☆</div>
+          </div>
+
+          <!-- 비전투 화면 전용 텍스트/아스키 카드 -->
+          <div class="scene-card hidden" id="scene-card">
+            <div class="scene-card-badge" id="scene-card-badge">SEOUL 2026</div>
+            <pre class="scene-card-ascii" id="scene-card-ascii"></pre>
+            <div class="scene-card-sub" id="scene-card-sub"></div>
+          </div>
+
+          <!-- V10.0 예쁜 서울 동네 미니맵 + 걷는 치비 캐릭터 -->
+          <div class="seoul-minimap hidden" id="seoul-minimap">
+            <div class="map-hud-bar">
+              <span id="minimap-chaos">🌆 민폐도 25%</span>
+              <span id="minimap-followers">📱 팔로워 120명</span>
+            </div>
+            <div class="map-namsan">🗼</div>
+            <div class="map-road-h"></div>
+            <div class="map-road-v"></div>
+            <div class="map-river">〰️ 한강 〰️</div>
+
+            <div class="map-pin" style="left:17%;top:32%;" data-loc="patrol"><span>🔍</span><small>골목순찰</small></div>
+            <div class="map-pin" style="left:50%;top:31%;" data-loc="work"><span>💼</span><small>알바터</small></div>
+            <div class="map-pin" style="left:83%;top:32%;" data-loc="train"><span>💪</span><small>철봉공원</small></div>
+            <div class="map-pin" style="left:17%;top:63%;" data-loc="heal"><span>🏠</span><small>우리집</small></div>
+            <div class="map-pin" style="left:50%;top:62%;" data-loc="shop"><span>🏪</span><small>24시편의점</small></div>
+            <div class="map-pin" style="left:83%;top:63%;" data-loc="luck"><span>🎲</span><small>오락실</small></div>
+
+            <img id="chibi-walker" class="chibi-walker" src="assets/images/chibi_walk_2.png" alt="이동 캐릭터" />
+            <div class="map-boss-strip" id="minimap-bosses"></div>
+          </div>
+
+          <div class="frame-corner tl"></div>
+          <div class="frame-corner tr"></div>
+          <div class="frame-corner bl"></div>
+          <div class="frame-corner br"></div>
+          <div class="floating-layer" id="floating-layer"></div>
+        </div>
+
+        <!-- 빌런 대사 말풍선 -->
+        <div class="quote-bubble hidden" id="quote-bubble"></div>
+
+        <!-- 전투/상황 로그 -->
+        <div class="battle-log" id="battle-log"></div>
+
+        <!-- 실시간 서울 SNS/뉴스 반응 피드 -->
+        <div class="live-feed hidden" id="live-feed">
+          <div class="live-feed-top">
+            <span class="live-feed-badge" id="live-feed-badge">📺 서울 핫이슈</span>
+            <span class="live-feed-likes" id="live-feed-likes">❤️ 1.2만</span>
+          </div>
+          <div class="live-feed-title" id="live-feed-title"></div>
+          <div class="live-feed-comment" id="live-feed-comment"></div>
+        </div>
+      </main>
+
+      <!-- 하단 선택지 패널 -->
+      <footer class="choices-panel" id="choices-panel"></footer>
+    </div>
+  </div>
+
+  <!-- 스마트폰 모달 (GTA 폰) -->
+  <div class="modal-backdrop hidden" id="phone-modal">
+    <div class="modal-card phone-card">
+      <div class="modal-header phone-header">
+        <h2>📱 예절폰 2026</h2>
+        <button class="close-btn" id="close-phone">✕</button>
+      </div>
+      <div class="modal-body" id="phone-body">
+        <!-- JS로 동적 생성 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 자유 행동 모달 (6개 큰 틀 × 15개 선택지 = 90개) -->
+  <div class="modal-backdrop hidden" id="activity-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="activity-modal-title">🎯 자유 행동</h2>
+        <button class="close-btn" id="close-activity">✕</button>
+      </div>
+      <img id="activity-modal-img" class="activity-modal-img hidden" src="" alt="활동 컷신" />
+      <div class="modal-body" id="activity-list">
+        <!-- JS로 동적 생성 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 가방 (소지품) 모달 -->
+  <div class="modal-backdrop hidden" id="inventory-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>🎒 참교육 가방</h2>
+        <button class="close-btn" id="close-inventory">✕</button>
+      </div>
+      <div class="modal-body" id="inventory-list"></div>
+    </div>
+  </div>
+
+  <!-- 보유 특성 모달 -->
+  <div class="modal-backdrop hidden" id="traits-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>✨ 보유 특성</h2>
+        <button class="close-btn" id="close-traits">✕</button>
+      </div>
+      <div class="modal-body" id="traits-list"></div>
+    </div>
+  </div>
+
+  <!-- 설정 모달 -->
+  <div class="modal-backdrop hidden" id="settings-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>⚙️ 게임 설정</h2>
+        <button class="close-btn" id="close-settings">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="inv-item">
+          <div class="inv-info">
+            <h4>🔊 효과음 (Web Audio)</h4>
+            <p>전투 타격음, 주사위, 승리 효과음</p>
+          </div>
+          <button class="use-btn" id="toggle-sound">켜짐</button>
+        </div>
+        <div class="inv-item">
+          <div class="inv-info">
+            <h4>🎵 배경음 (BGM)</h4>
+            <p>상황별 로파이·전투·데이트·엔딩 배경음악</p>
+          </div>
+          <button class="use-btn" id="toggle-bgm">켜짐</button>
+        </div>
+        <div class="inv-item">
+          <div class="inv-info">
+            <h4>📳 모바일 진동 피드백</h4>
+            <p>타격 및 데미지 시 햅틱 진동 (안드로이드 크롬)</p>
+          </div>
+          <button class="use-btn" id="toggle-vibrate">켜짐</button>
+        </div>
+        <div class="inv-item">
+          <div class="inv-info">
+            <h4>💾 10슬롯 저장 / 불러오기</h4>
+            <p>10개의 세이브 슬롯에 저장하거나 불러옵니다</p>
+          </div>
+          <button class="use-btn" id="btn-open-slots" style="background:#1f7a8c;">열기</button>
+        </div>
+        <div class="inv-item">
+          <div class="inv-info">
+            <h4>🏠 타이틀 화면으로</h4>
+            <p>현재 상태는 자동 저장됩니다</p>
+          </div>
+          <button class="use-btn" id="btn-go-title" style="background:#8c7352;">이동</button>
+        </div>
+        <div class="inv-item">
+          <div class="inv-info">
+            <h4>🗑️ 저장 데이터 초기화</h4>
+            <p>모든 진행 상황을 지우고 처음부터 시작</p>
+          </div>
+          <button class="use-btn" id="btn-wipe-save" style="background:#9e2a2b;">초기화</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10개 세이브 슬롯 모달 -->
+  <div class="modal-backdrop hidden" id="save-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>💾 세이브 슬롯 (1~10번)</h2>
+        <button class="close-btn" id="close-save">✕</button>
+      </div>
+      <div class="modal-body" id="save-slots-list"></div>
+    </div>
+  </div>
+
+  <!-- 10종 엔딩 도감 모달 -->
+  <div class="modal-backdrop hidden" id="endings-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="endings-modal-title">🏆 엔딩 도감 (0/15)</h2>
+        <button class="close-btn" id="close-endings">✕</button>
+      </div>
+      <div class="modal-body" id="endings-list"></div>
+    </div>
+  </div>
+
+  <!-- V14.0 타이밍 셔터 미니게임 모달 -->
+  <div class="modal-backdrop hidden" id="timing-modal">
+    <div class="modal-card" style="text-align:center;">
+      <div class="modal-header">
+        <h2 id="timing-title">📸 채증 셔터 타이밍!</h2>
+      </div>
+      <div class="modal-body">
+        <p id="timing-desc" style="font-size:0.8rem;color:#695544;margin-bottom:8px;">황금 구역(중앙)에 맞춰 지금 탭하세요!</p>
+        <div class="timing-track">
+          <div class="timing-zone"></div>
+          <div class="timing-cursor" id="timing-cursor"></div>
+        </div>
+        <button class="use-btn" id="btn-timing-tap" style="width:100%;padding:12px;font-size:0.95rem;margin-top:10px;background:#9e2a2b;">📸 지금 탭! (SNAP!)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- V14.0 업적 도감 모달 -->
+  <div class="modal-backdrop hidden" id="achievements-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="ach-modal-title">🏅 업적 도감 (0/15)</h2>
+        <button class="close-btn" id="close-ach">✕</button>
+      </div>
+      <div class="modal-body" id="ach-list"></div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

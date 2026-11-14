@@ -1,0 +1,88 @@
+// 6대 카테고리 × 5개 알짜 자유행동 = 30개 정예화 (V9.0 전용 컷신 + 모션 연동)
+
+export const ACTIVITY_CATEGORIES = [
+  {
+    id: 'patrol',
+    title: '🔍 순찰·탐문',
+    sub: '5종 · 빌런·단서',
+    image: 'assets/images/act_patrol.jpg',
+    animClass: 'cutscene-patrol',
+    items: [
+      { id: 'patrol_alley', name: '🛣️ 원룸촌 골목 순찰', desc: '골목 빌런 조우 + 순찰 카운트 +1', battleZone: 'alley', isPatrol: true },
+      { id: 'patrol_transit', name: '🚇 지하철·버스 순찰', desc: '대중교통 빌런 조우 + 순찰 카운트 +1', battleZone: 'transit', isPatrol: true },
+      { id: 'patrol_cctv', name: '📹 골목 CCTV 사각지대 채증', desc: '채증 +1 · 모범 +5 · 민폐도 -5%', effect: { report: 1, lawful: 5, chaos: -5 }, isPatrol: true, msg: '📹 사각지대 불법 투기 증거 확보! (채증 +1, 민폐도 -5%)' },
+      { id: 'patrol_elder', name: '👵 경비실 어르신 탐문', desc: '단서 획득 · +15P · 사이다 +10', effect: { points: 15, sp: 10, lawful: 4 }, isPatrol: true, msg: '👵 어르신이 빌런 동선과 떡을 주셨습니다! (+15 P, 사이다 +10)' },
+      { id: 'patrol_event', name: '⚡ 서울 핫플 돌발 탐방', desc: '100% 랜덤 거리 사건 발생!', forceEvent: true, isPatrol: true },
+    ],
+  },
+  {
+    id: 'work',
+    title: '💼 알바·수입',
+    sub: '5종 · 도덕P 벌기',
+    image: 'assets/images/act_work.jpg',
+    animClass: 'cutscene-work',
+    items: [
+      { id: 'work_cvs', name: '🏪 편의점 타임 알바', desc: 'HP -10 · +35 P · 언변 +1', minHp: 12, effect: { hp: -10, points: 35, speech: 1 }, msg: '🏪 진상 손님 응대로 말빨과 지갑이 두둑해졌습니다! (+35 P, 언변 +1)' },
+      { id: 'work_delivery', name: '🛵 도보 배달 알바', desc: 'HP -14 · +48 P · 최대HP +2', minHp: 16, effect: { hp: -14, points: 48, maxHp: 2 }, msg: '🛵 골목길 5km 주파! (+48 P, 최대HP +2)' },
+      { id: 'work_cafe', name: '☕ 카페 피크타임 알바', desc: 'HP -12 · +38 P · 사이다 +12', minHp: 14, effect: { hp: -12, points: 38, sp: 12 }, msg: '☕ 아이스 아메리카노 100잔 제조! (+38 P, 사이다 +12)' },
+      { id: 'work_tutor', name: '📚 시민 법규 과외', desc: 'HP -8 · +32 P · 법률 +1', minHp: 10, effect: { hp: -8, points: 32, law: 1 }, msg: '📚 생활 법률 강의 성공! (+32 P, 법률 +1)' },
+      { id: 'work_traffic', name: '🦺 등굣길 교통봉사', desc: '모범 +10 · +25 P · 민폐도 -6%', effect: { lawful: 10, points: 25, chaos: -6 }, msg: '🦺 아이들이 안전하게 건넜습니다! (+25 P, 민폐도 -6%)' },
+    ],
+  },
+  {
+    id: 'train',
+    title: '💪 자기계발',
+    sub: '5종 · 스탯·필살',
+    image: 'assets/images/act_train.jpg',
+    animClass: 'cutscene-train',
+    items: [
+      { id: 'train_pullup', name: '🏋️ 공원 철봉 턱걸이 50개', desc: 'HP -8 · 배짱 +1 · 최대HP +6', minHp: 10, effect: { hp: -8, guts: 1, maxHp: 6 }, msg: '💪 불타는 철봉 훈련! (배짱 +1, 최대HP +6)' },
+      { id: 'train_debate', name: '🗣️ 100분 딕션 스피치', desc: '언변 +1 · 기본피해 +2 · 모범 +4', effect: { speech: 1, dmg: 2, lawful: 4 }, msg: '🗣️ 또박또박 날카로운 팩트폭력 발성 완성! (언변 +1, 공격력 +2)' },
+      { id: 'train_law', name: '📖 경범죄·민법 독파', desc: '법률 +1 · 주사위 보정 +1', effect: { law: 1, dice: 1, lawful: 5 }, msg: '📖 판례를 통째로 외웠습니다! (법률 +1, 주사위 +1)' },
+      { id: 'train_mirror', name: '👁️ 거울 보고 맑은 눈 연습', desc: '광인 +10 · 배짱 +1 · 사이다 +15', effect: { chaotic: 10, guts: 1, sp: 15 }, msg: '👁️ 누구든 쫄게 만드는 맑은 눈 완성! (배짱 +1, 사이다 +15)' },
+      { id: 'train_boxing', name: '🥊 복싱 샌드백 3라운드', desc: 'HP -10 · 치명타 +4% · 공격력 +3', minHp: 12, effect: { hp: -10, crit: 0.04, dmg: 3 }, msg: '🥊 묵직한 한 방을 길렀습니다! (치명타 +4%, 공격력 +3)' },
+    ],
+  },
+  {
+    id: 'heal',
+    title: '🏠 회복·휴식',
+    sub: '5종 · HP·사이다',
+    image: 'assets/images/act_heal.jpg',
+    animClass: 'cutscene-heal',
+    items: [
+      { id: 'heal_sleep', name: '🛏️ 집에서 푹 자기 (저장)', desc: 'HP 100% + 사이다+20 + 다음 날 아침', sleep: true, msg: '🌅 푹 자고 상쾌한 아침을 맞이했습니다! (체력 100% · 자동 저장)' },
+      { id: 'heal_ramen', name: '🍜 야밤의 계란 라면', desc: '15P · HP +45 · 사이다 +15', cost: 15, effect: { hp: 45, sp: 15 }, msg: '🍜 따끈한 국물에 스트레스가 싹 풀립니다! (HP +45, 사이다 +15)' },
+      { id: 'heal_sauna', name: '♨️ 동네 찜질방 & 식혜', desc: '25P · HP +65 · 사이다 +25', cost: 25, effect: { hp: 65, sp: 25 }, msg: '♨️ 맥반석 계란과 식혜로 완벽 재충전! (HP +65, 사이다 +25)' },
+      { id: 'heal_music', name: '🎧 노이즈캔슬링 명상', desc: 'HP +25 · 사이다 +15 · 모범 +3', effect: { hp: 25, sp: 15, lawful: 3 }, msg: '🎧 도시 소음을 차단하고 평정을 되찾았습니다. (HP +25, 사이다 +15)' },
+      { id: 'heal_clean', name: '🧹 골목 쓰레기 줍기 봉사', desc: '민폐도 -10% · 모범 +8 · HP +15', effect: { chaos: -10, lawful: 8, hp: 15 }, msg: '🧹 거리가 깨끗해지니 마음도 상쾌합니다! (민폐도 -10%, 모범 +8)' },
+    ],
+  },
+  {
+    id: 'shop',
+    title: '🏪 편의점·쇼핑',
+    sub: '5종 · 보급·장비',
+    image: 'assets/images/act_shop.jpg',
+    animClass: 'cutscene-shop',
+    items: [
+      { id: 'shop_cheong', name: '💊 우황청심환 구매', desc: '30P · 가방에 [청심환] 1개 추가', cost: 30, addItem: 'cheongsimhwan', msg: '💊 우황청심환을 가방에 챙겼습니다!' },
+      { id: 'shop_soda', name: '🫧 칠성사이다 캔 구매', desc: '25P · 가방에 [사이다 캔] 1개 추가', cost: 25, addItem: 'cold_soda', msg: '🫧 톡 쏘는 칠성사이다를 챙겼습니다!' },
+      { id: 'shop_water', name: '🔫 고압 물총 (영구 장비)', desc: '80P · 전투 기절 +25 피해', cost: 80, uniqueItem: 'water_gun', msg: '🔫 고압 물총 장착! 담배 불을 날려버립시다!' },
+      { id: 'shop_mega', name: '📢 메가폰 (영구 장비)', desc: '80P · 전투 35 피해 + 사이다+25', cost: 80, uniqueItem: 'megaphone', msg: '📢 고출력 메가폰 장착! 사자후 준비 완료!' },
+      { id: 'shop_mirror', name: '🪞 반사 거울 (영구 장비)', desc: '80P · 전투 25 피해 + HP+20', cost: 80, uniqueItem: 'mirror', msg: '🪞 전신 반사 거울 장착! 완벽한 거울치료!' },
+    ],
+  },
+  {
+    id: 'luck',
+    title: '🎲 럭키·기행',
+    sub: '5종 · 대박·도파민',
+    image: 'assets/images/act_luck.jpg',
+    animClass: 'cutscene-luck',
+    items: [
+      { id: 'luck_lotto', name: '🎟️ 편의점 즉석복권 긁기', desc: '20P · 대박(+80P) 또는 꽝!', cost: 20, gamble: 'lotto', msg: '🎟️ 동전으로 즉석복권을 벅벅 긁어봅니다...' },
+      { id: 'luck_claw', name: '🧸 인형뽑기 한 판 승부', desc: '15P · 성공 시 [청심환] 획득!', cost: 15, gamble: 'claw', msg: '🧸 조이스틱을 잡고 집게를 내립니다...' },
+      { id: 'luck_minji', name: '🪙 알바생과 가위바위보', desc: '25P · 승리 시 +50 P!', cost: 25, gamble: 'minji', msg: '🪙 "이거 이기면 두 배 주시는 겁니다?"' },
+      { id: 'luck_vlog', name: '🎬 참교육 쇼츠 업로드', desc: '떡상(+60P·팔로워↑) vs 악플(HP-8)', gamble: 'vlog', msg: '🎬 오늘 겪은 기상천외한 썰을 쇼츠로 올렸습니다!' },
+      { id: 'luck_radio', name: '📻 라디오 사연 보내기', desc: '채택 시 +35 P & 사이다 +20', gamble: 'radio', msg: '📻 교통방송 라디오에 사연을 보냈습니다...' },
+    ],
+  },
+];
