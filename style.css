@@ -775,12 +775,25 @@ body {
 }
 
 /* ===== V9.0 주인공 전투 스프라이트 & 동작 애니메이션 ===== */
+.illustration-frame.combat-stage #scene-image {
+  width: auto;
+  max-width: 55%;
+  margin-left: auto;
+  margin-right: 4px;
+}
+
+.illustration-frame.combat-stage .wanted-poster {
+  width: 56%;
+  margin-left: auto;
+  margin-right: 4px;
+}
+
 .hero-sprite {
   position: absolute;
-  left: 6px;
+  left: 8px;
   bottom: 2px;
-  height: 76%;
-  width: auto;
+  height: 78% !important;
+  width: auto !important;
   max-width: 44%;
   object-fit: contain;
   z-index: 6;
@@ -790,8 +803,8 @@ body {
   transition: left 0.2s ease;
 }
 
-.hero-sprite.with-both {
-  left: 26px;
+.hero-sprite.with-yuki {
+  left: 48px;
 }
 
 .partner-sprite {
@@ -805,25 +818,25 @@ body {
 }
 
 .partner-sprite.yuki-pos {
-  left: -2px;
-  height: 62% !important;
+  left: 4px;
+  height: 68% !important;
   z-index: 5;
-}
-
-.partner-sprite.yuki-pos.solo {
-  left: 52px;
 }
 
 .partner-sprite.chloe-pos {
-  left: 58px;
-  height: 63% !important;
+  left: 56px;
+  height: 69% !important;
   z-index: 5;
+}
+
+.partner-sprite.chloe-pos.with-yuki {
+  left: 94px;
 }
 
 .partner-sprite.kongi-pos {
   left: 34px;
   height: 28% !important;
-  z-index: 7;
+  z-index: 8;
   animation: heroBreathe 1.4s ease-in-out infinite;
 }
 

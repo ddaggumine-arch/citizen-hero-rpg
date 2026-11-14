@@ -1009,10 +1009,14 @@ function render() {
   elSceneCard.classList.add('hidden');
   elSceneImage.classList.add('hidden');
   elSceneImage.className = '';
+  if (elFrame) elFrame.classList.remove('combat-stage');
   elHeroSprite.classList.add('hidden');
-  elHeroSprite.classList.remove('with-both');
+  elHeroSprite.classList.remove('with-yuki');
   if (elYukiSprite) elYukiSprite.classList.add('hidden');
-  if (elChloeSprite) elChloeSprite.classList.add('hidden');
+  if (elChloeSprite) {
+    elChloeSprite.classList.add('hidden');
+    elChloeSprite.classList.remove('with-yuki');
+  }
   if (elKongiSprite) elKongiSprite.classList.add('hidden');
   elSeoulMinimap.classList.add('hidden');
   elEnemyIntentBar.classList.add('hidden');
@@ -2461,16 +2465,17 @@ function render() {
     }
 
     showEnemyVisual(enemy);
+    if (elFrame) elFrame.classList.add('combat-stage');
     elHeroSprite.classList.remove('hidden');
     const hasYuki = !!state.lovers?.includes('yuki');
     const hasChloe = !!state.lovers?.includes('chloe');
     const hasPet = !!state.pet?.adopted;
-    elHeroSprite.classList.toggle('with-both', hasYuki && hasChloe);
-    if (elYukiSprite) {
-      elYukiSprite.classList.toggle('hidden', !hasYuki);
-      elYukiSprite.classList.toggle('solo', hasYuki && !hasChloe);
+    elHeroSprite.classList.toggle('with-yuki', hasYuki);
+    if (elYukiSprite) elYukiSprite.classList.toggle('hidden', !hasYuki);
+    if (elChloeSprite) {
+      elChloeSprite.classList.toggle('hidden', !hasChloe);
+      elChloeSprite.classList.toggle('with-yuki', hasYuki);
     }
-    if (elChloeSprite) elChloeSprite.classList.toggle('hidden', !hasChloe);
     if (elKongiSprite) elKongiSprite.classList.toggle('hidden', !hasPet);
     elQuoteBubble.textContent = state.quote;
     elQuoteBubble.classList.remove('hidden');
@@ -2720,16 +2725,17 @@ function render() {
     elQuoteBubble.textContent = enemy.defeatQuote;
     elQuoteBubble.classList.remove('hidden');
     showEnemyVisual(enemy);
+    if (elFrame) elFrame.classList.add('combat-stage');
     elHeroSprite.classList.remove('hidden');
     const hasYuki = !!state.lovers?.includes('yuki');
     const hasChloe = !!state.lovers?.includes('chloe');
     const hasPet = !!state.pet?.adopted;
-    elHeroSprite.classList.toggle('with-both', hasYuki && hasChloe);
-    if (elYukiSprite) {
-      elYukiSprite.classList.toggle('hidden', !hasYuki);
-      elYukiSprite.classList.toggle('solo', hasYuki && !hasChloe);
+    elHeroSprite.classList.toggle('with-yuki', hasYuki);
+    if (elYukiSprite) elYukiSprite.classList.toggle('hidden', !hasYuki);
+    if (elChloeSprite) {
+      elChloeSprite.classList.toggle('hidden', !hasChloe);
+      elChloeSprite.classList.toggle('with-yuki', hasYuki);
     }
-    if (elChloeSprite) elChloeSprite.classList.toggle('hidden', !hasChloe);
     if (elKongiSprite) elKongiSprite.classList.toggle('hidden', !hasPet);
     elBattleLog.textContent = state.log;
     elChoicesPanel.className = 'choices-panel';
