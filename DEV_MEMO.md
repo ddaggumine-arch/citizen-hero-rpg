@@ -5,7 +5,10 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V27.2
+## 현재 최신 버전: V27.3
+- **V27.3**:
+  - **전투 일러스트 프레임 내 나/적 직관적 레벨 배지 (`index.html`, `style.css`, `app.js`)**: 전투·논리카운터 화면 좌상단 `🛡️ 나 Lv.X`, 우상단 `💢 적 Lv.Y` (레벨차별 빨강/주황/초록 색상 구분) 상시 표시
+  - **서울 5대 구역 실시간 난이도 배지 (`getZoneDifficultyInfo`, `openActivityModal`, `openDistrictsModal`)**: 순찰·탐문 및 서울 5대 구역 치안 창에서 내 레벨 대비 `🌿 쉬움 / ⚔️ 적정 / 🔥 어려움 / 💀 매우 어려움` 배지 표시 (`?v=49`)
 - **V27.2**:
   - **잡몹 50종 대규모 확장 (`data/mobs40.js`, `data/gameData.js`)**: 기존 10종 + 신규 40종 = **총 50종 일반 잡몹**(서울 5대 구역별 각 10종씩 배치, 현상수배 전단지 카드 UI 자동 연동 — 추후 2단계로 50종 전용 스프라이트 제작 예정)
   - **서울 5대 구역 레벨 티어링 & 구역별 순찰 (`data/v26World.js`, `data/activities.js`, `app.js`)**: 마포(Lv.1~10)·성수(Lv.11~20)·종로(Lv.21~30)·강남(Lv.31~40)·여의도(Lv.41~50) 순찰 선택 + 내 레벨보다 높은 구역 도전 시 `⚠️고위험` 표시

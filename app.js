@@ -347,6 +347,8 @@ const elStatLaw = document.getElementById('stat-law');
 const elStatPoints = document.getElementById('stat-points');
 const elMiniStatsBtn = document.getElementById('mini-stats-btn');
 const elMiniSpDot = document.getElementById('mini-sp-dot');
+const elHeroLvBadge = document.getElementById('hero-lv-badge');
+const elEnemyLvBadge = document.getElementById('enemy-lv-badge');
 const elInvCount = document.getElementById('inv-count');
 const elTraitCount = document.getElementById('trait-count');
 const elPhoneBadge = document.getElementById('phone-badge');
@@ -799,6 +801,32 @@ function getHeroRankTitle(lv) {
   return '🌱 동네 자경단';
 }
 
+function getZoneDifficultyInfo(minLv, maxLv, heroLv = 1) {
+  if (heroLv < minLv - 5) return { cls: 'extreme', label: '💀 매우 어려움' };
+  if (heroLv < minLv) return { cls: 'hard', label: '🔥 어려움' };
+  if (heroLv <= maxLv) return { cls: 'normal', label: '⚔️ 적정' };
+  return { cls: 'easy', label: '🌿 쉬움' };
+}
+
+function renderCombatLevelOverlays(show) {
+  if (elHeroLvBadge) {
+    elHeroLvBadge.classList.toggle('hidden', !show);
+    if (show) elHeroLvBadge.textContent = `🛡️ 나 Lv.${state.level || 1}`;
+  }
+  if (elEnemyLvBadge) {
+    elEnemyLvBadge.classList.toggle('hidden', !show);
+    if (show) {
+      const hLv = state.level || 1;
+      const eLv = state.currentEnemyLv || 1;
+      elEnemyLvBadge.textContent = `💢 적 Lv.${eLv}`;
+      elEnemyLvBadge.classList.remove('is-danger', 'is-even', 'is-easy');
+      if (eLv >= hLv + 3) elEnemyLvBadge.classList.add('is-danger');
+      else if (eLv <= hLv - 3) elEnemyLvBadge.classList.add('is-easy');
+      else elEnemyLvBadge.classList.add('is-even');
+    }
+  }
+}
+
 function gainHeroExp(amount) {
   if ((state.level || 1) >= 50) return 0;
   state.level = state.level || 1;
@@ -1200,6 +1228,7 @@ function startBattle(enemyId) {
 
   state.phase = 'combat';
   state.currentEnemyId = enemy.id;
+  state.currentEnemyLv = enemyLv;
   state.enemyHp = startHp;
   state.enemyMaxHp = enemy.maxHp;
   state.enemyStunned = false;
@@ -1767,6 +1796,7 @@ function render() {
   }
   elInvCount.textContent = state.inventory.length;
   elTraitCount.textContent = state.traits.length;
+  renderCombatLevelOverlays(false);
 
   const badgeCount = state.unreadMessages + (state.pendingReports > 0 ? 1 : 0);
   if (badgeCount > 0 && state.phase !== 'title') {
@@ -4191,6 +4221,7 @@ function render() {
     elSceneTitle.textContent = `🧠 ${enemy.name}의 억지 논리!`;
     elWeaknessPill.classList.add('hidden');
     elEnemyHpWrap.classList.remove('hidden');
+    renderCombatLevelOverlays(true);
     elEnemyHpLabel.textContent = '💢 빌런 멘탈';
     elEnemyHpText.textContent = `${state.enemyHp} / ${state.enemyMaxHp}`;
     elEnemyHpBar.style.width = `${(state.enemyHp / state.enemyMaxHp) * 100}%`;
@@ -4241,6 +4272,7 @@ function render() {
     elWeaknessPill.classList.remove('hidden');
 
     elEnemyHpWrap.classList.remove('hidden');
+    renderCombatLevelOverlays(true);
     elEnemyHpLabel.textContent = isBoss ? '🔥 보스 멘탈' : '💢 빌런 멘탈';
     elEnemyHpText.textContent = `${state.enemyHp} / ${state.enemyMaxHp}`;
     elEnemyHpBar.style.width = `${(state.enemyHp / state.enemyMaxHp) * 100}%`;
@@ -5745,12 +5777,13 @@ function openDistrictsModal() {
   SEOUL_DISTRICTS.forEach((d) => {
     const pct = Math.min(100, dState[d.id] || 0);
     const cleared = pct >= 100;
+    const zDiff = getZoneDifficultyInfo(d.minLv || 1, d.maxLv || 50, state.level || 1);
     const card = document.createElement('div');
     card.className = 'inv-item';
     card.innerHTML = `
       <div class="inv-info">
-        <h4>${cleared ? '🕊️' : '🚨'} ${d.name} (${pct}%${cleared ? ' · 평화구역' : ''})</h4>
-        <p>영구 버프: <b>${d.buffDesc}</b>${cleared ? ' ✅ 적용 중!' : ' (100% 달성 시 영구 해금)'}</p>
+        <h4>${cleared ? '🕊️' : '🚨'} ${d.name} (Lv.${d.minLv || 1}~${d.maxLv || 50}) <span class="zone-diff-badge ${zDiff.cls}">${zDiff.label}</span></h4>
+        <p>치안 ${pct}%${cleared ? ' · 평화구역' : ''} · 영구 버프: <b>${d.buffDesc}</b>${cleared ? ' ✅' : ''}</p>
       </div>
     `;
     const btn = document.createElement('button');
@@ -5759,7 +5792,9 @@ function openDistrictsModal() {
     btn.addEventListener('click', () => {
       sfx.powerup();
       elActivityModal.classList.add('hidden');
-      const pool = (d.villains || []).filter((id) => VILLAINS.some((v) => v.id === id) || GUERRILLA_VILLAINS.some((v) => v.id === id) || BOSSES.some((b) => b.id === id));
+      const mobPool = VILLAINS.filter((v) => getDistrictIdForEnemy(v.id) === d.id).map((v) => v.id);
+      const bossPool = (d.villains || []).filter((id) => GUERRILLA_VILLAINS.some((v) => v.id === id) || BOSSES.some((b) => b.id === id));
+      const pool = [...mobPool, ...bossPool];
       const pickId = pool.length ? pool[Math.floor(Math.random() * pool.length)] : 'shorts_terrorist';
       startBattle(pickId);
     });
@@ -5787,8 +5822,13 @@ function openActivityModal(cat) {
 
     const card = document.createElement('div');
     card.className = 'inv-item';
-    const dangerTag = (act.minLv && (state.level || 1) < act.minLv) ? ` <span style="color:#c9184a;font-size:0.7rem;">(⚠️고위험 Lv.${act.minLv}+)</span>` : '';
-    card.innerHTML = `<div class="inv-info"><h4>${act.name}${dangerTag}</h4><p>${act.desc}</p></div>`;
+    let diffTag = '';
+    if (act.battleDistrict) {
+      const dInfo = SEOUL_DISTRICTS.find((d) => d.id === act.battleDistrict);
+      const zDiff = getZoneDifficultyInfo(dInfo?.minLv || act.minLv || 1, dInfo?.maxLv || 50, state.level || 1);
+      diffTag = `<span class="zone-diff-badge ${zDiff.cls}">${zDiff.label}</span>`;
+    }
+    card.innerHTML = `<div class="inv-info"><h4>${act.name}${diffTag}</h4><p>${act.desc}</p></div>`;
 
     const btn = document.createElement('button');
     btn.className = 'use-btn';
