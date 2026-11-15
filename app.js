@@ -1,4 +1,4 @@
-import { TIME_SLOTS, ITEMS, TRAITS, VILLAINS, BOSSES, RANDOM_EVENTS, STORY_MESSAGES } from './data/gameData.js';
+import { TIME_SLOTS, ITEMS, TRAITS, VILLAINS, BOSSES, HIDDEN_BOSS, WEATHERS, RANDOM_EVENTS, STORY_MESSAGES } from './data/gameData.js';
 import { STORY_CHAPTERS } from './data/storyChapters.js';
 import { ACTIVITY_CATEGORIES } from './data/activities.js';
 import { MINI_EVENTS, ENEMY_INTENTS, createFeedForVictory } from './data/liveEvents.js';
@@ -144,6 +144,8 @@ function createNewGameState() {
     seenInterludes: [],
     pendingInterlude: null,
     sodaBuffDmg: 0,
+    weather: 'sunny',
+    skillChain: [],
   };
 }
 
@@ -477,6 +479,9 @@ function advanceTime() {
   if (state.timeIndex >= TIME_SLOTS.length) {
     state.timeIndex = 0;
     state.day += 1;
+    const wPick = WEATHERS[Math.floor(Math.random() * WEATHERS.length)];
+    state.weather = wPick.id;
+    showToast(`🌤️ DAY ${state.day} 서울 날씨: ${wPick.label}`, 'good');
     const ds = state.dailyStats || { wins: 0, loveGain: 0 };
 
     // V16.0: 자취방 인테리어 패시브 회복
@@ -594,7 +599,32 @@ function triggerPlayerDamage(dmg) {
   vibrate([100, 40, 100]);
 }
 
+function getHeroRankInfo() {
+  const w = state.winCount || 0;
+  const b = (state.defeatedBossIds || []).length;
+  if (w >= 25 && b >= 4) return { grade: 'S급', title: 'S급 서울의 빛', atkBonus: 8, next: '최고 등급 달성!' };
+  if (w >= 15 || b >= 4) return { grade: 'A급', title: 'A급 전설의 해결사', atkBonus: 4, next: 'S급: 25승 & 보스 4명' };
+  if (w >= 8 || b >= 2) return { grade: 'B급', title: 'B급 서울 파수꾼', atkBonus: 2, next: 'A급: 15승 또는 보스 4명' };
+  if (w >= 3) return { grade: 'C급', title: 'C급 골목 보안관', atkBonus: 1, next: 'B급: 8승 또는 보스 2명' };
+  return { grade: 'D급', title: 'D급 동네 훈수꾼', atkBonus: 0, next: 'C급: 3승 달성' };
+}
+
+function getWeatherObj() {
+  return WEATHERS.find((w) => w.id === (state.weather || 'sunny')) || WEATHERS[0];
+}
+
+function triggerEquipCutin(itemId) {
+  const src = ITEM_ICONS[itemId];
+  if (!src || !elFrame) return;
+  const img = document.createElement('img');
+  img.src = src;
+  img.className = 'equip-cutin';
+  elFrame.appendChild(img);
+  setTimeout(() => img.remove(), 680);
+}
+
 function getEnemyById(id) {
+  if (id === HIDDEN_BOSS.id) return HIDDEN_BOSS;
   return BOSSES.find((b) => b.id === id)
     || GUERRILLA_VILLAINS.find((g) => g.id === id)
     || VILLAINS.find((v) => v.id === id)
@@ -700,6 +730,7 @@ function startBattle(enemyId) {
   state.enemyStunned = false;
   state.enemyIntent = 'normal';
   state.weakCombo = 0;
+  state.skillChain = [];
   state.enemyBroken = false;
   state.enemyApologyTurns = 0;
   state.isFirstTurn = true;
@@ -785,6 +816,10 @@ function enemyCounterTurn(enemy, isGuarding = false) {
   const intentObj = ENEMY_INTENTS.find((i) => i.id === state.enemyIntent) || ENEMY_INTENTS[0];
   const chaosMult = (state.chaosLevel ?? 25) >= 70 ? 1.2 : 1.0;
   let dmg = Math.round((enemy.atk + Math.floor(Math.random() * 5) - 2) * intentObj.mult * chaosMult);
+  if ((state.weather || 'sunny') === 'rain' && ['smoker', 'spitter', 'street_smoker', 'cafe_boss'].includes(enemy.id)) {
+    dmg = Math.max(2, Math.round(dmg * 0.8));
+    state.log += `\n☔ [우천 약화] 빗줄기에 빌런 기세가 꺾여 피해 -20%!`;
+  }
   if ((state.enemyApologyTurns || 0) > 0) {
     dmg = Math.max(2, Math.round(dmg * 0.6));
     state.enemyApologyTurns -= 1;
@@ -828,7 +863,8 @@ function enemyCounterTurn(enemy, isGuarding = false) {
 function handleEnemyDefeated(enemy) {
   state.quote = enemy.defeatQuote;
   const nightBonus = state.timeIndex >= 2 ? Math.round(enemy.reward * 0.25) : 0;
-  state.points += enemy.reward + nightBonus;
+  const dustBonus = (state.weather || 'sunny') === 'dust' ? 10 : 0;
+  state.points += enemy.reward + nightBonus + dustBonus;
   state.pendingReports += 1;
   state.winCount = (state.winCount || 0) + 1;
   state.enemyBroken = false;
@@ -876,7 +912,12 @@ function handleEnemyDefeated(enemy) {
     state.defeatedBossIds.push(enemy.id);
   }
 
-  if (state.defeatedBossIds.length >= BOSSES.length) {
+  if (enemy.id === HIDDEN_BOSS.id || state.defeatedBossIds.length >= BOSSES.length) {
+    if (enemy.id !== HIDDEN_BOSS.id && (state.clues || []).length >= 5) {
+      showToast('🎭 4대 보스 격파! 최종 흑막 [닥터 카오스] 본사 결전 돌입!!', 'break');
+      startBattle(HIDDEN_BOSS.id);
+      return;
+    }
     const ending = evaluateEnding(state, false);
     state.achievedEndingId = ending.id;
     unlockEnding(ending.id);
@@ -938,9 +979,16 @@ function performAttack(type) {
 
   const chloeCrit = state.lovers?.includes('chloe') && !state.sulky?.chloe ? 0.18 : 0;
   const allyFirstBonus = state.isFirstTurn && state.allies?.includes('parking_bro') ? 8 : 0;
-  const sodaBonus = state.sodaBuffDmg || 0;
+  const rankBonus = getHeroRankInfo().atkBonus || 0;
+  const sodaBonus = (state.sodaBuffDmg || 0) + rankBonus;
   state.isFirstTurn = false;
-  if (sodaBonus > 0) state.sodaBuffDmg = 0;
+  if (state.sodaBuffDmg) state.sodaBuffDmg = 0;
+
+  if (!state.skillChain) state.skillChain = [];
+  if (['speech', 'guts', 'law', 'special'].includes(type)) {
+    state.skillChain.push(type);
+    if (state.skillChain.length > 3) state.skillChain.shift();
+  }
 
   if (type === 'speech') {
     const base = 18 + state.stats.speech * 4 + state.bonusDmg + allyFirstBonus + sodaBonus;
@@ -1016,6 +1064,14 @@ function performAttack(type) {
     state.weakCombo = 0;
   }
 
+  if (state.skillChain?.length === 3 && new Set(state.skillChain).size === 3) {
+    dmg += 35;
+    state.sp = clamp(state.sp + 20, 0, state.maxSp);
+    state.skillChain = [];
+    state.log += `\n⚡ [삼위일체 참교육 체인!!] 서로 다른 3연타로 추가 피해 +35 & 사이다 +20!`;
+    showToast('⚡ 삼위일체 참교육 콤보! (+35 피해 · 사이다 +20)', 'break');
+  }
+
   state.enemyHp = clamp(state.enemyHp - dmg, 0, state.enemyMaxHp);
   checkStreamMission(type);
   triggerEnemyHit(dmg, isCrit);
@@ -1029,16 +1085,18 @@ function useItem(itemId, invIndex) {
   if (item.consumable) {
     sfx.powerup();
     vibrate(30);
+    if (state.phase === 'combat') triggerEquipCutin(itemId);
+    const heatMult = (itemId === 'cold_soda' && (state.weather || 'sunny') === 'heat') ? 1.5 : 1;
     if (item.useEffect.hpPct) {
       const healAmt = Math.max(item.useEffect.hpMin || 40, Math.round(state.maxHp * item.useEffect.hpPct));
       state.hp = clamp(state.hp + healAmt, 0, state.maxHp);
     } else if (item.useEffect.hp) {
-      state.hp = clamp(state.hp + item.useEffect.hp, 0, state.maxHp);
+      state.hp = clamp(state.hp + Math.round(item.useEffect.hp * heatMult), 0, state.maxHp);
     }
-    if (item.useEffect.sp) state.sp = clamp(state.sp + item.useEffect.sp, 0, state.maxSp);
-    if (item.useEffect.tempDmg) state.sodaBuffDmg = (state.sodaBuffDmg || 0) + item.useEffect.tempDmg;
+    if (item.useEffect.sp) state.sp = clamp(state.sp + Math.round(item.useEffect.sp * heatMult), 0, state.maxSp);
+    if (item.useEffect.tempDmg) state.sodaBuffDmg = (state.sodaBuffDmg || 0) + Math.round(item.useEffect.tempDmg * heatMult);
     state.inventory.splice(invIndex, 1);
-    state.log = `[${item.name}]을(를) 사용했습니다! 기운이 펄펄 솟아납니다!`;
+    state.log = `[${item.name}]을(를) 사용했습니다!${heatMult > 1 ? ' 🔥(폭염 보너스 1.5배!)' : ''} 기운이 펄펄 솟아납니다!`;
     elInvModal.classList.add('hidden');
     saveGame();
     render();
@@ -1061,6 +1119,7 @@ function useItem(itemId, invIndex) {
   const gearObj = gearList.find((g) => g.lv === gearLv);
   const gearBonus = gearObj ? gearObj.bonusDmg : 0;
   const dmg = item.combatDmg + gearBonus + state.bonusDmg;
+  triggerEquipCutin(itemId);
   state.enemyHp = clamp(state.enemyHp - dmg, 0, state.enemyMaxHp);
   if (item.stun) state.enemyStunned = true;
   if (item.spGain) state.sp = clamp(state.sp + item.spGain, 0, state.maxSp);
@@ -2901,6 +2960,9 @@ function render() {
       if ((state.enemyApologyTurns || 0) > 0) badges.push({ cls: 'is-stun', txt: `📝 반성문 (${state.enemyApologyTurns}턴·공격-40%)` });
       if (state.lovers?.includes('yuki') && !state.sulky?.yuki) badges.push({ cls: 'is-pet', txt: '💚 유키 매턴 HP+6' });
       if (state.lovers?.includes('chloe') && !state.sulky?.chloe) badges.push({ cls: 'is-combo', txt: '📸 클로이 치명+18%' });
+      if ((state.skillChain?.length || 0) > 0) badges.push({ cls: 'is-combo', txt: `⚡ 체인 ${state.skillChain.length}/3` });
+      badges.push({ cls: '', txt: getWeatherObj().label });
+      badges.push({ cls: 'is-pet', txt: `🏆 ${getHeroRankInfo().grade}` });
       if ((state.allies?.length || 0) > 0) badges.push({ cls: 'is-pet', txt: `🤝 영웅단 ${state.allies.length}명` });
       if ((state.weakCombo || 0) > 0) badges.push({ cls: 'is-combo', txt: `⚡ 약점콤보 ${state.weakCombo}/2` });
       if (state.pet?.adopted) badges.push({ cls: 'is-pet', txt: `🐶 콩이 Lv.${state.pet.level} 지원` });
@@ -3268,11 +3330,15 @@ function renderPhoneModal() {
   // 1. 성향 & 평판 카드
   const repCard = document.createElement('div');
   repCard.className = 'rep-card';
+  const hRank = getHeroRankInfo();
+  const wObj = getWeatherObj();
   repCard.innerHTML = `
     <div class="rep-row">
       <span>😇 모범시민: ${state.lawful}</span>
       <span>😈 광인 지수: ${state.chaotic}</span>
     </div>
+    <div style="font-size:0.8rem;font-weight:800;">🏆 랭크: ${hRank.title} (공격+${hRank.atkBonus} · 다음: ${hRank.next})</div>
+    <div style="font-size:0.74rem;color:#695544;">${wObj.label} — ${wObj.desc}</div>
     <div style="font-size:0.8rem;font-weight:800;">현재 칭호: ${rep.label}</div>
     <div class="rep-perk">✨ ${rep.perkText}</div>
   `;

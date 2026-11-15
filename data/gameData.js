@@ -333,6 +333,34 @@ export const BOSSES = [
   },
 ];
 
+export const HIDDEN_BOSS = {
+  id: 'boss_dr_chaos',
+  name: '🎭 흑막 총수 · 닥터 카오스',
+  location: '여의도 블랙 튜브 MCN 본사',
+  maxHp: 320,
+  atk: 20,
+  reward: 200,
+  weakness: 'law',
+  weaknessLabel: '⚖️ 약점: 법지식(최종 채증)',
+  emoji: '🎭⚡',
+  crime: '4대 빌런 배후 조종 · 도시 혼란 숏폼 수익화',
+  stars: '★★★★★ (최종 흑막)',
+  introQuote: '"호오, 내 노란 완장 후배가 여기까지 올 줄이야? 서울의 혼란은 곧 돈이야!"',
+  banterQuotes: [
+    '"네가 정의롭게 굴수록 내 채널 조회수가 터진다니까? 하하하!"',
+    '"3년 전 그 빗속 버스정류장 사건도 사실 내 첫 프로젝트였지!"',
+    '"유키 카페도, 클로이 카메라도 다 내 손바닥 안이었어!"',
+  ],
+  defeatQuote: '"말도 안 돼... 내 MCN 제국이... 생방송으로 전부 폭로당하다니...!!"',
+};
+
+export const WEATHERS = [
+  { id: 'sunny', label: '☀️ 맑음', desc: '쾌적한 순찰 날씨' },
+  { id: 'rain', label: '☔ 비', desc: '흡연/침 빌런 공격 -20% · 유키 호감 보너스' },
+  { id: 'heat', label: '🔥 폭염', desc: '칠성사이다 캔 효과 1.5배!' },
+  { id: 'dust', label: '😷 미세먼지', desc: '전투 승리 시 추가 +10 P' },
+];
+
 // GTA식 돌발 거리 랜덤 이벤트
 export const RANDOM_EVENTS = [
   {

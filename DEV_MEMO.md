@@ -5,7 +5,12 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V21.0
+## 현재 최신 버전: V22.0
+- **V22.0**:
+  - **장비 컷인 & 삼위일체 콤보 체인**: 전투 중 아이템/장비 사용 시 `.equip-cutin` 중앙 줌 이펙트, 서로 다른 3종 스킬 연속 사용 시 추가 피해 +35 & 사이다 +20
+  - **서울 날씨 시스템 (`WEATHERS`)**: 매일 `맑음`/`비`(흡연·침 빌런 공격 -20%)/`폭염`(사이다 캔 1.5배)/`미세먼지`(전투 +10P) 변경
+  - **히든 최종보스 [닥터 카오스] (`HIDDEN_BOSS`, `boss_dr_chaos`)**: 단서 5개 + 4대 보스 격파 시 13화 최종 결전 돌입 → 클리어 시 진엔딩 16 해금
+  - **시민영웅 랭크 (`getHeroRankInfo`)**: D급 → C급 → B급 → A급(공격+4) → S급(공격+8)
 - **V21.0**:
   - 챗지피티 웹툰풍 커스텀 RPG 아이템 아이콘 12종 투명 PNG 적용 (`assets/images/items/` — `water_gun`, `megaphone`, `mirror`, `cheongsimhwan`, `cold_soda`, `gift_box`, `car_1~3`, `costume_police/dark/couple`)
   - 가방 모달, 편의점 상점, 드라이브 버튼, 코스튬 선택 UI에 커스텀 아이콘 반영 (`?v=23`)
