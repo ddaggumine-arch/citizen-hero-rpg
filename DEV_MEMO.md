@@ -5,7 +5,12 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V26.1
+## 현재 최신 버전: V26.2
+- **V26.2**:
+  - **막타 사이다 피니셔 & 시민 제보 찬스**: 적 HP 25% 이하 시 `💥 사이다 피니셔` 즉시 격파(+15P), 전투 중 20% 확률 `📢 시민 제보` 무료 턴(SP+25·채증+1)
+  - **오늘의 서울 운세 (`DAILY_FORTUNES`)**: 매일 아침 황금/사이다/인연/수호 4종 행운 버프 자동 부여 & 지도 상단 표시
+  - **빌런의 찌질한 변명 + 최후의 일갈 (`villain_excuse`)**: 일반 빌런 격파 시 65% 확률로 무릎 꿇고 변명하는 컷씬 + 모범/광인 일갈 마무리
+  - **수상한 노란 봉투 (`mystery_envelope`)**: 자유행동 후 22% 확률로 1대 영웅 이니셜 봉투 발견 (후원금+55P / 선배 비밀 쪽지 / 스파이 함정) (`?v=35`)
 - **V26.1**:
   - **오프닝 콜드 오픈(Cold Open) 리뉴얼 (`prologue_1` → `prologue_cold_hit` → `prologue_past` → `prologue_2`)**: 시작 즉시 편의점 할머니 새치기+쇼츠 빌런 현장 난입 → 1방 참교육 & 12만뷰 바이럴 폭발 → 김순경의 **1대 시민영웅 실종 미스터리(블랙튜브 MCN)** 도입!
   - **웹툰식 타자기 대사(`setLogText`) & 말풍선 팝업(`@keyframes quotePop`)**: 스토리·프롤로그 대사 타자기 출력 (터치 시 즉시 전체 스킵)

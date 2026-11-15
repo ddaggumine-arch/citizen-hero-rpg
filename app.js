@@ -179,8 +179,25 @@ function createNewGameState() {
     bestNightmareFloor: 0,
     breakingNews: null,
     breakingFirstDone: false,
+    dailyFortune: 'gold',
   };
 }
+
+const DAILY_FORTUNES = [
+  { id: 'gold', icon: '🌟', short: '황금의 날(보상1.5배)', desc: '오늘 전투 승리 포인트 +50%!' },
+  { id: 'cider', icon: '⚡', short: '사이다 날(SP+20·필살)', desc: '전투 시작 시 SP+20 & 첫 공격 치명타!' },
+  { id: 'romance', icon: '💘', short: '인연의 날(호감+보너스)', desc: '오늘 어학·데이트 시 추가 보너스!' },
+  { id: 'shield', icon: '🛡️', short: '수호의 날(전투HP+15)', desc: '전투 시작마다 인내심 +15 회복!' },
+];
+
+const VILLAIN_EXCUSES = [
+  '"아 제가 오늘 기분이 좀 우울해서 그랬어요... 한 번만 봐주세요!!"',
+  '"나 원래 이런 사람 아니에요! 맘카페에 올리지 마요, 카메라 치워!!"',
+  '"아이고 허리야... 나 환자예요 환자! 오히려 내가 피해자라고!!"',
+  '"아니 남들도 다 이렇게 하던데 왜 나한테만 지랄이에요?!"',
+  '"잠깐만! 우리 아버지가 누군지 알아요?!... 아 죄송합니다 살려주세요!"',
+  '"인스타 릴스 찍으려고 장난 좀 친 건데 그게 그렇게 큰 죄예요?!"',
+];
 
 let _typewriterTimer = null;
 let _typewriterFull = '';
@@ -563,7 +580,9 @@ function advanceTime() {
     if (state.day % 7 === 0) state.pendingWeekend = true;
     const wPick = WEATHERS[Math.floor(Math.random() * WEATHERS.length)];
     state.weather = wPick.id;
-    showToast(`🌤️ DAY ${state.day} 서울 날씨: ${wPick.label}`, 'good');
+    const fPick = DAILY_FORTUNES[Math.floor(Math.random() * DAILY_FORTUNES.length)];
+    state.dailyFortune = fPick.id;
+    showToast(`🌤️ DAY ${state.day} 서울: ${wPick.label} · ${fPick.icon} ${fPick.short}`, 'good');
     const ds = state.dailyStats || { wins: 0, loveGain: 0 };
 
     // V16.0: 자취방 인테리어 패시브 회복
@@ -928,6 +947,14 @@ function startBattle(enemyId) {
   state.weakCombo = 0;
   state.skillChain = [];
   state.enemyBroken = false;
+  state.citizenAssistUsed = false;
+  if (state.dailyFortune === 'cider') {
+    state.sp = clamp(state.sp + 20, 0, state.maxSp);
+    extraLog += `\n⚡ [오늘의 운세: 사이다 폭발의 날] 시작 사이다 +20!`;
+  } else if (state.dailyFortune === 'shield') {
+    state.hp = clamp(state.hp + 15, 1, state.maxHp);
+    extraLog += `\n🛡️ [오늘의 운세: 수호의 날] 인내심 +15 회복!`;
+  }
   state.usedLogicCounter = false;
   state.enemyApologyTurns = 0;
   state.isFirstTurn = true;
@@ -1206,9 +1233,26 @@ function handleEnemyDefeated(enemy) {
     return;
   }
 
+  if (state.dailyFortune === 'gold') {
+    const fBonus = Math.round((enemy.reward || 20) * 0.5);
+    state.points += fBonus;
+  }
+
   const ownedIds = state.traits.map((t) => t.id);
   const available = TRAITS.filter((t) => !ownedIds.includes(t.id) || t.id === 'first_aid');
   state.draftOptions = shuffle(available).slice(0, 3);
+
+  // V26.2: 일반 빌런 격파 시 65% 확률로 찌질한 변명 + 최후의 일갈 이벤트
+  if (!isBossId(enemy.id) && !(state.towerFloor > 0) && !(state.nightmareFloor > 0) && Math.random() < 0.65) {
+    state.phase = 'villain_excuse';
+    state.excuseEnemyName = enemy.name;
+    state.excuseIdx = Math.floor(Math.random() * VILLAIN_EXCUSES.length);
+    state.log = `✅ [${enemy.name}] 멘탈 붕괴! 빌런이 무릎을 꿇고 변명을 늘어놓기 시작합니다...`;
+    saveGame();
+    render();
+    return;
+  }
+
   state.phase = 'draft';
   state.log = `✅ [${enemy.name}] 참교육 성공! (+${enemy.reward} P · 채증 +1)\n보상으로 새로운 특성을 1개 선택하세요.`;
   saveGame();
@@ -1884,7 +1928,8 @@ function render() {
 
   if (state.phase === 'map') {
     const rep = getReputationInfo();
-    elLocation.textContent = `DAY ${state.day} · ${timeLabel}`;
+    const fObj = DAILY_FORTUNES.find((f) => f.id === (state.dailyFortune || 'gold')) || DAILY_FORTUNES[0];
+    elLocation.textContent = `DAY ${state.day} · ${timeLabel} · ${fObj.icon}${fObj.short}`;
     elSceneTag.textContent = '서울 맵';
     elSceneTag.className = 'scene-tag event';
     elSceneTitle.textContent = `어디로 이동할까요? (${rep.label})`;
@@ -3956,6 +4001,42 @@ function render() {
     elBattleLog.textContent = state.log;
     elChoicesPanel.className = 'choices-panel grid-2';
 
+    // V26.2 막타 사이다 피니셔 (적 HP 25% 이하)
+    if (state.enemyHp > 0 && state.enemyHp <= Math.ceil(state.enemyMaxHp * 0.25)) {
+      const finBtn = document.createElement('button');
+      finBtn.className = 'choice-btn row-btn story-main-btn';
+      finBtn.style.gridColumn = 'span 2';
+      finBtn.innerHTML = '<span>💥 [사이다 피니셔!!] 최후의 일격 날리기!</span><span class="choice-sub">즉시 격파 + 보너스 +15P!</span>';
+      finBtn.addEventListener('click', () => {
+        sfx.hit(true);
+        vibrate(55);
+        playHeroAnim('attack');
+        const finDmg = Math.max(state.enemyHp, 35);
+        state.enemyHp = 0;
+        state.points += 15;
+        triggerEnemyHit(finDmg, true);
+        showToast('💥 사이다 피니셔 대성공!! (+15P)', 'break');
+        handleEnemyDefeated(enemy);
+      });
+      elChoicesPanel.appendChild(finBtn);
+    } else if (!state.citizenAssistUsed && Math.random() < 0.20) {
+      // V26.2 전투 중 돌발 시민 제보 찬스 (턴 소모 없음)
+      const tipBtn = document.createElement('button');
+      tipBtn.className = 'choice-btn row-btn guard-btn';
+      tipBtn.style.gridColumn = 'span 2';
+      tipBtn.innerHTML = '<span>📢 [시민 제보 찬스!] 구경하던 학생이 결정적 증거를 넘겨줬다!</span><span class="choice-sub">턴 소모 없음 · 사이다+25 · 채증+1</span>';
+      tipBtn.addEventListener('click', () => {
+        sfx.powerup();
+        state.citizenAssistUsed = true;
+        state.sp = clamp(state.sp + 25, 0, state.maxSp);
+        state.pendingReports += 1;
+        state.log = '📢 [시민 제보 수령!] "저 아저씨 아까부터 저랬어요!" (사이다 +25 · 채증 +1)';
+        showToast('📢 시민 제보! 사이다 +25 & 채증 +1!', 'good');
+        render();
+      });
+      elChoicesPanel.appendChild(tipBtn);
+    }
+
     if (intentObj.isDanger) {
       const guardBtn = document.createElement('button');
       guardBtn.className = 'choice-btn row-btn guard-btn';
@@ -4042,6 +4123,116 @@ function render() {
     tagBtn.innerHTML = `<span>🤝 합동 필살기 (${partnerLabel})</span><span class="choice-sub sp">${state.sp >= tagCost ? `사이다 ${tagCost} · 극딜+기절!` : `사이다 부족 (${state.sp}/${tagCost})`}</span>`;
     tagBtn.addEventListener('click', () => performTagSkill());
     elChoicesPanel.appendChild(tagBtn);
+    return;
+  }
+
+  // 6-9. V26.2 빌런의 찌질한 변명 + 최후의 일갈
+  if (state.phase === 'villain_excuse') {
+    const vName = state.excuseEnemyName || '민폐 빌런';
+    const exc = VILLAIN_EXCUSES[state.excuseIdx || 0] || VILLAIN_EXCUSES[0];
+    elLocation.textContent = `참교육 마무리 · ${vName}`;
+    elSceneTag.textContent = '최후의 일갈';
+    elSceneTag.className = 'scene-tag event';
+    elSceneTitle.textContent = `🎭 ${vName}의 찌질한 변명!`;
+    elWeaknessPill.classList.add('hidden');
+    elEnemyHpWrap.classList.add('hidden');
+    elQuoteBubble.textContent = exc;
+    elQuoteBubble.classList.remove('hidden');
+    showSceneCard(
+      'FINAL REBUKE · 참교육 마무리',
+      ` 🧎 [${vName}]이(가) 무릎 꿇고 횡설수설 중...\n\n 마지막 한마디로 완벽하게 마무리하세요!`,
+      '어느 쪽을 골라도 보너스 보상 후 특성 선택으로 이어집니다'
+    );
+    setLogText(state.log, true);
+    elChoicesPanel.className = 'choices-panel';
+    [
+      {
+        text: '⚖️ "사정은 경찰서에서 말씀하세요! 법대로 처리합니다."',
+        sub: '모범 +2 · 포인트 +12P',
+        run: () => { state.lawful += 2; state.points += 12; },
+      },
+      {
+        text: '😈 "네~ 다음 빌런 들어오세요. 영상 잘 올라갑니다~"',
+        sub: '광인 +2 · 사이다 +15 · 팔로워 +80',
+        run: () => { state.chaotic += 2; state.sp = clamp(state.sp + 15, 0, state.maxSp); state.followers = (state.followers || 120) + 80; },
+      },
+    ].forEach((c) => {
+      const b = document.createElement('button');
+      b.className = 'choice-btn row-btn';
+      b.innerHTML = `<span>${c.text}</span><span class="choice-sub">${c.sub}</span>`;
+      b.addEventListener('click', () => {
+        sfx.victory();
+        c.run();
+        state.phase = 'draft';
+        state.log = `🔥 [${vName}] 완벽 참교육 완료! 새로운 특성을 1개 선택하세요.`;
+        saveGame();
+        render();
+      });
+      elChoicesPanel.appendChild(b);
+    });
+    return;
+  }
+
+  // 6-95. V26.2 순찰 중 수상한 노란 봉투 / 1대 영웅 쪽지 이벤트
+  if (state.phase === 'mystery_envelope') {
+    elLocation.textContent = `DAY ${state.day} · 돌발 미스터리`;
+    elSceneTag.textContent = '미스터리';
+    elSceneTag.className = 'scene-tag event';
+    elSceneTitle.textContent = '✉️ 바닥에 떨어진 수상한 노란 봉투!';
+    elWeaknessPill.classList.add('hidden');
+    elEnemyHpWrap.classList.add('hidden');
+    elQuoteBubble.textContent = '"봉투 겉면에 [1대 시민영웅 → 후계자에게] 라고 적혀 있다...!"';
+    elQuoteBubble.classList.remove('hidden');
+    showSceneCard(
+      'MYSTERY ENVELOPE · 노란 봉투',
+      '  ✉️ [ 누군가 몰래 두고 간 노란 봉투 ]\n\n  선배의 비밀 쪽지일까, 놈들의 함정일까?',
+      '선택에 따라 보물, 떡밥, 또는 돌발 전투가 발생합니다'
+    );
+    setLogText('순찰 중 골목 벤치 위에서 선배의 이니셜이 적힌 노란 봉투를 발견했습니다!', true);
+    elChoicesPanel.className = 'choices-panel';
+
+    const openBtn = document.createElement('button');
+    openBtn.className = 'choice-btn row-btn story-main-btn';
+    openBtn.innerHTML = '<span>✉️ 봉투를 조심스레 열어본다</span><span class="choice-sub">대박 보상 / 선배 비밀 쪽지 / 함정?</span>';
+    openBtn.addEventListener('click', () => {
+      const r = Math.random();
+      if (r < 0.45) {
+        sfx.victory();
+        state.points += 55;
+        state.phase = 'map';
+        state.log = '💰 [익명의 시민 감사 봉투!] "항상 동네를 지켜줘서 고마워요!" (+55 P)';
+        showToast('💰 시민 감사 봉투 +55 P!', 'good');
+      } else if (r < 0.8) {
+        sfx.powerup();
+        state.sp = clamp(state.sp + 25, 0, state.maxSp);
+        state.stats.law += 1;
+        state.phase = 'map';
+        state.log = '📜 [1대 시민영웅의 비밀 메모!] "블랙튜브 MCN의 자금줄은 여의도에 있다..." (사이다+25 · 법률+1)';
+        showToast('📜 선배의 비밀 쪽지 발견! (법률 +1)', 'good');
+      } else {
+        sfx.damage();
+        showToast('🚨 블랙튜브 정찰 스파이의 함정이었다!!', 'break');
+        startBattle('shorts_terrorist');
+        return;
+      }
+      saveGame();
+      render();
+    });
+    elChoicesPanel.appendChild(openBtn);
+
+    const passBtn = document.createElement('button');
+    passBtn.className = 'choice-btn row-btn';
+    passBtn.innerHTML = '<span>🚶 함정일 수 있으니 사진만 찍고 지나친다</span><span class="choice-sub">모범 +1 · 인내심 +10</span>';
+    passBtn.addEventListener('click', () => {
+      sfx.click();
+      state.lawful += 1;
+      state.hp = clamp(state.hp + 10, 1, state.maxHp);
+      state.phase = 'map';
+      state.log = '🚶 신중하게 현장을 기록하고 지나쳤습니다. (모범 +1 · 인내심 +10)';
+      saveGame();
+      render();
+    });
+    elChoicesPanel.appendChild(passBtn);
     return;
   }
 
@@ -5235,6 +5426,13 @@ function executeActivity(act, cat) {
     const picked = ambushPool[Math.floor(Math.random() * ambushPool.length)];
     state.log = `🚨 [서울 민폐도 비상!] 거리가 난장판이 되어 [${picked.name}]이(가) 기습했습니다!`;
     startBattle(picked.id);
+    return;
+  }
+
+  if (Math.random() < 0.22) {
+    state.phase = 'mystery_envelope';
+    saveGame();
+    render();
     return;
   }
 
