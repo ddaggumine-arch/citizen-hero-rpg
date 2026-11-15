@@ -8,6 +8,7 @@ import { CARS, GEAR_UPGRADES, ACHIEVEMENTS } from './data/lifestyle.js';
 import { STREAM_MISSIONS, ROOM_UPGRADES, GUERRILLA_VILLAINS, STOCKS, HEROINE_GIFTS } from './data/v16Systems.js';
 import { COURT_CASES, COSTUMES, CAPSULE_POOL, PET_WALK_EVENTS } from './data/v17Systems.js';
 import { CLUES, SOME_CRISIS_EVENTS, RIVAL_EVENTS, REFORMED_ALLIES, GETTING_TO_KNOW_EVENTS, STORY_INTERLUDES, WEEKEND_EVENTS } from './data/v19Story.js';
+import { DIFFICULTIES, RARITY_INFO, GEAR_LOOT_POOL, PET_JOBS, LOGIC_COUNTERS, generateCommunityPosts } from './data/v24Systems.js';
 import { sfx } from './sound.js';
 
 const SAVE_KEY = 'citizen_hero_gta_save_v4';
@@ -28,6 +29,15 @@ const ITEM_ICONS = {
   police: 'assets/images/items/costume_police.png',
   dark: 'assets/images/items/costume_dark.png',
   couple: 'assets/images/items/costume_couple.png',
+  costume_police: 'assets/images/items/costume_police.png',
+  costume_dark: 'assets/images/items/costume_dark.png',
+  costume_couple: 'assets/images/items/costume_couple.png',
+  golden_whistle: 'assets/images/items/golden_whistle.png',
+  fact_book: 'assets/images/items/fact_book.png',
+  mattress: 'assets/images/items/room_mattress.png',
+  soundproof: 'assets/images/items/room_soundproof.png',
+  desk: 'assets/images/items/room_desk.png',
+  doghouse: 'assets/images/items/room_doghouse.png',
 };
 
 function itemImgHtml(key, cls = 'choice-thumb') {
@@ -149,6 +159,11 @@ function createNewGameState() {
     villainWins: {},
     pendingWeekend: false,
     statueBuilt: false,
+    difficulty: 'normal',
+    ngPlus: 0,
+    gearBag: [],
+    equipped: { weapon: null, armor: null, acc: null },
+    usedLogicCounter: false,
   };
 }
 
@@ -717,18 +732,76 @@ function tryRecruitAlly() {
   state.log += `\n🤝 [개과천선 합류!] "${nextAlly.name}"이(가) 시민영웅단에 들어왔습니다! (${nextAlly.desc})`;
 }
 
+function getDiffObj() {
+  return DIFFICULTIES[state.difficulty || 'normal'] || DIFFICULTIES.normal;
+}
+
+function getEquippedBonuses() {
+  const eq = state.equipped || {};
+  const res = { atk: 0, def: 0, crit: 0, spRegen: 0, reflect: 0 };
+  ['weapon', 'armor', 'acc'].forEach((sl) => {
+    const id = eq[sl];
+    if (!id) return;
+    const g = GEAR_LOOT_POOL.find((x) => x.id === id);
+    if (!g) return;
+    res.atk += g.atk || 0;
+    res.def += g.def || 0;
+    res.crit += g.crit || 0;
+    res.spRegen += g.spRegen || 0;
+    res.reflect += g.reflect || 0;
+  });
+  return res;
+}
+
+function rollGearDrop(isBoss = false) {
+  const diff = getDiffObj();
+  const dropChance = isBoss ? 1.0 : diff.dropChance;
+  if (Math.random() > dropChance) return null;
+
+  const uRate = diff.uniqueRate * (isBoss ? 5 : 1);
+  const eRate = isBoss ? 0.22 : (state.difficulty === 'hell' ? 0.08 : 0.03);
+  const rRate = isBoss ? 1.0 : (state.difficulty === 'normal' ? 0.16 : 0.28);
+
+  const roll = Math.random();
+  let rarity = 'common';
+  if (roll < uRate) rarity = 'unique';
+  else if (roll < uRate + eRate) rarity = 'epic';
+  else if (roll < uRate + eRate + rRate) rarity = 'rare';
+
+  const pool = GEAR_LOOT_POOL.filter((g) => g.rarity === rarity);
+  const picked = pool[Math.floor(Math.random() * pool.length)];
+  if (!picked) return null;
+
+  if (!state.gearBag) state.gearBag = [];
+  if (!state.equipped) state.equipped = { weapon: null, armor: null, acc: null };
+  state.gearBag.push(picked.id);
+  if (!state.equipped[picked.slot]) {
+    state.equipped[picked.slot] = picked.id;
+  }
+  const rLabel = RARITY_INFO[rarity]?.label || rarity;
+  showToast(
+    rarity === 'unique'
+      ? `🟨✨ [0.1% 기적!! 유니크 드랍!] ${picked.name} 획득!!`
+      : `🎁 [${rLabel}] ${picked.name} 획득!`,
+    rarity === 'unique' ? 'break' : 'good'
+  );
+  return picked;
+}
+
 function startBattle(enemyId) {
   const baseEnemy = getEnemyById(enemyId);
   const floor = state.towerFloor || 0;
-  const enemy = floor > 0
-    ? {
-        ...baseEnemy,
-        name: `[타워 ${floor}층] ${baseEnemy.name}`,
-        maxHp: baseEnemy.maxHp + floor * 18,
-        atk: baseEnemy.atk + floor * 2,
-        reward: 25 + floor * 12,
-      }
-    : baseEnemy;
+  const diff = getDiffObj();
+  const ngMult = 1 + (state.ngPlus || 0) * 0.3;
+  const rawMaxHp = floor > 0 ? baseEnemy.maxHp + floor * 18 : baseEnemy.maxHp;
+  const rawAtk = floor > 0 ? baseEnemy.atk + floor * 2 : baseEnemy.atk;
+  const enemy = {
+    ...baseEnemy,
+    name: floor > 0 ? `[타워 ${floor}층] ${baseEnemy.name}` : baseEnemy.name,
+    maxHp: Math.round(rawMaxHp * diff.hpMult * ngMult),
+    atk: Math.round(rawAtk * diff.atkMult * ngMult),
+    reward: Math.round((floor > 0 ? 25 + floor * 12 : baseEnemy.reward) * diff.rewardMult),
+  };
   const rep = getReputationInfo();
   let startHp = enemy.maxHp;
   let extraLog = '';
@@ -753,6 +826,7 @@ function startBattle(enemyId) {
   state.weakCombo = 0;
   state.skillChain = [];
   state.enemyBroken = false;
+  state.usedLogicCounter = false;
   state.enemyApologyTurns = 0;
   state.isFirstTurn = true;
   state.bossPhase2 = false;
@@ -837,7 +911,19 @@ function enemyCounterTurn(enemy, isGuarding = false) {
 
   const intentObj = ENEMY_INTENTS.find((i) => i.id === state.enemyIntent) || ENEMY_INTENTS[0];
   const chaosMult = (state.chaosLevel ?? 25) >= 70 ? 1.2 : 1.0;
-  let dmg = Math.round((enemy.atk + Math.floor(Math.random() * 5) - 2) * intentObj.mult * chaosMult);
+  const diffAtkMult = getDiffObj().atkMult * (1 + (state.ngPlus || 0) * 0.3);
+  const eqBonus = getEquippedBonuses();
+
+  if (!isGuarding && !state.usedLogicCounter && Math.random() < 0.18) {
+    state.usedLogicCounter = true;
+    state.logicCounterIdx = Math.floor(Math.random() * LOGIC_COUNTERS.length);
+    state.phase = 'logic_counter';
+    saveGame();
+    render();
+    return;
+  }
+
+  let dmg = Math.round((enemy.atk * diffAtkMult + Math.floor(Math.random() * 5) - 2) * intentObj.mult * chaosMult);
   if ((state.weather || 'sunny') === 'rain' && ['smoker', 'spitter', 'street_smoker', 'cafe_boss'].includes(enemy.id)) {
     dmg = Math.max(2, Math.round(dmg * 0.8));
     state.log += `\n☔ [우천 약화] 빗줄기에 빌런 기세가 꺾여 피해 -20%!`;
@@ -850,8 +936,24 @@ function enemyCounterTurn(enemy, isGuarding = false) {
   if (isGuarding) {
     dmg = Math.max(2, Math.round(dmg * 0.25));
   }
+  if (eqBonus.def > 0) {
+    const blocked = Math.min(dmg - 1, eqBonus.def);
+    dmg = Math.max(1, dmg - eqBonus.def);
+    if (blocked > 0) state.log += `\n🛡️ [장비 방어 -${blocked}]`;
+  }
+  const totalReflect = (eqBonus.reflect || 0) + (state.pet?.adopted && state.pet.job === 'guard' ? 0.15 : 0);
+  if (totalReflect > 0 && dmg > 1) {
+    const refDmg = Math.max(2, Math.round(dmg * totalReflect));
+    state.enemyHp = clamp(state.enemyHp - refDmg, 0, state.enemyMaxHp);
+    state.log += `\n🪞 [피해 반사!] 빌런에게 ${refDmg} 반사 데미지!`;
+  }
 
   state.hp = clamp(state.hp - dmg, 0, state.maxHp);
+  if (eqBonus.spRegen > 0) state.sp = clamp(state.sp + eqBonus.spRegen, 0, state.maxSp);
+  if (state.pet?.adopted && state.pet.job === 'healer' && state.hp > 0) {
+    state.hp = clamp(state.hp + 5, 1, state.maxHp);
+    state.log += `\n💖 [힐링견 콩이] 인내심 +5 회복!`;
+  }
   if (state.lovers?.includes('yuki') && !state.sulky?.yuki && state.hp > 0) {
     state.hp = clamp(state.hp + 6, 1, state.maxHp);
     state.log += `\n💚 [유키 응원] 따뜻한 말차 에너지로 인내심 +6 회복!`;
@@ -885,10 +987,17 @@ function enemyCounterTurn(enemy, isGuarding = false) {
 
 function handleEnemyDefeated(enemy) {
   state.quote = enemy.defeatQuote;
-  const nightBonus = state.timeIndex >= 2 ? Math.round(enemy.reward * 0.25) : 0;
+  const diff = getDiffObj();
+  const baseReward = Math.round(enemy.reward * diff.rewardMult);
+  const nightBonus = state.timeIndex >= 2 ? Math.round(baseReward * 0.25) : 0;
   const dustBonus = (state.weather || 'sunny') === 'dust' ? 10 : 0;
-  state.points += enemy.reward + nightBonus + dustBonus;
+  state.points += baseReward + nightBonus + dustBonus;
   state.pendingReports += 1;
+  if (state.pet?.adopted && state.pet.job === 'detective' && Math.random() < 0.5) {
+    state.pendingReports += 1;
+    showToast('🕵️ [탐지견 콩이] 추가 채증 +1 확보!', 'good');
+  }
+  rollGearDrop(isBossId(enemy.id) || enemy.id === HIDDEN_BOSS.id);
   state.winCount = (state.winCount || 0) + 1;
   if (!state.villainWins) state.villainWins = {};
   state.villainWins[enemy.id] = (state.villainWins[enemy.id] || 0) + 1;
@@ -1002,10 +1111,11 @@ function performAttack(type) {
   let isCrit = false;
   let hitWeakness = false;
 
-  const chloeCrit = state.lovers?.includes('chloe') && !state.sulky?.chloe ? 0.18 : 0;
+  const eqBonus = getEquippedBonuses();
+  const chloeCrit = (state.lovers?.includes('chloe') && !state.sulky?.chloe ? 0.18 : 0) + eqBonus.crit;
   const allyFirstBonus = state.isFirstTurn && state.allies?.includes('parking_bro') ? 8 : 0;
   const rankBonus = getHeroRankInfo().atkBonus || 0;
-  const sodaBonus = (state.sodaBuffDmg || 0) + rankBonus;
+  const sodaBonus = (state.sodaBuffDmg || 0) + rankBonus + eqBonus.atk;
   state.isFirstTurn = false;
   if (state.sodaBuffDmg) state.sodaBuffDmg = 0;
 
@@ -1242,15 +1352,66 @@ function render() {
 
     elChoicesPanel.className = 'choices-panel';
 
+    // V24.0 가장 초창기 화면 난이도 선택 (노멀 / 하드 / 헬)
+    if (!state.difficulty) state.difficulty = 'normal';
+    const diffRow = document.createElement('div');
+    diffRow.style.display = 'flex';
+    diffRow.style.gap = '4px';
+    Object.values(DIFFICULTIES).forEach((df) => {
+      const db = document.createElement('button');
+      db.className = 'choice-btn';
+      db.style.flex = '1';
+      db.style.padding = '7px 4px';
+      if (state.difficulty === df.id) {
+        db.style.background = '#e7d5b1';
+        db.style.borderColor = '#9e2a2b';
+      }
+      db.innerHTML = `<span style="font-size:0.76rem;text-align:center;">${df.name}</span>`;
+      db.addEventListener('click', () => {
+        sfx.click();
+        state.difficulty = df.id;
+        state.log = `[${df.name}] ${df.desc}`;
+        render();
+      });
+      diffRow.appendChild(db);
+    });
+    elChoicesPanel.appendChild(diffRow);
+
+    const pickedDiff = getDiffObj();
     const btnNew = document.createElement('button');
     btnNew.className = 'choice-btn row-btn';
-    btnNew.innerHTML = '<span>▶ 새 게임 시작 (스토리 프롤로그)</span><span class="choice-sub">NEW GAME</span>';
+    btnNew.innerHTML = `<span>▶ 새 게임 시작 (${pickedDiff.name})</span><span class="choice-sub">NEW GAME</span>`;
     btnNew.addEventListener('click', () => {
       sfx.click();
       vibrate(25);
+      const selDiff = state.difficulty || 'normal';
       state = createNewGameState();
+      state.difficulty = selDiff;
       render();
     });
+
+    const unlockedEndCnt = loadUnlockedEndings().length;
+    if (unlockedEndCnt > 0) {
+      const btnNg = document.createElement('button');
+      btnNg.className = 'choice-btn row-btn';
+      btnNg.style.background = 'linear-gradient(180deg, #fff6df 0%, #fde4a6 100%)';
+      btnNg.style.borderColor = '#b07d2b';
+      const bonusStat = Math.min(6, unlockedEndCnt * 2);
+      btnNg.innerHTML = `<span>🔄 2회차 계승 시작 (엔딩 ${unlockedEndCnt}종 보너스)</span><span class="choice-sub">전스탯+${bonusStat} · +120P · 적 1.3배</span>`;
+      btnNg.addEventListener('click', () => {
+        sfx.powerup();
+        const selDiff = state.difficulty || 'normal';
+        state = createNewGameState();
+        state.difficulty = selDiff;
+        state.ngPlus = 1;
+        state.stats.speech += bonusStat;
+        state.stats.guts += bonusStat;
+        state.stats.law += bonusStat;
+        state.points += 120;
+        render();
+      });
+      elChoicesPanel.appendChild(btnNg);
+    }
     elChoicesPanel.appendChild(btnNew);
 
     const btnLoad = document.createElement('button');
@@ -1708,7 +1869,7 @@ function render() {
         const rBtn = document.createElement('button');
         rBtn.className = 'choice-btn';
         rBtn.disabled = owned;
-        rBtn.innerHTML = `<span>${ru.name}</span><span class="choice-sub">${owned ? '✅ 보유 중' : `${ru.cost}P · ${ru.desc}`}</span>`;
+        rBtn.innerHTML = `<span style="display:flex;align-items:center;">${itemImgHtml(ru.id)}${ru.name}</span><span class="choice-sub">${owned ? '✅ 보유 중' : `${ru.cost}P · ${ru.desc}`}</span>`;
         rBtn.addEventListener('click', () => {
           if (state.points < ru.cost) {
             sfx.damage();
@@ -1860,7 +2021,16 @@ function render() {
         });
         elChoicesPanel.appendChild(cBtn);
       });
-      if (state.lifeTab === 'foundation') {
+      const backBtn = document.createElement('button');
+      backBtn.className = 'choice-btn row-btn';
+      backBtn.style.gridColumn = 'span 2';
+      backBtn.innerHTML = '<span>◀ 서울 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
+      backBtn.addEventListener('click', () => { sfx.click(); state.phase = 'map'; render(); });
+      elChoicesPanel.appendChild(backBtn);
+      return;
+    }
+
+    if (state.lifeTab === 'foundation') {
       const fActions = [
         { title: '🗣️ 스피치 아카데미 (250P)', sub: '영구 언변 +2', cost: 250, run: () => { state.stats.speech += 2; } },
         { title: '🥊 프로 복싱 PT (250P)', sub: '영구 배짱 +2', cost: 250, run: () => { state.stats.guts += 2; } },
@@ -1899,15 +2069,33 @@ function render() {
         render();
       });
       elChoicesPanel.appendChild(stBtn);
-    }
-
-    const backBtn = document.createElement('button');
+      const backBtn = document.createElement('button');
       backBtn.className = 'choice-btn row-btn';
       backBtn.style.gridColumn = 'span 2';
       backBtn.innerHTML = '<span>◀ 서울 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
       backBtn.addEventListener('click', () => { sfx.click(); state.phase = 'map'; render(); });
       elChoicesPanel.appendChild(backBtn);
       return;
+    }
+
+    // V24.0 콩이 Lv.3+ 특기 전직
+    if (state.pet?.adopted && state.pet.level >= 3 && !state.pet.job) {
+      PET_JOBS.forEach((pj) => {
+        const jBtn = document.createElement('button');
+        jBtn.className = 'choice-btn';
+        jBtn.style.background = '#f0fdf4';
+        jBtn.style.borderColor = '#16a34a';
+        jBtn.innerHTML = `<span>${pj.name} 전직</span><span class="choice-sub">${pj.desc}</span>`;
+        jBtn.addEventListener('click', () => {
+          state.pet.job = pj.id;
+          sfx.victory();
+          showToast(`🐶 콩이가 [${pj.name}]으로 전직했습니다!`, 'good');
+          state.log = `🐶 콩이가 [${pj.name}] 특기를 각성했습니다! (${pj.desc})`;
+          saveGame();
+          render();
+        });
+        elChoicesPanel.appendChild(jBtn);
+      });
     }
 
     const petBtn = document.createElement('button');
@@ -3047,6 +3235,52 @@ function render() {
     return;
   }
 
+  // 6.9. V24.0 빌런 억지 논리 카운터 설전
+  if (state.phase === 'logic_counter') {
+    const enemy = getEnemyById(state.currentEnemyId);
+    const lc = LOGIC_COUNTERS[(state.logicCounterIdx || 0) % LOGIC_COUNTERS.length];
+    elLocation.textContent = `DAY ${state.day} · 긴급 설전!`;
+    elSceneTag.textContent = '논리 카운터';
+    elSceneTag.className = 'scene-tag boss';
+    elSceneTitle.textContent = `🧠 ${enemy.name}의 억지 논리!`;
+    elWeaknessPill.classList.add('hidden');
+    elEnemyHpWrap.classList.remove('hidden');
+    elEnemyHpLabel.textContent = '💢 빌런 멘탈';
+    elEnemyHpText.textContent = `${state.enemyHp} / ${state.enemyMaxHp}`;
+    elEnemyHpBar.style.width = `${(state.enemyHp / state.enemyMaxHp) * 100}%`;
+    elQuoteBubble.textContent = lc.claim;
+    elQuoteBubble.classList.remove('hidden');
+    showEnemyVisual(enemy);
+    elBattleLog.textContent = '빌런이 말도 안 되는 억지를 부립니다! 정확한 팩트 반박을 골라 한 방에 멘붕시키세요!';
+    elChoicesPanel.className = 'choices-panel';
+    shuffle(lc.options).forEach((opt) => {
+      const b = document.createElement('button');
+      b.className = 'choice-btn row-btn';
+      b.innerHTML = `<span>${opt.text}</span><span class="choice-sub">반박 선택</span>`;
+      b.addEventListener('click', () => {
+        state.phase = 'combat';
+        if (opt.ok) {
+          sfx.victory();
+          const cDmg = Math.max(25, Math.round(state.enemyMaxHp * 0.40));
+          state.enemyHp = clamp(state.enemyHp - cDmg, 0, state.enemyMaxHp);
+          state.enemyBroken = true;
+          state.enemyStunned = true;
+          state.log = `⚡ [논리 카운터 완벽 적중!!] 빌런의 억지를 산산조각 냈습니다! (멘탈 -${cDmg} · 멘붕 브레이크 & 기절!)`;
+          triggerEnemyHit(cDmg, true);
+          if (state.enemyHp <= 0) { handleEnemyDefeated(enemy); return; }
+          saveGame();
+          render();
+        } else {
+          sfx.damage();
+          state.log = '😅 반박이 약해 빌런이 기세등등합니다! (적 반격 돌입)';
+          enemyCounterTurn(enemy, true);
+        }
+      });
+      elChoicesPanel.appendChild(b);
+    });
+    return;
+  }
+
   // 7. 전투 화면
   if (state.phase === 'combat') {
     const enemy = getEnemyById(state.currentEnemyId);
@@ -3082,6 +3316,9 @@ function render() {
       if ((state.skillChain?.length || 0) > 0) badges.push({ cls: 'is-combo', txt: `⚡ 체인 ${state.skillChain.length}/3` });
       badges.push({ cls: '', txt: getWeatherObj().label });
       badges.push({ cls: 'is-pet', txt: `🏆 ${getHeroRankInfo().grade}` });
+      badges.push({ cls: '', txt: getDiffObj().name.split(' ')[0] + ' ' + getDiffObj().name.split(' ')[1] });
+      const eqB = getEquippedBonuses();
+      if (eqB.def > 0) badges.push({ cls: 'is-pet', txt: `🛡️ 방어+${eqB.def}` });
       if ((state.allies?.length || 0) > 0) badges.push({ cls: 'is-pet', txt: `🤝 영웅단 ${state.allies.length}명` });
       if ((state.weakCombo || 0) > 0) badges.push({ cls: 'is-combo', txt: `⚡ 약점콤보 ${state.weakCombo}/2` });
       if (state.pet?.adopted) badges.push({ cls: 'is-pet', txt: `🐶 콩이 Lv.${state.pet.level} 지원` });
@@ -3563,6 +3800,31 @@ function renderPhoneModal() {
   codexCard.appendChild(mBtn);
   elPhoneBody.appendChild(codexCard);
 
+  // 2.53. V24.0 파밍 장비 창고 & 서울 익명 커뮤니티
+  const eqBon = getEquippedBonuses();
+  const gearCard = document.createElement('div');
+  gearCard.className = 'inv-item';
+  gearCard.innerHTML = `
+    <div class="inv-info">
+      <h4>⚔️ 파밍 장비 창고 (${(state.gearBag || []).length}개 보유)</h4>
+      <p>장착 보너스: 공격 +${eqBon.atk} · 🛡️ 방어 +${eqBon.def} · 치명 +${Math.round(eqBon.crit * 100)}%</p>
+    </div>
+  `;
+  const gBtn = document.createElement('button');
+  gBtn.className = 'use-btn';
+  gBtn.style.background = '#7e22ce';
+  gBtn.textContent = '장비';
+  gBtn.addEventListener('click', () => { sfx.click(); elPhoneModal.classList.add('hidden'); openGearModal(); });
+  const cBtn2 = document.createElement('button');
+  cBtn2.className = 'use-btn';
+  cBtn2.style.background = '#1d4ed8';
+  cBtn2.style.marginLeft = '4px';
+  cBtn2.textContent = '커뮤니티';
+  cBtn2.addEventListener('click', () => { sfx.click(); elPhoneModal.classList.add('hidden'); openCommunityModal(); });
+  gearCard.appendChild(gBtn);
+  gearCard.appendChild(cBtn2);
+  elPhoneBody.appendChild(gearCard);
+
   // 2.55. V19.0 흑막 추적 & 갱생 동료 카드
   const clueIds = state.clues || [];
   const clueCard = document.createElement('div');
@@ -3871,6 +4133,82 @@ function openMemoryAlbumModal() {
       <div class="inv-info">
         <h4>${it.title}</h4>
         <p>${it.unlock ? '✨ 소중한 추억이 앨범에 저장되었습니다!' : it.desc}</p>
+      </div>
+    `;
+    elEndingsList.appendChild(card);
+  });
+  elEndingsModal.classList.remove('hidden');
+}
+
+function openGearModal() {
+  if (!state.gearBag) state.gearBag = [];
+  if (!state.equipped) state.equipped = { weapon: null, armor: null, acc: null };
+  const eqBon = getEquippedBonuses();
+  elEndingsModalTitle.textContent = `⚔️ 파밍 장비 창고 (공격+${eqBon.atk} · 방어+${eqBon.def})`;
+  elEndingsList.innerHTML = '';
+
+  const slotNames = { weapon: '⚔️ 무기', armor: '🧥 방어구', acc: '🎖️ 악세서리' };
+  if (state.gearBag.length === 0) {
+    elEndingsList.innerHTML = '<p style="text-align:center;color:#695544;padding:16px 0;">아직 파밍한 장비가 없습니다. 빌런/보스를 처치해 레어~0.1% 유니크 장비를 획득하세요!</p>';
+  } else {
+    state.gearBag.forEach((gid, idx) => {
+      const g = GEAR_LOOT_POOL.find((x) => x.id === gid);
+      if (!g) return;
+      const rInfo = RARITY_INFO[g.rarity] || RARITY_INFO.common;
+      const isEq = state.equipped[g.slot] === g.id;
+      const card = document.createElement('div');
+      card.className = 'inv-item';
+      card.style.borderColor = rInfo.color;
+      card.innerHTML = `
+        ${itemImgHtml(g.icon, 'item-thumb')}
+        <div class="inv-info">
+          <h4 style="color:${rInfo.color};">[${rInfo.label}] ${g.name} ${isEq ? '✅장착중' : ''}</h4>
+          <p>${slotNames[g.slot]} · ${g.desc}</p>
+        </div>
+      `;
+      const eqBtn = document.createElement('button');
+      eqBtn.className = 'use-btn';
+      eqBtn.textContent = isEq ? '해제' : '장착';
+      eqBtn.addEventListener('click', () => {
+        sfx.click();
+        state.equipped[g.slot] = isEq ? null : g.id;
+        saveGame();
+        openGearModal();
+        render();
+      });
+      const salBtn = document.createElement('button');
+      salBtn.className = 'use-btn';
+      salBtn.style.background = '#9e2a2b';
+      salBtn.style.marginLeft = '4px';
+      salBtn.textContent = `분해(+${rInfo.salvageP}P)`;
+      salBtn.disabled = isEq;
+      salBtn.addEventListener('click', () => {
+        sfx.powerup();
+        state.gearBag.splice(idx, 1);
+        state.points += rInfo.salvageP;
+        saveGame();
+        openGearModal();
+        render();
+      });
+      card.appendChild(eqBtn);
+      card.appendChild(salBtn);
+      elEndingsList.appendChild(card);
+    });
+  }
+  elEndingsModal.classList.remove('hidden');
+}
+
+function openCommunityModal() {
+  elEndingsModalTitle.textContent = '💬 서울 익명 커뮤니티 (에타·블라인드)';
+  elEndingsList.innerHTML = '';
+  const posts = generateCommunityPosts(state);
+  posts.forEach((p) => {
+    const card = document.createElement('div');
+    card.className = 'inv-item';
+    card.innerHTML = `
+      <div class="inv-info">
+        <h4>[${p.tag}] ${p.author} · ${p.likes}</h4>
+        <p>${p.text}</p>
       </div>
     `;
     elEndingsList.appendChild(card);
