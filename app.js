@@ -216,7 +216,7 @@ function setLogText(text, useTypewriter = false) {
 
 function rollBreakingNews() {
   const dist = SEOUL_DISTRICTS[Math.floor(Math.random() * SEOUL_DISTRICTS.length)];
-  const pool = (dist.enemies || []).filter((id) => VILLAINS.some((v) => v.id === id));
+  const pool = (dist.villains || []).filter((id) => VILLAINS.some((v) => v.id === id) || GUERRILLA_VILLAINS.some((v) => v.id === id));
   const enemyId = pool.length ? pool[Math.floor(Math.random() * pool.length)] : 'shorts_terrorist';
   const enemy = getEnemyById(enemyId);
   state.breakingNews = {
@@ -5019,16 +5019,17 @@ function openDistrictsModal() {
     card.innerHTML = `
       <div class="inv-info">
         <h4>${cleared ? '🕊️' : '🚨'} ${d.name} (${pct}%${cleared ? ' · 평화구역' : ''})</h4>
-        <p>${d.desc} · <b>${d.buffDesc}</b>${cleared ? ' ✅ 적용 중!' : ' (100% 달성 시 영구 해금)'}</p>
+        <p>영구 버프: <b>${d.buffDesc}</b>${cleared ? ' ✅ 적용 중!' : ' (100% 달성 시 영구 해금)'}</p>
       </div>
     `;
     const btn = document.createElement('button');
     btn.className = 'use-btn';
     btn.textContent = cleared ? '순찰' : '출동';
     btn.addEventListener('click', () => {
+      sfx.powerup();
       elActivityModal.classList.add('hidden');
-      const pool = (d.enemies || []).filter((id) => VILLAINS.some((v) => v.id === id) || GUERRILLA_VILLAINS.some((v) => v.id === id));
-      const pickId = pool.length ? pool[Math.floor(Math.random() * pool.length)] : d.enemies[0];
+      const pool = (d.villains || []).filter((id) => VILLAINS.some((v) => v.id === id) || GUERRILLA_VILLAINS.some((v) => v.id === id) || BOSSES.some((b) => b.id === id));
+      const pickId = pool.length ? pool[Math.floor(Math.random() * pool.length)] : 'shorts_terrorist';
       startBattle(pickId);
     });
     card.appendChild(btn);
