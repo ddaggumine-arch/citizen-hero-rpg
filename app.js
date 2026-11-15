@@ -170,6 +170,8 @@ function createNewGameState() {
     lastLoverDateDay: { yuki: 0, chloe: 0 },
     loverStamps: { yuki: [], chloe: [] },
     loverMasterBonus: { yuki: false, chloe: false },
+    kissCollection: [],
+    activeKissAction: null,
     loverActionIdx: 0,
   };
 }
@@ -2478,6 +2480,7 @@ function render() {
       kissBtn.addEventListener('click', () => {
         sfx.victory();
         state.romanceTarget = lk;
+        state.activeKissAction = null;
         state.phase = 'kiss_scene';
         render();
       });
@@ -2510,21 +2513,22 @@ function render() {
     return;
   }
 
-  // 4-R0-A. V25.0 연인 로맨틱 키스신 모드
+  // 4-R0-A. V25.2 연인 로맨틱 키스신 모드 (데이트 코스별 1:1 키스신 지원)
   if (state.phase === 'kiss_scene') {
     const key = state.romanceTarget === 'chloe' ? 'chloe' : 'yuki';
     const ks = KISS_SCENES[key];
-    elLocation.textContent = `DAY ${state.day} · ${ks.location}`;
+    const actKiss = state.activeKissAction;
+    elLocation.textContent = `DAY ${state.day} · ${actKiss ? actKiss.title : ks.location}`;
     elSceneTag.textContent = '💋 키스신';
     elSceneTag.className = 'scene-tag event';
-    elSceneTitle.textContent = ks.title;
+    elSceneTitle.textContent = actKiss?.kissTitle || ks.title;
     elWeaknessPill.classList.add('hidden');
     elEnemyHpWrap.classList.add('hidden');
-    elQuoteBubble.textContent = ks.quote;
+    elQuoteBubble.textContent = actKiss?.kissQuote || ks.quote;
     elQuoteBubble.classList.remove('hidden');
-    elSceneImage.src = ks.image;
+    elSceneImage.src = actKiss?.kissImage || ks.image;
     elSceneImage.classList.remove('hidden');
-    elBattleLog.textContent = ks.text;
+    elBattleLog.textContent = actKiss ? `${actKiss.title}의 여운이 남은 두 사람. 조용히 시선이 마주칩니다.` : ks.text;
     elChoicesPanel.className = 'choices-panel';
 
     ks.choices.forEach((ch) => {
@@ -2534,7 +2538,11 @@ function render() {
       btn.addEventListener('click', () => {
         if (!state.kissUnlocked) state.kissUnlocked = { yuki: false, chloe: false };
         if (!state.lastKissDay) state.lastKissDay = { yuki: 0, chloe: 0 };
+        if (!state.kissCollection) state.kissCollection = [];
         state.kissUnlocked[key] = true;
+        if (actKiss?.id && !state.kissCollection.includes(actKiss.id)) {
+          state.kissCollection.push(actKiss.id);
+        }
         const alreadyToday = state.lastKissDay[key] === state.day;
         state.lastKissDay[key] = state.day;
         if (!alreadyToday) {
@@ -2712,7 +2720,7 @@ function render() {
     kissShortBtn.style.borderColor = '#e64980';
     kissShortBtn.disabled = kissedToday;
     kissShortBtn.innerHTML = `<span>💋 분위기 이어서 로맨틱 키스하기</span><span class="choice-sub">${kissedToday ? '오늘의 키스 완료 ♥' : '1일 1회 키스신 모드'}</span>`;
-    kissShortBtn.addEventListener('click', () => { sfx.victory(); state.phase = 'kiss_scene'; render(); });
+    kissShortBtn.addEventListener('click', () => { sfx.victory(); state.activeKissAction = act; state.phase = 'kiss_scene'; render(); });
     elChoicesPanel.appendChild(kissShortBtn);
 
     const mapBtn = document.createElement('button');
@@ -4397,6 +4405,12 @@ function openMemoryAlbumModal() {
     { img: 'assets/images/chloe_wink.jpg', title: '💖 클로이 — 눈부신 윙크 고백', unlock: !!state.lovers?.includes('chloe'), desc: '클로이와 정식 연인이 되면 해금!' },
     { img: 'assets/images/kiss_chloe.jpg', title: '💋 클로이 — 성수동 한강 노을 키스', unlock: !!state.kissUnlocked?.chloe || !!state.lovers?.includes('chloe'), desc: '클로이와 연인이 되어 로맨틱 키스 시 해금!' },
     { img: 'assets/images/kongi_sprite.png', title: '🐶 시바견 콩이 — 든든한 마스코트', unlock: !!state.pet?.adopted, desc: '유기견 보호소에서 콩이 입양 시 해금!' },
+    ...[...LOVER_ACTIONS.yuki, ...LOVER_ACTIONS.chloe].map((a) => ({
+      img: a.kissImage,
+      title: a.kissTitle,
+      unlock: !!(state.kissCollection || []).includes(a.id),
+      desc: `[${a.title}] 데이트 후 키스 시 해금!`,
+    })),
   ];
   items.forEach((it) => {
     const card = document.createElement('div');

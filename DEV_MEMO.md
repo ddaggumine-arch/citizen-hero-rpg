@@ -5,7 +5,11 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V25.1
+## 현재 최신 버전: V25.2
+- **V25.2**:
+  - **데이트 코스별 1:1 맞춤형 키스신 17장 추가 (`kiss_yuki_*.jpg` 8종, `kiss_chloe_*.jpg` 9종)** → 유키 10종·클로이 10종 데이트 직후 `💋 분위기 이어서 로맨틱 키스하기` 시 해당 장소·분위기 전용 키스신 출력!
+  - **키스 컬렉션(`kissCollection`) & 📸 추억 앨범 확장**: 데이트 후 키스로 해금한 모든 키스신 일러스트를 추억 앨범에서 수집·열람 가능
+  - **모바일 레이아웃 잘림 수정 (`style.css`)**: `.choices-panel` `max-height: 43dvh; overflow-y: auto;`, `.illustration-frame` `min-height: 165px`, `.couple-stage #scene-image` `object-fit: contain` (`?v=31`)
 - **V25.1**:
   - **커플 데이트 투명 PNG 스프라이트 8종 추가 추출** (`couple_yuki_walk/umbrella/ramen/cozy.png`, `couple_chloe_walk/photo/food/hug.png` → 총 **10종 커플 전용 스프라이트**로 유키 10종 & 클로이 10종 전원 100% 매칭)
   - **1일 1회 제한 밸런스 패치**: 연인 데이트(`lastLoverDateDay`) 및 키스신(`lastKissDay`) 모두 하루 1회 제한 적용으로 무한 파밍 방지
