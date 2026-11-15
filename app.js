@@ -160,6 +160,7 @@ function createNewGameState() {
     weather: 'sunny',
     skillChain: [],
     villainWins: {},
+    villainEncounters: {},
     pendingWeekend: false,
     statueBuilt: false,
     difficulty: 'normal',
@@ -331,6 +332,7 @@ const elStatSpeech = document.getElementById('stat-speech');
 const elStatGuts = document.getElementById('stat-guts');
 const elStatLaw = document.getElementById('stat-law');
 const elStatPoints = document.getElementById('stat-points');
+const elMiniStatsBtn = document.getElementById('mini-stats-btn');
 const elInvCount = document.getElementById('inv-count');
 const elTraitCount = document.getElementById('trait-count');
 const elPhoneBadge = document.getElementById('phone-badge');
@@ -908,6 +910,8 @@ function rollGearDrop(isBoss = false) {
 
 function startBattle(enemyId) {
   const baseEnemy = getEnemyById(enemyId);
+  if (!state.villainEncounters) state.villainEncounters = {};
+  state.villainEncounters[baseEnemy.id] = (state.villainEncounters[baseEnemy.id] || 0) + 1;
   const floor = state.towerFloor || 0;
   const nmFloor = state.nightmareFloor || 0;
   const diff = getDiffObj();
@@ -4629,7 +4633,7 @@ function renderPhoneModal() {
 
   // 2.52. V23.0 빌런 도감 & 추억 앨범 버튼
   const allEnemiesList = [...VILLAINS, ...GUERRILLA_VILLAINS, ...BOSSES, HIDDEN_BOSS, ...STORY_BOSSES];
-  const metCount = allEnemiesList.filter((v) => (state.villainWins?.[v.id] || 0) > 0).length;
+  const metCount = allEnemiesList.filter((v) => (state.villainEncounters?.[v.id] || 0) > 0 || (state.villainWins?.[v.id] || 0) > 0).length;
   const codexCard = document.createElement('div');
   codexCard.className = 'inv-item';
   codexCard.innerHTML = `
@@ -4963,25 +4967,135 @@ function startTimingMinigame(onFinish) {
 }
 
 function openVillainCodexModal() {
-  const allEnemies = [...VILLAINS, ...GUERRILLA_VILLAINS, ...BOSSES, HIDDEN_BOSS];
+  const regularEnemies = [...VILLAINS, ...GUERRILLA_VILLAINS, ...BOSSES, HIDDEN_BOSS];
+  const allEnemies = [...regularEnemies, ...STORY_BOSSES];
+  const storyBossSet = new Set(STORY_BOSSES.map((s) => s.id));
   const wins = state.villainWins || {};
-  const metCount = allEnemies.filter((v) => (wins[v.id] || 0) > 0).length;
-  elEndingsModalTitle.textContent = `📖 빌런 도감 (${metCount}/${allEnemies.length})`;
+  const encounters = state.villainEncounters || {};
+  const isMet = (v) => (encounters[v.id] || 0) > 0 || (wins[v.id] || 0) > 0;
+  const metRegular = regularEnemies.filter(isMet);
+  const metStory = STORY_BOSSES.filter(isMet);
+  const totalMet = metRegular.length + metStory.length;
+
+  elEndingsModalTitle.textContent = `📖 빌런 도감 (${totalMet}/${allEnemies.length})`;
   elEndingsList.innerHTML = '';
-  allEnemies.forEach((v) => {
-    const cnt = wins[v.id] || 0;
+
+  const renderGroup = (title, list) => {
+    if (list.length === 0) return;
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'font-size:0.78rem;font-weight:700;color:#6b4e2e;margin:8px 0 4px;padding-bottom:3px;border-bottom:1px dashed var(--paper-border);';
+    hdr.textContent = title;
+    elEndingsList.appendChild(hdr);
+    list.forEach((v) => {
+      const winCnt = wins[v.id] || 0;
+      const encCnt = Math.max(encounters[v.id] || 0, winCnt);
+      const isStory = storyBossSet.has(v.id);
+      const card = document.createElement('div');
+      card.className = 'inv-item';
+      card.innerHTML = `
+        ${v.image ? `<img src="${v.image}" class="item-thumb" style="border-radius:4px;object-fit:cover;" alt="" />` : `<div style="font-size:1.5rem;width:40px;text-align:center;flex-shrink:0;margin-right:8px;">${v.emoji || '💢'}</div>`}
+        <div class="inv-info">
+          <h4>${isStory ? '🎬 ' : ''}${v.name}</h4>
+          <p>${v.weaknessLabel || ''} · 👀 조우 ${encCnt}회 · ✅ 참교육 ${winCnt}회</p>
+        </div>
+      `;
+      elEndingsList.appendChild(card);
+    });
+  };
+
+  if (totalMet === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'inv-item';
+    empty.innerHTML = `
+      <div class="inv-info">
+        <h4>🕵️ 아직 인카운트한 빌런이 없습니다</h4>
+        <p>순찰이나 스토리 진행으로 빌런과 조우하면 자동으로 도감에 등록됩니다!</p>
+      </div>
+    `;
+    elEndingsList.appendChild(empty);
+  } else {
+    renderGroup(`🚨 일반·거점 빌런 (${metRegular.length}/${regularEnemies.length})`, metRegular);
+    renderGroup(`🎬 스토리 전용 보스 (${metStory.length}/${STORY_BOSSES.length})`, metStory);
+  }
+
+  const remaining = allEnemies.length - totalMet;
+  if (remaining > 0) {
+    const hint = document.createElement('div');
+    hint.style.cssText = 'font-size:0.74rem;color:#7a6652;text-align:center;padding:10px 6px 4px;';
+    hint.textContent = `🔒 미조우 빌런 ${remaining}명 — 실제 인카운트(전투 조우) 시 도감에 공개됩니다.`;
+    elEndingsList.appendChild(hint);
+  }
+
+  elEndingsModal.classList.remove('hidden');
+}
+
+function openMiniStatsHelpModal() {
+  const s = state.stats || { speech: 2, guts: 2, law: 2 };
+  const eq = typeof getEquippedBonuses === 'function' ? getEquippedBonuses() : { atk: 0, sp: 0, crit: 0, dice: 0 };
+  const speechDmg = 18 + s.speech * 4 + (state.bonusDmg || 0) + (eq.atk || 0);
+  const gutsDmg = 16 + s.guts * 4 + (state.bonusDmg || 0) + (eq.atk || 0);
+  const lawDmg = 24 + s.law * 5 + (state.bonusDmg || 0) + (eq.atk || 0);
+  const spDmg = 45 + (state.spDmgBonus || 0) + (state.bonusDmg || 0) + (eq.atk || 0) + (s.speech + s.guts + s.law) * 2;
+
+  elEndingsModalTitle.textContent = '📊 시민영웅 핵심 능력치 & 도덕P 안내';
+  elEndingsList.innerHTML = '';
+
+  const items = [
+    {
+      emoji: '🗣️',
+      title: `언변 (Speech) — 현재 ${s.speech}`,
+      desc: `논리정연한 [팩트폭력] 공격의 기본 위력(현재 약 ${speechDmg})을 올려주며 사이다 +10을 채웁니다. 또한 유키 고백 등 주요 이벤트 조건에도 쓰입니다.\n• 올리는 법: 자기계발(스피치·독서), 스토리·일상 이벤트`,
+    },
+    {
+      emoji: '🦁',
+      title: `깡다구 (Guts) — 현재 ${s.guts}`,
+      desc: `뻔뻔한 [거울치료] 공격의 기본 위력(현재 약 ${gutsDmg})을 올려주며 사이다를 +15 이상 대량 회복합니다.\n• 올리는 법: 자기계발(철봉공원·담력훈련), 구역 활동·스토리 보상`,
+    },
+    {
+      emoji: '⚖️',
+      title: `법지식 (Law) — 현재 ${s.law}`,
+      desc: `[법 조항 들이밀기] 주사위(1d20 + 법지식 + 보정 ≥ 12) 성공률과 위력(성공 시 약 ${lawDmg} + 적 기절 & 확률 반성문!)을 높여줍니다.\n• 올리는 법: 자기계발(생활법률 공부), 안전신문고·단서·스토리 보상`,
+    },
+    {
+      emoji: '🫧',
+      title: `사이다 필살기 연동 — 총합 ${s.speech + s.guts + s.law}`,
+      desc: `3가지 능력치의 총합 × 2가 [사이다 필살기] 위력에 그대로 합산됩니다! (현재 예상 위력: 약 ${spDmg}, 적 확정 기절)`,
+    },
+    {
+      emoji: '🏅',
+      title: `도덕점수 (도덕P) — 현재 ${state.points}P`,
+      desc: `시민영웅의 활동 자금(골드)입니다. 24시 편의점(회복템·장비), 자기계발 수강, 오락실, 공방·라이프 등 거의 모든 성장에 사용됩니다.\n• 버는 법: 빌런 참교육 승리, 알바·수입, 스토리 클리어, 안전신문고`,
+    },
+  ];
+
+  items.forEach((it) => {
     const card = document.createElement('div');
     card.className = 'inv-item';
     card.innerHTML = `
-      ${v.image && cnt > 0 ? `<img src="${v.image}" class="item-thumb" style="border-radius:4px;object-fit:cover;" alt="" />` : `<div style="font-size:1.5rem;width:40px;text-align:center;flex-shrink:0;margin-right:8px;">${cnt > 0 ? (v.emoji || '💢') : '❓'}</div>`}
+      <div style="font-size:1.5rem;width:36px;text-align:center;flex-shrink:0;margin-right:8px;">${it.emoji}</div>
       <div class="inv-info">
-        <h4>${cnt > 0 ? v.name : '??? (미조우 빌런)'}</h4>
-        <p>${cnt > 0 ? `${v.weaknessLabel || ''} · ✅ 참교육 ${cnt}회` : `${v.location || '서울 어딘가'}에서 조우 가능`}</p>
+        <h4>${it.title}</h4>
+        <p style="white-space:pre-line;line-height:1.45;">${it.desc}</p>
       </div>
     `;
     elEndingsList.appendChild(card);
   });
+
   elEndingsModal.classList.remove('hidden');
+}
+
+if (elMiniStatsBtn) {
+  elMiniStatsBtn.addEventListener('click', () => {
+    sfx.click();
+    openMiniStatsHelpModal();
+  });
+  elMiniStatsBtn.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      sfx.click();
+      openMiniStatsHelpModal();
+    }
+  });
 }
 
 function openMemoryAlbumModal() {

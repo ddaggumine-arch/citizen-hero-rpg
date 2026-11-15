@@ -229,11 +229,37 @@ body {
   display: flex;
   gap: 4px;
   font-size: 0.68rem;
-  background: rgba(255, 252, 245, 0.55);
-  padding: 3px 5px;
+  background: rgba(255, 252, 245, 0.72);
+  padding: 3px 6px;
   border-radius: 5px;
   border: 1px solid var(--paper-border);
   align-items: center;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.1s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.mini-stats:hover {
+  background: rgba(255, 248, 232, 0.95);
+  border-color: var(--accent-gold);
+}
+
+.mini-stats:active {
+  transform: scale(0.96);
+}
+
+.mini-help-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: rgba(139, 108, 66, 0.18);
+  color: #6b4e2e;
+  font-size: 0.58rem;
+  font-weight: 800;
+  margin-left: 1px;
 }
 
 .mini-stats b {
