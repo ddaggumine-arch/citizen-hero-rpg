@@ -5,7 +5,12 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V25.0
+## 현재 최신 버전: V25.1
+- **V25.1**:
+  - **커플 데이트 투명 PNG 스프라이트 8종 추가 추출** (`couple_yuki_walk/umbrella/ramen/cozy.png`, `couple_chloe_walk/photo/food/hug.png` → 총 **10종 커플 전용 스프라이트**로 유키 10종 & 클로이 10종 전원 100% 매칭)
+  - **1일 1회 제한 밸런스 패치**: 연인 데이트(`lastLoverDateDay`) 및 키스신(`lastKissDay`) 모두 하루 1회 제한 적용으로 무한 파밍 방지
+  - **커플 데이트 스탬프 도감(10종) & 올클리어 보너스**: 10가지 데이트 모두 완료 시 `전스탯+2 · 최대HP+20` 영구 보너스
+  - **데이트 감성 FX & 티키타카**: `hearts`/`flash`/`rain`/`stars` 파티클 오버레이 + 주인공·여친 티키타카 대사 (`?v=29`)
 - **V25.0**:
   - **💋 연인 로맨틱 키스신 모드 (`kiss_scene`, `kiss_yuki.jpg`, `kiss_chloe.jpg`)**: 정식 연인 달성 후 `romance` 메뉴/데이트 이어하기로 감상 가능 + 3지선다 반응 + `📸 추억 앨범` 수록
   - **💑 연인 전용 데이트 행동양식 각 10종 (유키 10종 + 클로이 10종 = 총 20종, `data/v25Romance.js`)**: `couple-stage` 커플 투명 PNG 스프라이트(`couple_yuki_cafe.png`, `couple_yuki_hug.png` + 주인공·히로인 듀오 배치) 데이트 연출 (`?v=28`)

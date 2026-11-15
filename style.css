@@ -848,6 +848,57 @@ body {
   50% { transform: translateX(-50%) translateY(-4px); }
 }
 
+/* V25.1 데이트 감성 FX 레이어 */
+.date-fx-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.date-fx-layer .fx-particle {
+  position: absolute;
+  font-size: 1.15rem;
+  opacity: 0;
+  animation: fxRise 2.4s ease-in infinite;
+}
+
+@keyframes fxRise {
+  0% { transform: translateY(20px) scale(0.7); opacity: 0; }
+  25% { opacity: 0.95; }
+  100% { transform: translateY(-95px) scale(1.2); opacity: 0; }
+}
+
+.date-fx-layer.fx-rain .fx-particle {
+  font-size: 0.95rem;
+  animation: fxFall 1.1s linear infinite;
+}
+
+@keyframes fxFall {
+  0% { transform: translateY(-20px); opacity: 0.85; }
+  100% { transform: translateY(150px); opacity: 0; }
+}
+
+.date-fx-layer.fx-flash {
+  background: rgba(255, 255, 255, 0.85);
+  animation: fxCameraFlash 0.9s ease-out 1 forwards;
+}
+
+@keyframes fxCameraFlash {
+  0% { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+
+.date-fx-layer.fx-stars .fx-particle {
+  animation: fxTwinkle 1.8s ease-in-out infinite;
+}
+
+@keyframes fxTwinkle {
+  0%, 100% { transform: scale(0.7); opacity: 0.35; }
+  50% { transform: scale(1.25); opacity: 1; }
+}
+
 .illustration-frame.combat-stage .wanted-poster {
   width: 56%;
   margin-left: auto;

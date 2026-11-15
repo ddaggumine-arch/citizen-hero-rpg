@@ -167,6 +167,9 @@ function createNewGameState() {
     usedLogicCounter: false,
     kissUnlocked: { yuki: false, chloe: false },
     lastKissDay: { yuki: 0, chloe: 0 },
+    lastLoverDateDay: { yuki: 0, chloe: 0 },
+    loverStamps: { yuki: [], chloe: [] },
+    loverMasterBonus: { yuki: false, chloe: false },
     loverActionIdx: 0,
   };
 }
@@ -321,6 +324,7 @@ const elYukiSprite = document.getElementById('yuki-sprite');
 const elChloeSprite = document.getElementById('chloe-sprite');
 const elKongiSprite = document.getElementById('kongi-sprite');
 const elCoupleSprite = document.getElementById('couple-sprite');
+const elDateFxLayer = document.getElementById('date-fx-layer');
 const elActivityModalImg = document.getElementById('activity-modal-img');
 const elSeoulMinimap = document.getElementById('seoul-minimap');
 const elMinimapChaos = document.getElementById('minimap-chaos');
@@ -1327,6 +1331,10 @@ function render() {
   }
   if (elKongiSprite) elKongiSprite.classList.add('hidden');
   if (elCoupleSprite) elCoupleSprite.classList.add('hidden');
+  if (elDateFxLayer) {
+    elDateFxLayer.className = 'date-fx-layer hidden';
+    elDateFxLayer.innerHTML = '';
+  }
   elSeoulMinimap.classList.add('hidden');
   elEnemyIntentBar.classList.add('hidden');
 
@@ -2453,15 +2461,20 @@ function render() {
       elChoicesPanel.appendChild(hBtn);
     }
 
-    // V25.0 연인 전용: 💋 로맨틱 키스신 모드 & 💑 연인 데이트 10종
+    // V25.0~V25.1 연인 전용: 💋 로맨틱 키스신 모드(1일 1회) & 💑 연인 데이트 10종(1일 1회)
     ['yuki', 'chloe'].forEach((lk) => {
       if (!state.lovers?.includes(lk) || state.sulky?.[lk]) return;
       const nm = lk === 'yuki' ? '유키' : '클로이';
+      const kissedToday = (state.lastKissDay?.[lk] || 0) === state.day;
+      const datedToday = (state.lastLoverDateDay?.[lk] || 0) === state.day;
+      const stampCnt = (state.loverStamps?.[lk] || []).length;
+
       const kissBtn = document.createElement('button');
       kissBtn.className = 'choice-btn';
       kissBtn.style.background = 'linear-gradient(180deg, #fff0f6 0%, #ffd6e7 100%)';
       kissBtn.style.borderColor = '#e64980';
-      kissBtn.innerHTML = `<span>💋 ${nm}와 로맨틱 키스</span><span class="choice-sub">전용 키스신 일러스트 · 호감/회복</span>`;
+      kissBtn.disabled = kissedToday;
+      kissBtn.innerHTML = `<span>💋 ${nm}와 로맨틱 키스</span><span class="choice-sub">${kissedToday ? '오늘의 키스 완료 ♥ (내일 가능)' : '1일 1회 · 키스신 일러스트 · 호감/회복'}</span>`;
       kissBtn.addEventListener('click', () => {
         sfx.victory();
         state.romanceTarget = lk;
@@ -2474,7 +2487,7 @@ function render() {
       actBtn.className = 'choice-btn';
       actBtn.style.background = 'linear-gradient(180deg, #fff9db 0%, #ffec99 100%)';
       actBtn.style.borderColor = '#f08c00';
-      actBtn.innerHTML = `<span>💑 ${nm} 연인 데이트 (10종)</span><span class="choice-sub">커플 스프라이트 데이트 행동양식</span>`;
+      actBtn.innerHTML = `<span>💑 ${nm} 연인 데이트 (${stampCnt}/10)</span><span class="choice-sub">${datedToday ? '오늘 데이트 완료 (도감 열람 가능)' : '1일 1회 · 커플 스프라이트 데이트'}</span>`;
       actBtn.addEventListener('click', () => {
         sfx.click();
         state.romanceTarget = lk;
@@ -2552,46 +2565,54 @@ function render() {
     return;
   }
 
-  // 4-R0-B. V25.0 연인 전용 데이트 행동양식 10종 허브
+  // 4-R0-B. V25.1 연인 전용 데이트 행동양식 10종 허브 (1일 1회 + 스탬프 도감)
   if (state.phase === 'lover_hub') {
     const key = state.romanceTarget === 'chloe' ? 'chloe' : 'yuki';
     const nm = key === 'yuki' ? '유키' : '클로이';
     const list = LOVER_ACTIONS[key] || [];
-    elLocation.textContent = `DAY ${state.day} · ${nm}와 커플 데이트`;
+    if (!state.lastLoverDateDay) state.lastLoverDateDay = { yuki: 0, chloe: 0 };
+    if (!state.loverStamps) state.loverStamps = { yuki: [], chloe: [] };
+    if (!state.loverMasterBonus) state.loverMasterBonus = { yuki: false, chloe: false };
+    const stamps = state.loverStamps[key] || [];
+    const datedToday = (state.lastLoverDateDay[key] || 0) === state.day;
+
+    elLocation.textContent = `DAY ${state.day} · ${nm}와 커플 데이트 (${stamps.length}/10)`;
     elSceneTag.textContent = '연인 모드';
     elSceneTag.className = 'scene-tag event';
-    elSceneTitle.textContent = `💑 ${nm}와 둘만의 데이트 (10종)`;
+    elSceneTitle.textContent = `💑 ${nm} 커플 데이트 (${stamps.length}/10 스탬프)`;
     elWeaknessPill.classList.add('hidden');
     elEnemyHpWrap.classList.add('hidden');
-    elQuoteBubble.textContent = key === 'yuki'
-      ? '"오늘은 우리 둘이 뭐 하고 놀까요? 다 좋아요 ♥"'
-      : '"Babe! 오늘 데이트 코스 10개 다 정복해 보자! ♥"';
+    elQuoteBubble.textContent = datedToday
+      ? `"오늘 데이트 진짜 행복했어요! 내일 또 다른 데이트 하러 가요 ♥"`
+      : (key === 'yuki'
+        ? '"오늘은 우리 둘이 뭐 하고 놀까요? 다 좋아요 ♥"'
+        : '"Babe! 오늘 데이트 코스 10개 다 정복해 보자! ♥"');
     elQuoteBubble.classList.remove('hidden');
     elSceneImage.src = HEROINES[key].imgSpecial;
     elSceneImage.classList.remove('hidden');
     if (elFrame) elFrame.classList.add('couple-stage');
-    if (key === 'yuki') {
-      if (elCoupleSprite) {
-        elCoupleSprite.src = 'assets/images/couple_yuki_cafe.png';
-        elCoupleSprite.classList.remove('hidden');
-      }
-    } else {
-      elHeroSprite.classList.remove('hidden');
-      elHeroSprite.classList.add('couple-left');
-      if (elChloeSprite) {
-        elChloeSprite.classList.remove('hidden');
-        elChloeSprite.classList.add('couple-right');
-      }
+    if (elCoupleSprite) {
+      elCoupleSprite.src = key === 'yuki' ? 'assets/images/couple_yuki_walk.png' : 'assets/images/couple_chloe_walk.png';
+      elCoupleSprite.classList.remove('hidden');
     }
-    elBattleLog.textContent = `${nm}와 함께할 수 있는 연인 전용 데이트 행동 10가지입니다. 원하는 데이트를 선택하세요!`;
+    elBattleLog.textContent = datedToday
+      ? `✅ 오늘 ${nm}와의 연인 데이트를 이미 완료했습니다! (하루 1회 제한 · 내일 다시 가능) | 스탬프 10종 올클리어 시 [전스탯+2 · 최대HP+20]`
+      : `${nm}와 함께할 연인 데이트 10종입니다. (하루 1회 · 스탬프 ${stamps.length}/10 수집 시 전스탯+2 · 최대HP+20!)`;
     elChoicesPanel.className = 'choices-panel grid-2';
 
     list.forEach((act, idx) => {
+      const done = stamps.includes(act.id);
       const btn = document.createElement('button');
       btn.className = 'choice-btn';
-      btn.disabled = state.points < (act.cost || 0);
-      btn.innerHTML = `<span>${act.title}</span><span class="choice-sub">${act.sub}</span>`;
+      btn.disabled = datedToday || state.points < (act.cost || 0);
+      btn.innerHTML = `<span>${done ? '✅' : '⬜'} ${act.title}</span><span class="choice-sub">${datedToday ? '오늘 완료 (내일 가능)' : act.sub}</span>`;
       btn.addEventListener('click', () => {
+        if ((state.lastLoverDateDay[key] || 0) === state.day) {
+          sfx.damage();
+          state.log = '💑 연인 데이트는 하루에 1회만 가능합니다! 내일 또 데이트해요 ♥';
+          render();
+          return;
+        }
         if (state.points < (act.cost || 0)) {
           sfx.damage();
           state.log = '💸 도덕점수가 부족합니다!';
@@ -2614,10 +2635,25 @@ function render() {
         if (ef.jp) state.lang.jp = Math.min(10, (state.lang.jp || 0) + ef.jp);
         if (ef.en) state.lang.en = Math.min(10, (state.lang.en || 0) + ef.en);
         state.lastDateDay[key] = state.day;
+        state.lastLoverDateDay[key] = state.day;
+        if (!state.loverStamps[key].includes(act.id)) {
+          state.loverStamps[key].push(act.id);
+        }
+        let masterMsg = '';
+        if (state.loverStamps[key].length >= 10 && !state.loverMasterBonus[key]) {
+          state.loverMasterBonus[key] = true;
+          state.stats.speech += 2;
+          state.stats.guts += 2;
+          state.stats.law += 2;
+          state.maxHp += 20;
+          state.hp = clamp(state.hp + 20, 1, state.maxHp);
+          masterMsg = ` 🏆 [${nm} 커플 데이트 10종 올클리어!! 전스탯 +2 · 최대HP +20!]`;
+          showToast(`🏆 ${nm} 커플 데이트 올클리어 보너스 획득!`, 'break');
+        }
         state.loverActionIdx = idx;
         sfx.victory();
         advanceTime();
-        state.log = act.log;
+        state.log = `${act.log}${masterMsg}`;
         state.phase = 'lover_date_view';
         saveGame();
         render();
@@ -2634,7 +2670,7 @@ function render() {
     return;
   }
 
-  // 4-R0-C. V25.0 연인 데이트 커플 스프라이트 연출 뷰
+  // 4-R0-C. V25.1 연인 데이트 커플 스프라이트 & FX & 티키타카 연출 뷰
   if (state.phase === 'lover_date_view') {
     const key = state.romanceTarget === 'chloe' ? 'chloe' : 'yuki';
     const list = LOVER_ACTIONS[key] || [];
@@ -2645,7 +2681,7 @@ function render() {
     elSceneTitle.textContent = act.title;
     elWeaknessPill.classList.add('hidden');
     elEnemyHpWrap.classList.add('hidden');
-    elQuoteBubble.textContent = act.quote;
+    elQuoteBubble.textContent = act.heroLine ? `나: ${act.heroLine}  ↔  ${act.quote}` : act.quote;
     elQuoteBubble.classList.remove('hidden');
     elSceneImage.src = act.bg;
     elSceneImage.classList.remove('hidden');
@@ -2653,31 +2689,29 @@ function render() {
     if (act.coupleSprite && elCoupleSprite) {
       elCoupleSprite.src = act.coupleSprite;
       elCoupleSprite.classList.remove('hidden');
-    } else {
-      elHeroSprite.classList.remove('hidden');
-      elHeroSprite.classList.add('couple-left');
-      if (key === 'yuki' && elYukiSprite) {
-        elYukiSprite.classList.remove('hidden');
-        elYukiSprite.classList.add('couple-right');
-      } else if (key === 'chloe' && elChloeSprite) {
-        elChloeSprite.classList.remove('hidden');
-        elChloeSprite.classList.add('couple-right');
-      }
+    }
+    if (elDateFxLayer && act.fx) {
+      elDateFxLayer.className = `date-fx-layer fx-${act.fx}`;
+      const symMap = { hearts: ['💕', '💖', '✨', '♥'], rain: ['💧', '☔', '💧', '✨'], stars: ['✨', '⭐', '🌟', '💫'], flash: [] };
+      const syms = symMap[act.fx] || [];
+      elDateFxLayer.innerHTML = syms.map((s, i) => `<span class="fx-particle" style="left:${12 + i * 22}%;top:${act.fx === 'rain' ? 0 : 65}%;animation-delay:${i * 0.45}s;">${s}</span>`).join('');
     }
     elBattleLog.textContent = `${act.log} (${act.sub})`;
     elChoicesPanel.className = 'choices-panel';
 
     const againBtn = document.createElement('button');
     againBtn.className = 'choice-btn row-btn';
-    againBtn.innerHTML = '<span>💑 다른 데이트 행동 고르기</span><span class="choice-sub">10종 리스트로</span>';
+    againBtn.innerHTML = '<span>📖 커플 데이트 스탬프 도감 보기</span><span class="choice-sub">오늘 데이트는 완료!</span>';
     againBtn.addEventListener('click', () => { sfx.click(); state.phase = 'lover_hub'; render(); });
     elChoicesPanel.appendChild(againBtn);
 
+    const kissedToday = (state.lastKissDay?.[key] || 0) === state.day;
     const kissShortBtn = document.createElement('button');
     kissShortBtn.className = 'choice-btn row-btn';
     kissShortBtn.style.background = '#fff0f6';
     kissShortBtn.style.borderColor = '#e64980';
-    kissShortBtn.innerHTML = '<span>💋 분위기 이어서 로맨틱 키스하기</span><span class="choice-sub">키스신 모드 진입</span>';
+    kissShortBtn.disabled = kissedToday;
+    kissShortBtn.innerHTML = `<span>💋 분위기 이어서 로맨틱 키스하기</span><span class="choice-sub">${kissedToday ? '오늘의 키스 완료 ♥' : '1일 1회 키스신 모드'}</span>`;
     kissShortBtn.addEventListener('click', () => { sfx.victory(); state.phase = 'kiss_scene'; render(); });
     elChoicesPanel.appendChild(kissShortBtn);
 
