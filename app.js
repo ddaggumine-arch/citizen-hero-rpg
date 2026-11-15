@@ -1,5 +1,5 @@
-import { TIME_SLOTS, ITEMS, TRAITS, VILLAINS, BOSSES, HIDDEN_BOSS, WEATHERS, RANDOM_EVENTS, STORY_MESSAGES } from './data/gameData.js';
-import { STORY_CHAPTERS } from './data/storyChapters.js?v=45';
+import { TIME_SLOTS, ITEMS, TRAITS, VILLAINS, BOSSES, HIDDEN_BOSS, WEATHERS, RANDOM_EVENTS, STORY_MESSAGES } from './data/gameData.js?v=46';
+import { STORY_CHAPTERS } from './data/storyChapters.js?v=46';
 import { ACTIVITY_CATEGORIES } from './data/activities.js';
 import { MINI_EVENTS, ENEMY_INTENTS, createFeedForVictory } from './data/liveEvents.js';
 import { ENDINGS, evaluateEnding } from './data/endings.js';
@@ -161,6 +161,12 @@ function createNewGameState() {
     skillChain: [],
     villainWins: {},
     villainEncounters: {},
+    level: 1,
+    exp: 0,
+    flatDef: 0,
+    bossDmgMult: 0,
+    startSpBonus: 0,
+    rewardMultBonus: 0,
     pendingWeekend: false,
     statueBuilt: false,
     difficulty: 'normal',
@@ -771,6 +777,193 @@ function isBossId(id) {
   return BOSSES.some((b) => b.id === id);
 }
 
+// ===== V27.0 시민영웅 Lv.50 성장 & 다종 보상 시스템 =====
+function getExpToNextLevel(lv) {
+  return Math.round(45 + lv * 22 + Math.pow(lv, 1.35) * 4);
+}
+
+function getHeroRankTitle(lv) {
+  if (lv >= 50) return '👑 서울 절대수호신 (MAX)';
+  if (lv >= 40) return '🔥 전설의 시민영웅';
+  if (lv >= 30) return '⚡ 도심 예절 집행관';
+  if (lv >= 20) return '🚓 서울 명예경감';
+  if (lv >= 10) return '🛡️ 골목 수호자';
+  return '🌱 동네 자경단';
+}
+
+function gainHeroExp(amount) {
+  if ((state.level || 1) >= 50) return 0;
+  state.level = state.level || 1;
+  state.exp = (state.exp || 0) + amount;
+  let ups = 0;
+  while (state.level < 50) {
+    const need = getExpToNextLevel(state.level);
+    if (state.exp < need) break;
+    state.exp -= need;
+    state.level += 1;
+    ups += 1;
+    state.maxHp += 5;
+    state.hp = Math.min(state.maxHp, state.hp + 14);
+    state.maxSp += 1;
+    state.bonusDmg += 1;
+    if (state.level % 5 === 0) {
+      state.stats.speech += 1;
+      state.stats.guts += 1;
+      state.stats.law += 1;
+    }
+  }
+  if (state.level >= 50) state.exp = 0;
+  if (ups > 0) {
+    sfx.powerup();
+    showToast(`🎉 LEVEL UP! Lv.${state.level} [${getHeroRankTitle(state.level)}] 달성!`, 'good');
+  }
+  return ups;
+}
+
+function buildDraftOptions(enemy) {
+  const ownedMap = {};
+  (state.traits || []).forEach((t) => {
+    ownedMap[t.id] = Math.max(1, t.level || 1);
+  });
+  const pool = [];
+
+  // 1) 신규 특성 또는 기존 특성 레벨업 (최대 Lv.5)
+  TRAITS.forEach((t) => {
+    if (t.id === 'first_aid') return;
+    const curLv = ownedMap[t.id] || 0;
+    if (curLv === 0) {
+      pool.push({
+        kind: 'trait_new',
+        id: t.id,
+        name: t.name,
+        desc: `✨ [신규 특성] ${t.desc}`,
+      });
+    } else if (curLv < 5) {
+      pool.push({
+        kind: 'trait_up',
+        id: t.id,
+        nextLevel: curLv + 1,
+        name: `⬆️ ${t.name} Lv.${curLv + 1}`,
+        desc: `[특성 강화] 기존 효과 중첩 강화! (${t.desc})`,
+      });
+    }
+  });
+
+  // 2) 다종 실전 보상 카드 (특성을 다 모아도 다양한 보상 지속 등장!)
+  const extraCards = [
+    {
+      kind: 'gear_polish',
+      id: 'gear_polish',
+      name: '🛠️ 장비 & 완장 연마석',
+      desc: '[영구 강화] 모든 공격 피해 +4, 최대 인내심 +10 & 즉시 +15 회복',
+    },
+    {
+      kind: 'stat_train',
+      id: 'stat_train_speech',
+      statKey: 'speech',
+      name: '🎙️ 실전 설전 복기',
+      desc: '[능력치 성장] 언변 +2, 경험치 +35 EXP',
+    },
+    {
+      kind: 'stat_train',
+      id: 'stat_train_guts',
+      statKey: 'guts',
+      name: '🦁 강심장 실전 담력',
+      desc: '[능력치 성장] 깡다구 +2, 경험치 +35 EXP',
+    },
+    {
+      kind: 'stat_train',
+      id: 'stat_train_law',
+      statKey: 'law',
+      name: '⚖️ 판례 요약 노트',
+      desc: '[능력치 성장] 법지식 +2, 경험치 +35 EXP',
+    },
+    {
+      kind: 'loot_box',
+      id: 'loot_box',
+      name: '📦 미확인 전리품 보급상자',
+      desc: '[보급품] 파밍 장비 1개(또는 희귀 소비템 2개) + 30 P 획득!',
+    },
+    {
+      kind: 'first_aid_pack',
+      id: 'first_aid_pack',
+      name: '💊 긴급 구호 & 탄산 세트',
+      desc: '[회복 보급] 인내심 35% 회복 + 우황청심환 1개 + 칠성사이다 1개!',
+    },
+    {
+      kind: 'bounty_bonus',
+      id: 'bounty_bonus',
+      name: '💰 특별 현상금 & 112 채증',
+      desc: `[보너스] 도덕P +${65 + Math.round((enemy?.reward || 30) * 0.5)} P · 채증 +1 · +25 EXP`,
+      bonusPoints: 65 + Math.round((enemy?.reward || 30) * 0.5),
+    },
+  ];
+
+  const traitChoices = shuffle(pool).slice(0, 2);
+  const rewardChoices = shuffle(extraCards).slice(0, 3 - traitChoices.length);
+  return shuffle([...traitChoices, ...rewardChoices]);
+}
+
+function applyDraftReward(opt) {
+  if (!opt) return '보상을 획득했습니다!';
+  if (opt.kind === 'trait_new' || opt.kind === 'trait_up') {
+    const t = TRAITS.find((x) => x.id === opt.id);
+    if (t) t.apply(state);
+    const existing = (state.traits || []).find((x) => x.id === opt.id);
+    if (existing) {
+      existing.level = Math.min(5, (existing.level || 1) + 1);
+      return `[${t?.name || opt.name}] Lv.${existing.level}로 강화!`;
+    } else if (t) {
+      state.traits.push({ id: t.id, name: t.name, desc: t.desc, level: 1 });
+      return `[${t.name}] 특성 습득!`;
+    }
+  }
+  if (opt.kind === 'gear_polish') {
+    state.bonusDmg = (state.bonusDmg || 0) + 4;
+    state.maxHp += 10;
+    state.hp = clamp(state.hp + 15, 0, state.maxHp);
+    return '🛠️ 장비 & 완장을 연마해 모든 공격 +4, 최대 인내심 +10 상승!';
+  }
+  if (opt.kind === 'stat_train') {
+    const k = opt.statKey || 'speech';
+    state.stats[k] = (state.stats[k] || 2) + 2;
+    gainHeroExp(35);
+    const labelMap = { speech: '언변', guts: '깡다구', law: '법지식' };
+    return `📚 실전 복기로 [${labelMap[k] || k}] +2 & +35 EXP 성장!`;
+  }
+  if (opt.kind === 'loot_box') {
+    state.points += 30;
+    const prevLen = (state.gearBag || []).length;
+    if (typeof rollGearDrop === 'function') rollGearDrop(true);
+    if ((state.gearBag || []).length <= prevLen) {
+      state.inventory.push('cheongsimhwan', 'cold_soda');
+      return '📦 보급상자에서 [우황청심환] + [칠성사이다] + 30 P를 획득했습니다!';
+    }
+    return '📦 보급상자에서 파밍 장비 & 30 P를 획득했습니다!';
+  }
+  if (opt.kind === 'first_aid_pack') {
+    const heal = Math.max(25, Math.round(state.maxHp * 0.35));
+    state.hp = clamp(state.hp + heal, 0, state.maxHp);
+    state.inventory.push('cheongsimhwan', 'cold_soda');
+    return `💊 인내심 +${heal} 회복 & 우황청심환·칠성사이다 보급 완료!`;
+  }
+  if (opt.kind === 'bounty_bonus') {
+    const pts = opt.bonusPoints || 75;
+    state.points += pts;
+    state.pendingReports = (state.pendingReports || 0) + 1;
+    gainHeroExp(25);
+    return `💰 특별 현상금 +${pts} P · 채증 +1 · +25 EXP 획득!`;
+  }
+  // 구버전 세이브 호환 fallback
+  const fallback = TRAITS.find((x) => x.id === opt.id);
+  if (fallback) {
+    fallback.apply(state);
+    if (fallback.id !== 'first_aid') state.traits.push({ id: fallback.id, name: fallback.name, desc: fallback.desc, level: 1 });
+    return `[${fallback.name}] 특성 습득!`;
+  }
+  return '보상을 획득했습니다!';
+}
+
 function showSceneCard(badge, ascii, sub = '') {
   elSceneImage.classList.add('hidden');
   elSceneImage.classList.remove('enemy-sprite', 'boss-scale');
@@ -916,12 +1109,19 @@ function startBattle(enemyId) {
   const nmFloor = state.nightmareFloor || 0;
   const diff = getDiffObj();
   const ngMult = 1 + (state.ngPlus || 0) * 0.3;
+  const isBossEnemy = isBossId(baseEnemy.id) || !!baseEnemy.storyOnly || baseEnemy.id === HIDDEN_BOSS.id;
+  const lvScale = 1 + Math.max(0, (state.level || 1) - 1) * 0.085 + Math.min(29, state.chapterIndex || 0) * 0.045;
+  const atkScale = 1 + Math.max(0, (state.level || 1) - 1) * 0.05 + Math.min(29, state.chapterIndex || 0) * 0.03;
+  const bossHpBoost = isBossEnemy ? 1.32 : 1.15;
+  const bossAtkBoost = isBossEnemy ? 1.12 : 1.0;
+  const baseScaledHp = Math.round(baseEnemy.maxHp * lvScale * bossHpBoost);
+  const baseScaledAtk = Math.round(baseEnemy.atk * atkScale * bossAtkBoost);
   const rawMaxHp = nmFloor > 0
-    ? baseEnemy.maxHp + nmFloor * 35
-    : (floor > 0 ? baseEnemy.maxHp + floor * 18 : baseEnemy.maxHp);
+    ? baseScaledHp + nmFloor * 42
+    : (floor > 0 ? baseScaledHp + floor * 22 : baseScaledHp);
   const rawAtk = nmFloor > 0
-    ? baseEnemy.atk + nmFloor * 3
-    : (floor > 0 ? baseEnemy.atk + floor * 2 : baseEnemy.atk);
+    ? baseScaledAtk + nmFloor * 3
+    : (floor > 0 ? baseScaledAtk + floor * 2 : baseScaledAtk);
   const enemy = {
     ...baseEnemy,
     name: floor > 0 ? `[타워 ${floor}층] ${baseEnemy.name}` : baseEnemy.name,
@@ -954,6 +1154,9 @@ function startBattle(enemyId) {
   state.skillChain = [];
   state.enemyBroken = false;
   state.citizenAssistUsed = false;
+  if ((state.startSpBonus || 0) > 0) {
+    state.sp = clamp(state.sp + state.startSpBonus, 0, state.maxSp);
+  }
   if (state.dailyFortune === 'cider') {
     state.sp = clamp(state.sp + 20, 0, state.maxSp);
     extraLog += `\n⚡ [오늘의 운세: 사이다 폭발의 날] 시작 사이다 +20!`;
@@ -1071,10 +1274,11 @@ function enemyCounterTurn(enemy, isGuarding = false) {
   if (isGuarding) {
     dmg = Math.max(2, Math.round(dmg * 0.25));
   }
-  if (eqBonus.def > 0) {
-    const blocked = Math.min(dmg - 1, eqBonus.def);
-    dmg = Math.max(1, dmg - eqBonus.def);
-    if (blocked > 0) state.log += `\n🛡️ [장비 방어 -${blocked}]`;
+  const totalDef = (eqBonus.def || 0) + (state.flatDef || 0) + Math.floor(((state.level || 1) - 1) / 3);
+  if (totalDef > 0) {
+    const blocked = Math.min(dmg - 2, totalDef);
+    dmg = Math.max(2, dmg - totalDef);
+    if (blocked > 0) state.log += `\n🛡️ [방어력 경감 -${blocked}]`;
   }
   const totalReflect = (eqBonus.reflect || 0) + (state.pet?.adopted && state.pet.job === 'guard' ? 0.15 : 0);
   if (totalReflect > 0 && dmg > 1) {
@@ -1123,10 +1327,12 @@ function enemyCounterTurn(enemy, isGuarding = false) {
 function handleEnemyDefeated(enemy) {
   state.quote = enemy.defeatQuote;
   const diff = getDiffObj();
-  const baseReward = Math.round(enemy.reward * diff.rewardMult);
+  const baseReward = Math.round(enemy.reward * diff.rewardMult * (1 + (state.rewardMultBonus || 0)));
   const nightBonus = state.timeIndex >= 2 ? Math.round(baseReward * 0.25) : 0;
   const dustBonus = (state.weather || 'sunny') === 'dust' ? 10 : 0;
   state.points += baseReward + nightBonus + dustBonus;
+  const expGain = Math.round((24 + (enemy.reward || 30) * 0.65) * ((isBossId(enemy.id) || enemy.storyOnly) ? 1.6 : 1));
+  gainHeroExp(expGain);
   state.pendingReports += 1;
   if (state.pet?.adopted && state.pet.job === 'detective' && Math.random() < 0.5) {
     state.pendingReports += 1;
@@ -1244,9 +1450,7 @@ function handleEnemyDefeated(enemy) {
     state.points += fBonus;
   }
 
-  const ownedIds = state.traits.map((t) => t.id);
-  const available = TRAITS.filter((t) => !ownedIds.includes(t.id) || t.id === 'first_aid');
-  state.draftOptions = shuffle(available).slice(0, 3);
+  state.draftOptions = buildDraftOptions(enemy);
 
   // V26.2: 일반 빌런 격파 시 65% 확률로 찌질한 변명 + 최후의 일갈 이벤트
   if (!isBossId(enemy.id) && !(state.towerFloor > 0) && !(state.nightmareFloor > 0) && Math.random() < 0.65) {
@@ -1260,7 +1464,7 @@ function handleEnemyDefeated(enemy) {
   }
 
   state.phase = 'draft';
-  state.log = `✅ [${enemy.name}] 참교육 성공! (+${enemy.reward} P · 채증 +1)\n보상으로 새로운 특성을 1개 선택하세요.`;
+  state.log = `✅ [${enemy.name}] 참교육 성공! (+${baseReward} P · +${expGain} EXP · 채증 +1)\n보상 카드 3장 중 1개를 선택하세요!`;
   saveGame();
   render();
 }
@@ -1400,6 +1604,17 @@ function performAttack(type) {
     state.skillChain = [];
     state.log += `\n⚡ [삼위일체 참교육 체인!!] 서로 다른 3연타로 추가 피해 +35 & 사이다 +20!`;
     showToast('⚡ 삼위일체 참교육 콤보! (+35 피해 · 사이다 +20)', 'break');
+  }
+
+  if ((state.bossDmgMult || 0) > 0 && (isBossId(enemy.id) || enemy.storyOnly || enemy.id === HIDDEN_BOSS.id)) {
+    dmg = Math.round(dmg * (1 + state.bossDmgMult));
+  }
+
+  // V27.0: 사이다 필살기(special) 제외, 일반 공격으로는 풀피 적을 한 방에 처치 불가 (최소 2턴 이상 공방 보장)
+  if (type !== 'special' && state.enemyHp >= state.enemyMaxHp && dmg >= state.enemyHp) {
+    const surviveHp = Math.max(1, Math.round(state.enemyMaxHp * 0.14));
+    dmg = Math.max(1, state.enemyHp - surviveHp);
+    state.log += `\n💢 [끈질긴 멘탈!] 빌런이 이를 악물고 간신히 버텼습니다! (필살기 외 1타 격파 불가)`;
   }
 
   state.enemyHp = clamp(state.enemyHp - dmg, 0, state.enemyMaxHp);
@@ -3555,6 +3770,7 @@ function render() {
           state.chapterIndex += 1;
           state.storySceneIndex = 0;
           state.unreadMessages += 1;
+          gainHeroExp(50);
           notifyNewUnlocks(prevCh, state.chapterIndex);
           advanceTime();
           state.phase = 'map';
@@ -4437,13 +4653,13 @@ function render() {
     return;
   }
 
-  // 8. 특성 3지선다 뽑기
+  // 8. V27.0 참교육 다종 보상 3지선다 뽑기
   if (state.phase === 'draft') {
     const enemy = getEnemyById(state.currentEnemyId);
-    elLocation.textContent = `DAY ${state.day} · 참교육 성공!`;
-    elSceneTag.textContent = '레벨업';
+    elLocation.textContent = `DAY ${state.day} · Lv.${state.level || 1} · 참교육 성공!`;
+    elSceneTag.textContent = '보상 선택';
     elSceneTag.className = 'scene-tag event';
-    elSceneTitle.textContent = '✨ 새로운 특성을 선택하세요!';
+    elSceneTitle.textContent = '🎁 참교육 보상을 선택하세요!';
     elWeaknessPill.classList.add('hidden');
     elEnemyHpWrap.classList.add('hidden');
     elQuoteBubble.textContent = enemy.defeatQuote;
@@ -4464,19 +4680,16 @@ function render() {
     elBattleLog.textContent = state.log;
     elChoicesPanel.className = 'choices-panel';
 
-    state.draftOptions.forEach((trait) => {
+    state.draftOptions.forEach((opt) => {
       const btn = document.createElement('button');
       btn.className = 'choice-btn';
-      btn.innerHTML = `<span>${trait.name}</span><span class="choice-sub">${trait.desc}</span>`;
+      btn.innerHTML = `<span>${opt.name}</span><span class="choice-sub">${opt.desc}</span>`;
       btn.addEventListener('click', () => {
         sfx.powerup();
         vibrate([25, 25, 50]);
-        trait.apply(state);
-        if (trait.id !== 'first_aid') {
-          state.traits.push({ id: trait.id, name: trait.name, desc: trait.desc });
-        }
+        const msg = applyDraftReward(opt);
         state.phase = 'map';
-        state.log = `[${trait.name}] 특성 습득! (상단 📱 버튼으로 톡 알림/안전신문고를 확인해 보세요)`;
+        state.log = `${msg} (상단 📱 버튼으로 톡 알림/안전신문고를 확인해 보세요)`;
         saveGame();
         render();
       });
@@ -5042,10 +5255,22 @@ function openMiniStatsHelpModal() {
   const lawDmg = 24 + s.law * 5 + (state.bonusDmg || 0) + (eq.atk || 0);
   const spDmg = 45 + (state.spDmgBonus || 0) + (state.bonusDmg || 0) + (eq.atk || 0) + (s.speech + s.guts + s.law) * 2;
 
-  elEndingsModalTitle.textContent = '📊 시민영웅 핵심 능력치 & 도덕P 안내';
+  const lv = state.level || 1;
+  const curExp = state.exp || 0;
+  const needExp = lv >= 50 ? 0 : getExpToNextLevel(lv);
+  const rankTitle = getHeroRankTitle(lv);
+
+  elEndingsModalTitle.textContent = `📊 시민영웅 Lv.${lv}/50 · 능력치 & 도덕P`;
   elEndingsList.innerHTML = '';
 
   const items = [
+    {
+      emoji: '🏅',
+      title: `영웅 레벨 Lv.${lv} / 50 (${rankTitle})`,
+      desc: lv >= 50
+        ? `최고 레벨 달성! 기본 방어력 보너스 +${Math.floor((lv - 1) / 3)} 적용 중!`
+        : `경험치 ${curExp} / ${needExp} EXP · 레벨업마다 최대 인내심 +5, 최대 사이다 +1, 기본 공격 +1 (5레벨마다 전스탯 +1 · 3레벨마다 방어력 +1)`,
+    },
     {
       emoji: '🗣️',
       title: `언변 (Speech) — 현재 ${s.speech}`,

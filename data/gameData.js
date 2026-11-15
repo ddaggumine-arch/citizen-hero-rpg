@@ -95,6 +95,54 @@ export const TRAITS = [
     desc: '가방에 [우황청심환] 1개 & [칠성사이다 캔] 1개 획득!',
     apply: (s) => { s.inventory.push('cheongsimhwan', 'cold_soda'); },
   },
+  {
+    id: 'combo_king',
+    name: '🔥 콤보 마스터',
+    desc: '모든 공격 피해 +8, 언변 +1, 치명타 확률 +10%',
+    apply: (s) => { s.bonusDmg += 8; s.stats.speech += 1; s.critBonus += 0.1; },
+  },
+  {
+    id: 'steel_body',
+    name: '🛡️ 강철 멘탈피부',
+    desc: '피격 피해 영구 -4 감소, 최대 인내심 +15',
+    apply: (s) => { s.flatDef = (s.flatDef || 0) + 4; s.maxHp += 15; s.hp = Math.min(s.maxHp, s.hp + 15); },
+  },
+  {
+    id: 'boss_slayer',
+    name: '👑 거악 척결자',
+    desc: '보스전 추가 피해 +20%, 깡다구 +2',
+    apply: (s) => { s.bossDmgMult = (s.bossDmgMult || 0) + 0.2; s.stats.guts += 2; },
+  },
+  {
+    id: 'item_master',
+    name: '🎒 보급품 달인',
+    desc: '전투 시작 시 사이다 +15, 모든 공격 피해 +6',
+    apply: (s) => { s.startSpBonus = (s.startSpBonus || 0) + 15; s.bonusDmg += 6; },
+  },
+  {
+    id: 'quick_report',
+    name: '📸 속전속결 채증',
+    desc: '승리 보상 도덕P +25% 증가, 법지식 +2',
+    apply: (s) => { s.rewardMultBonus = (s.rewardMultBonus || 0) + 0.25; s.stats.law += 2; },
+  },
+  {
+    id: 'cider_charge',
+    name: '⚡ 무한 탄산 순환',
+    desc: '최대 사이다 +15 및 거울치료 사이다 +8, 깡다구 +1',
+    apply: (s) => { s.maxSp += 15; s.gutsSpBonus += 8; s.stats.guts += 1; },
+  },
+  {
+    id: 'lucky_crit',
+    name: '🍀 행운의 팩폭',
+    desc: '치명타 확률 +18%, 모든 공격 피해 +6, 주사위 +1',
+    apply: (s) => { s.critBonus += 0.18; s.bonusDmg += 6; s.diceBonus += 1; },
+  },
+  {
+    id: 'street_legend',
+    name: '🏆 거리의 전설',
+    desc: '언변 +1, 깡다구 +1, 법지식 +1, 최대 인내심 +15',
+    apply: (s) => { s.stats.speech += 1; s.stats.guts += 1; s.stats.law += 1; s.maxHp += 15; s.hp = Math.min(s.maxHp, s.hp + 15); },
+  },
 ];
 
 export const VILLAINS = [
