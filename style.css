@@ -1300,3 +1300,54 @@ body {
   45% { opacity: 1; transform: translate(-50%, -50%) scale(1.25) rotate(6deg); }
   100% { opacity: 0; transform: translate(-50%, -50%) scale(1.6) rotate(0deg); }
 }
+
+/* V23.0 동료 지원 컷인 & 보스 오라 */
+.partner-sprite.anim-assist {
+  animation: partnerAssist 0.55s ease-out !important;
+  filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.95)) !important;
+}
+
+@keyframes partnerAssist {
+  0% { transform: translateY(0) scale(1); }
+  40% { transform: translateY(-10px) translateX(10px) scale(1.1); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+.partner-sprite.anim-unite {
+  animation: partnerUnite 0.6s ease-out !important;
+  filter: drop-shadow(0 0 14px rgba(255, 107, 107, 0.95)) !important;
+}
+
+@keyframes partnerUnite {
+  0% { transform: translateX(0) scale(1); }
+  45% { transform: translateX(40px) scale(1.16); }
+  100% { transform: translateX(0) scale(1); }
+}
+
+.partner-callout {
+  position: absolute;
+  left: 16px;
+  top: 10px;
+  background: rgba(255, 250, 235, 0.96);
+  border: 1.5px solid #9e2a2b;
+  color: #2d221b;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 99px;
+  z-index: 28;
+  pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  animation: calloutPop 1.05s ease-out forwards;
+}
+
+@keyframes calloutPop {
+  0% { opacity: 0; transform: translateY(8px) scale(0.85); }
+  20% { opacity: 1; transform: translateY(0) scale(1); }
+  80% { opacity: 1; transform: translateY(-4px) scale(1); }
+  100% { opacity: 0; transform: translateY(-12px) scale(0.95); }
+}
+
+.book-page.boss-aura {
+  box-shadow: var(--shadow-book), inset 0 0 36px rgba(158, 42, 43, 0.28), 0 0 18px rgba(158, 42, 43, 0.35);
+}

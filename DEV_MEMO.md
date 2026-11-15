@@ -5,7 +5,13 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V22.0
+## 현재 최신 버전: V23.0
+- **V23.0**:
+  - **📖 빌런 도감 & 📸 추억 앨범 (`openVillainCodexModal`, `openMemoryAlbumModal`)**: 예절폰에서 처치한 빌런(`villainWins`)과 유키·클로이·콩이 추억 일러스트 열람
+  - **💬 연인·콩이 전투 지원 컷인 (`triggerPartnerCallout`)**: 유키 힐/클로이 치명타/콩이 발목 깨물기/합동 필살기 시 스프라이트 점프 + 말풍선
+  - **📅 주말 특별 이벤트 & 주간 결산 (`WEEKEND_EVENTS`)**: 7일마다 한강 불꽃축제·홍대 플리마켓·서울 마라톤 + 주간 민폐도 성적표 보너스
+  - **🏛️ 시민영웅 재단 & 고액 훈련 (`foundation` 탭)**: 250P 영구 스탯 훈련, 400P 치안 기부, 1,200P 명예 동상 건립
+  - **🔥 보스전 붉은 오라(`.boss-aura`) & 합동 필살기 컷인(`anim-unite`)** (`?v=25`)
 - **V22.0**:
   - **장비 컷인 & 삼위일체 콤보 체인**: 전투 중 아이템/장비 사용 시 `.equip-cutin` 중앙 줌 이펙트, 서로 다른 3종 스킬 연속 사용 시 추가 피해 +35 & 사이다 +20
   - **서울 날씨 시스템 (`WEATHERS`)**: 매일 `맑음`/`비`(흡연·침 빌런 공격 -20%)/`폭염`(사이다 캔 1.5배)/`미세먼지`(전투 +10P) 변경
