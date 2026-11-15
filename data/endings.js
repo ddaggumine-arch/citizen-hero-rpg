@@ -178,11 +178,26 @@ export const ENDINGS = [
       '깨끗해진 서울 시청 앞 광장에서 서울시장의 주례와 김순경의 사회로 성대한 결혼식이 열렸습니다!\n' +
       '사랑도, 정의도, 예절도 모두 지켜낸 당신이야말로 진정한 2026년 서울의 히어로입니다.',
   },
+  {
+    id: 'end_black_mcn_truth',
+    num: 16,
+    title: '🕵️ [비밀 진엔딩 16] 흑막 [블랙 튜브 MCN] 일망타진!',
+    badge: 'SECRET TRUTH END',
+    hint: '흑막 단서 5개를 모두 수집한 상태로 4대 보스 격파',
+    ascii: '  🕵️ [ BLACK TUBE MCN 해체! ]  \n   ⚖️ 닥터 카오스 긴급 체포  \n   🌅 3년 전 빗속의 약속 완수!',
+    story:
+      '4대 보스를 제압함과 동시에, 당신과 김순경·유키·클로이가 모은 5개의 결정적 단서가 검찰과 언론에 동시 공개되었습니다!\n' +
+      '서울의 혼란을 숏폼으로 팔아먹던 흑막 [블랙 튜브 MCN]의 수장 "닥터 카오스"가 현장에서 체포되었고,\n' +
+      '3년 전 빗속 버스정류장에서 노란 완장을 건네주었던 전설의 1대 시민영웅도 당신을 향해 조용히 엄지를 치켜세웠습니다!',
+  },
 ];
 
 export function evaluateEnding(state, isChaosCollapse = false) {
   if (isChaosCollapse) {
     return ENDINGS.find((e) => e.id === 'end_chaos_island');
+  }
+  if ((state.clues || []).length >= 5) {
+    return ENDINGS.find((e) => e.id === 'end_black_mcn_truth');
   }
   const { speech, guts, law } = state.stats;
   const followers = state.followers || 120;

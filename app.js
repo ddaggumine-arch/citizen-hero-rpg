@@ -7,6 +7,7 @@ import { HEROINES, LANG_QUIZZES, DATE_EVENTS } from './data/romance.js';
 import { CARS, GEAR_UPGRADES, ACHIEVEMENTS } from './data/lifestyle.js';
 import { STREAM_MISSIONS, ROOM_UPGRADES, GUERRILLA_VILLAINS, STOCKS, HEROINE_GIFTS } from './data/v16Systems.js';
 import { COURT_CASES, COSTUMES, CAPSULE_POOL, PET_WALK_EVENTS } from './data/v17Systems.js';
+import { CLUES, SOME_CRISIS_EVENTS, RIVAL_EVENTS, REFORMED_ALLIES } from './data/v19Story.js';
 import { sfx } from './sound.js';
 
 const SAVE_KEY = 'citizen_hero_gta_save_v4';
@@ -110,6 +111,14 @@ function createNewGameState() {
     bestTowerFloor: 0,
     courtCaseIdx: 0,
     petWalkEventIdx: 0,
+    clues: [],
+    someCleared: { yuki: false, chloe: false },
+    dateCount: { yuki: 0, chloe: 0 },
+    sulky: { yuki: false, chloe: false },
+    lastHomeVisitDay: 0,
+    allies: [],
+    enemyApologyTurns: 0,
+    isFirstTurn: true,
   };
 }
 
@@ -596,6 +605,36 @@ function showEnemyVisual(enemy) {
   }
 }
 
+function grantClue(clueId) {
+  if (!state.clues) state.clues = [];
+  if (state.clues.includes(clueId)) return false;
+  state.clues.push(clueId);
+  const cObj = CLUES.find((c) => c.id === clueId);
+  if (cObj) {
+    showToast(`🕵️ 흑막 단서 확보 (${state.clues.length}/5): ${cObj.title}`, 'good');
+  }
+  if (state.clues.length === 4 && !state.clues.includes('clue_mastermind')) {
+    state.clues.push('clue_mastermind');
+    showToast('🕵️ 모든 단서 연결 완료! 흑막 [닥터 카오스] 정체 발각! (5/5)', 'break');
+  }
+  return true;
+}
+
+function tryRecruitAlly() {
+  if (!state.allies) state.allies = [];
+  if (state.allies.length >= REFORMED_ALLIES.length) return;
+  if ((state.winCount || 0) % 3 !== 0) return;
+  const nextAlly = REFORMED_ALLIES.find((a) => !state.allies.includes(a.id));
+  if (!nextAlly) return;
+  state.allies.push(nextAlly.id);
+  if (nextAlly.id === 'gym_bro') {
+    state.maxHp += 15;
+    state.hp = clamp(state.hp + 15, 1, state.maxHp);
+  }
+  showToast(`🤝 빌런 갱생 합류! ${nextAlly.name}`, 'good');
+  state.log += `\n🤝 [개과천선 합류!] "${nextAlly.name}"이(가) 시민영웅단에 들어왔습니다! (${nextAlly.desc})`;
+}
+
 function startBattle(enemyId) {
   const baseEnemy = getEnemyById(enemyId);
   const floor = state.towerFloor || 0;
@@ -631,6 +670,8 @@ function startBattle(enemyId) {
   state.enemyIntent = 'normal';
   state.weakCombo = 0;
   state.enemyBroken = false;
+  state.enemyApologyTurns = 0;
+  state.isFirstTurn = true;
   state.bossPhase2 = false;
   state.usedEquipThisBattle = [];
   state.streamMission = STREAM_MISSIONS[Math.floor(Math.random() * STREAM_MISSIONS.length)];
@@ -713,11 +754,20 @@ function enemyCounterTurn(enemy, isGuarding = false) {
   const intentObj = ENEMY_INTENTS.find((i) => i.id === state.enemyIntent) || ENEMY_INTENTS[0];
   const chaosMult = (state.chaosLevel ?? 25) >= 70 ? 1.2 : 1.0;
   let dmg = Math.round((enemy.atk + Math.floor(Math.random() * 5) - 2) * intentObj.mult * chaosMult);
+  if ((state.enemyApologyTurns || 0) > 0) {
+    dmg = Math.max(2, Math.round(dmg * 0.6));
+    state.enemyApologyTurns -= 1;
+    state.log += `\n📝 [반성문 효과] 빌런이 주눅 들어 공격력이 40% 감소!`;
+  }
   if (isGuarding) {
     dmg = Math.max(2, Math.round(dmg * 0.25));
   }
 
   state.hp = clamp(state.hp - dmg, 0, state.maxHp);
+  if (state.lovers?.includes('yuki') && !state.sulky?.yuki && state.hp > 0) {
+    state.hp = clamp(state.hp + 6, 1, state.maxHp);
+    state.log += `\n💚 [유키 응원] 따뜻한 말차 에너지로 인내심 +6 회복!`;
+  }
   if (state.enemyIntent === 'rage' && !isGuarding) {
     state.sp = clamp(state.sp - 10, 0, state.maxSp);
   }
@@ -762,6 +812,9 @@ function handleEnemyDefeated(enemy) {
   state.followers = (state.followers || 120) + (isBossId(enemy.id) ? 1200 : 280);
   state.liveFeed = createFeedForVictory(enemy.name, getReputationInfo().mode);
   if (nightBonus > 0) showToast(`🌙 야간 순찰 보너스 +${nightBonus} P!`, 'good');
+  if (state.winCount >= 2) grantClue('clue_mcn_card');
+  if (state.defeatedBossIds.length >= 2) grantClue('clue_ledger');
+  tryRecruitAlly();
   checkAchievements();
   sfx.victory();
   vibrate([50, 40, 50, 40, 150]);
@@ -852,22 +905,27 @@ function performAttack(type) {
   let isCrit = false;
   let hitWeakness = false;
 
+  const chloeCrit = state.lovers?.includes('chloe') && !state.sulky?.chloe ? 0.18 : 0;
+  const allyFirstBonus = state.isFirstTurn && state.allies?.includes('parking_bro') ? 8 : 0;
+  state.isFirstTurn = false;
+
   if (type === 'speech') {
-    const base = 18 + state.stats.speech * 4 + state.bonusDmg;
+    const base = 18 + state.stats.speech * 4 + state.bonusDmg + allyFirstBonus;
     const isWeak = enemy.weakness === 'speech';
     hitWeakness = isWeak;
-    const critRoll = Math.random() < (0.15 + state.critBonus);
+    const critRoll = Math.random() < (0.15 + state.critBonus + chloeCrit);
     dmg = Math.round(base * (isWeak ? 1.45 : 1) * (critRoll ? 1.5 : 1));
     isCrit = isWeak || critRoll;
     state.sp = clamp(state.sp + 10, 0, state.maxSp);
     state.lawful += 5;
-    state.log = `🗣️ 논리정연한 팩트폭력! (적 멘탈 -${dmg}${isWeak ? ' · 약점 적중!' : ''})`;
+    state.log = `🗣️ 논리정연한 팩트폭력! (적 멘탈 -${dmg}${isWeak ? ' · 약점 적중!' : ''}${critRoll ? ' · 치명타!' : ''})`;
   } else if (type === 'guts') {
-    const base = 16 + state.stats.guts * 4 + state.bonusDmg;
+    const base = 16 + state.stats.guts * 4 + state.bonusDmg + allyFirstBonus;
     const isWeak = enemy.weakness === 'guts';
     hitWeakness = isWeak;
-    dmg = Math.round(base * (isWeak ? 1.45 : 1));
-    isCrit = isWeak;
+    const critRoll = Math.random() < chloeCrit;
+    dmg = Math.round(base * (isWeak ? 1.45 : 1) * (critRoll ? 1.5 : 1));
+    isCrit = isWeak || critRoll;
     const spGain = 15 + state.gutsSpBonus;
     state.sp = clamp(state.sp + spGain, 0, state.maxSp);
     state.chaotic += 10;
@@ -882,12 +940,14 @@ function performAttack(type) {
     hitWeakness = isWeak;
     state.lawful += 10;
     if (total >= 12) {
-      dmg = Math.round((24 + state.stats.law * 5 + state.bonusDmg) * (isWeak ? 1.4 : 1));
+      dmg = Math.round((24 + state.stats.law * 5 + state.bonusDmg + allyFirstBonus) * (isWeak ? 1.4 : 1));
       isCrit = true;
       state.enemyStunned = true;
-      state.log = `⚖️ [주사위 ${roll} + 보정 = ${total}] 법 조항 들이밀기 대성공! (멘탈 -${dmg} & 기절!)`;
+      const gotApology = Math.random() < 0.5;
+      if (gotApology) state.enemyApologyTurns = 2;
+      state.log = `⚖️ [주사위 ${roll} + 보정 = ${total}] 법 조항 들이밀기 대성공! (멘탈 -${dmg} & 기절${gotApology ? ' · 📝반성문 2턴!' : '!'})`;
     } else {
-      dmg = 10 + state.bonusDmg;
+      dmg = 10 + state.bonusDmg + allyFirstBonus;
       state.log = `⚖️ [주사위 ${roll} + 보정 = ${total}] 법 조항이 가물가물... (적 멘탈 -${dmg})`;
     }
   } else if (type === 'special') {
@@ -1133,13 +1193,61 @@ function render() {
     elChoicesPanel.className = 'choices-panel';
     const btnNext = document.createElement('button');
     btnNext.className = 'choice-btn row-btn';
-    btnNext.innerHTML = '<span>🚶 현관문을 열고 참교육 장비를 고른다</span><span class="choice-sub">다음 ▶</span>';
+    btnNext.innerHTML = '<span>🚶 현관문을 열기 전, 3년 전 기억이 스친다...</span><span class="choice-sub">과거 회상 ▶</span>';
     btnNext.addEventListener('click', () => {
       sfx.click();
-      state.phase = 'prologue_2';
+      state.phase = 'prologue_past';
       render();
     });
     elChoicesPanel.appendChild(btnNext);
+    return;
+  }
+
+  // 2.5. 프롤로그 과거 회상 (노란 완장의 비밀)
+  if (state.phase === 'prologue_past') {
+    elLocation.textContent = '회상 · 3년 전 빗속';
+    elSceneTag.textContent = '과거 회상';
+    elSceneTag.className = 'scene-tag event';
+    elSceneTitle.textContent = '🌧️ 노란 완장을 물려받은 날';
+    elWeaknessPill.classList.add('hidden');
+    elEnemyHpWrap.classList.add('hidden');
+    elQuoteBubble.textContent = '"아무도 안 나서면 결국 선량한 사람만 다쳐. 자, 이 완장 받아라."';
+    elQuoteBubble.classList.remove('hidden');
+    showSceneCard(
+      '3 YEARS AGO · 빗속의 버스정류장',
+      '  ☔ [3년 전, 최종 면접 날]  \n  🚬 흡연·새치기 빌런 때문에 면접 탈락\n  🟡 그때 나타나 빌런을 제압한 전설의 선배!\n  ─────────────────────────\n  "법과 사이다, 네 신념을 골라봐!"',
+      '주인공이 시민영웅의 길을 걷게 된 진짜 이유'
+    );
+    elBattleLog.textContent =
+      '3년 전 폭우 속, 무개념 빌런 때문에 인생 면접을 망치고 주저앉아 있던 당신에게\n' +
+      '노란 완장을 건네주며 일어설 용기를 준 [전설의 1대 시민영웅].\n' +
+      '최근 서울에 빌런이 이상할 만큼 급증한 이유를 파헤치기 위해, 당신은 오늘 완장을 꽉 쥡니다!';
+
+    elChoicesPanel.className = 'choices-panel';
+    const pastChoices = [
+      {
+        text: '⚖️ "법과 질서, 완벽한 채증으로 정면 승부한다!"',
+        sub: '모범시민 +10 · 법률 +1',
+        run: () => { state.lawful += 10; state.stats.law += 1; },
+      },
+      {
+        text: '🔥 "법이 늦으면 내 사이다가 먼저 날아간다!"',
+        sub: '광인 +10 · 배짱 +1',
+        run: () => { state.chaotic += 10; state.stats.guts += 1; },
+      },
+    ];
+    pastChoices.forEach((pc) => {
+      const b = document.createElement('button');
+      b.className = 'choice-btn row-btn';
+      b.innerHTML = `<span>${pc.text}</span><span class="choice-sub">${pc.sub}</span>`;
+      b.addEventListener('click', () => {
+        sfx.powerup();
+        pc.run();
+        state.phase = 'prologue_2';
+        render();
+      });
+      elChoicesPanel.appendChild(b);
+    });
     return;
   }
 
@@ -1665,9 +1773,12 @@ function render() {
     if (!state.love) state.love = { yuki: 0, chloe: 0 };
     if (!state.lovers) state.lovers = [];
     if (!state.lastDateDay) state.lastDateDay = { yuki: 0, chloe: 0 };
+    if (!state.someCleared) state.someCleared = { yuki: false, chloe: false };
+    if (!state.dateCount) state.dateCount = { yuki: 0, chloe: 0 };
+    if (!state.sulky) state.sulky = { yuki: false, chloe: false };
 
-    const yukiReady = state.love.yuki >= 90 && state.lang.jp >= 4 && !state.lovers.includes('yuki');
-    const chloeReady = state.love.chloe >= 90 && state.lang.en >= 4 && !state.lovers.includes('chloe');
+    const yukiReady = state.love.yuki >= 95 && state.lang.jp >= 6 && (state.dateCount.yuki || 0) >= 3 && state.lawful >= 20 && state.stats.speech >= 5 && !state.lovers.includes('yuki');
+    const chloeReady = state.love.chloe >= 95 && state.lang.en >= 6 && (state.dateCount.chloe || 0) >= 3 && state.stats.guts >= 5 && (state.followers || 0) >= 500 && !state.lovers.includes('chloe');
 
     elLocation.textContent = `DAY ${state.day} · 연애 & 어학`;
     elSceneTag.textContent = '미연시';
@@ -1677,19 +1788,25 @@ function render() {
     elEnemyHpWrap.classList.add('hidden');
     elQuoteBubble.classList.add('hidden');
     showSceneCard(
-      '💘 ROMANCE & LANGUAGE',
-      ` 🇯🇵 유키 (일본어 Lv.${state.lang.jp}) — 호감도 ${state.love.yuki}/100 ${state.lovers.includes('yuki') ? '💖연인' : ''}\n` +
-      ` 🇺🇸 클로이 (영어 Lv.${state.lang.en}) — 호감도 ${state.love.chloe}/100 ${state.lovers.includes('chloe') ? '💖연인' : ''}\n` +
+      '💘 ROMANCE & LANGUAGE (HARD)',
+      ` 🇯🇵 유키 (일본어 Lv.${state.lang.jp}/6) — 호감도 ${state.love.yuki}/100 · 데이트 ${state.dateCount.yuki || 0}/3 ${state.lovers.includes('yuki') ? '💖연인' : (state.sulky.yuki ? '💢삐짐' : '')}\n` +
+      ` 🇺🇸 클로이 (영어 Lv.${state.lang.en}/6) — 호감도 ${state.love.chloe}/100 · 데이트 ${state.dateCount.chloe || 0}/3 ${state.lovers.includes('chloe') ? '💖연인' : (state.sulky.chloe ? '💢삐짐' : '')}\n` +
       ` ─────────────────────────────────\n` +
-      ` 데이트 비용: 35 P (하루 1회) · 고백: 호감도90 & 어학Lv.4`,
-      '어학 장벽(Lv.2 미만) 시 호감도 상승 절반 · 양다리 시 질투 발각 주의!'
+      ` 고백: 호감도95+어학Lv.6+데이트3회 (유키:모범20·언변5 / 클로이:배짱5·팔로워500)`,
+      '호감도 75에서 썸 돌파 위기 발생! · 양다리 발각 시 삐져서 전투 불참!'
     );
     elBattleLog.textContent = state.log || '공부하고 싶은 언어와 만나고 싶은 히로인을 선택하세요!';
     elChoicesPanel.className = 'choices-panel grid-2';
 
     const tryStartDate = (key, isDrive = false) => {
+      const kName = key === 'yuki' ? '유키' : '클로이';
+      if (state.sulky?.[key]) {
+        state.log = `💢 ${kName}가 지금 단단히 삐져서 연락을 안 받습니다! 아래 [💝 사과 & 달래기]로 먼저 화해하세요.`;
+        render();
+        return;
+      }
       if (state.lastDateDay[key] === state.day) {
-        state.log = `📅 오늘은 이미 ${key === 'yuki' ? '유키' : '클로이'}와 데이트했습니다! 내일(DAY ${state.day + 1}) 다시 신청하세요.`;
+        state.log = `📅 오늘은 이미 ${kName}와 데이트했습니다! 내일(DAY ${state.day + 1}) 다시 신청하세요.`;
         render();
         return;
       }
@@ -1705,6 +1822,21 @@ function render() {
       state.lastContactDay[key] = state.day;
       state.romanceTarget = key;
       state.isDriveDate = isDrive;
+
+      // 썸(호감도 70+) 돌파 위기 이벤트 우선 체크
+      if ((state.love[key] || 0) >= 70 && !state.someCleared?.[key]) {
+        state.phase = 'some_crisis';
+        render();
+        return;
+      }
+      // 호감도 45~85 구간 30% 확률로 연애 라이벌 견제 이벤트
+      if ((state.love[key] || 0) >= 45 && (state.love[key] || 0) <= 85 && Math.random() < 0.30) {
+        state.phase = 'rival_scene';
+        render();
+        return;
+      }
+
+      state.dateCount[key] = (state.dateCount[key] || 0) + 1;
       if (!state.usedDateIdx) state.usedDateIdx = { yuki: [], chloe: [] };
       const poolLen = DATE_EVENTS[key].normal.length + (key === 'yuki' && state.pet?.adopted ? 1 : 0);
       state.currentQuizIdx = pickNonRepeatingIdx(poolLen, state.usedDateIdx[key]);
@@ -1779,6 +1911,52 @@ function render() {
       render();
     });
     elChoicesPanel.appendChild(giftBtn);
+
+    ['yuki', 'chloe'].forEach((k) => {
+      if (!state.sulky?.[k]) return;
+      const nm = k === 'yuki' ? '유키' : '클로이';
+      const sBtn = document.createElement('button');
+      sBtn.className = 'choice-btn row-btn';
+      sBtn.style.gridColumn = 'span 2';
+      sBtn.style.background = '#fff0f3';
+      sBtn.style.borderColor = '#c9184a';
+      sBtn.innerHTML = `<span>💝 ${nm} 삐짐 달래기 & 진심 사과 (40P)</span><span class="choice-sub">화해 시 전투 복귀 & 데이트 가능!</span>`;
+      sBtn.addEventListener('click', () => {
+        if (state.points < 40) {
+          sfx.damage();
+          state.log = '💸 사과 선물 비용(40 P)이 부족합니다!';
+          render();
+          return;
+        }
+        state.points -= 40;
+        state.sulky[k] = false;
+        state.love[k] = clamp((state.love[k] || 0) + 5, 0, 100);
+        sfx.victory();
+        state.log = `💝 ${nm}에게 진심으로 사과하고 달콤한 디저트를 건넸습니다! ${nm}가 활짝 웃으며 화해했습니다! (호감도 +5)`;
+        saveGame();
+        render();
+      });
+      elChoicesPanel.appendChild(sBtn);
+    });
+
+    if (state.lovers.length > 0 && state.lastHomeVisitDay !== state.day) {
+      const hBtn = document.createElement('button');
+      hBtn.className = 'choice-btn row-btn';
+      hBtn.style.gridColumn = 'span 2';
+      hBtn.innerHTML = `<span>🏠 연인을 내 방 아지트로 초대하기 (일일 1회)</span><span class="choice-sub">HP+35 · 사이다+30 · 호감도+5</span>`;
+      hBtn.addEventListener('click', () => {
+        sfx.victory();
+        state.lastHomeVisitDay = state.day;
+        state.hp = clamp(state.hp + 35, 1, state.maxHp);
+        state.sp = clamp(state.sp + 30, 0, state.maxSp);
+        state.lovers.forEach((lk) => { state.love[lk] = clamp((state.love[lk] || 0) + 5, 0, 100); });
+        state.log = '🏠 연인과 아지트에서 맛있는 야식을 먹으며 오붓한 시간을 보냈습니다! (HP +35 · 사이다 +30 · 연인 호감도 +5)';
+        advanceTime();
+        saveGame();
+        render();
+      });
+      elChoicesPanel.appendChild(hBtn);
+    }
 
     const backBtn = document.createElement('button');
     backBtn.className = 'choice-btn row-btn';
@@ -1911,13 +2089,109 @@ function render() {
     return;
   }
 
+  // 4-R1.5. 썸 돌파 위기 이벤트
+  if (state.phase === 'some_crisis') {
+    const key = state.romanceTarget === 'chloe' ? 'chloe' : 'yuki';
+    const ev = SOME_CRISIS_EVENTS[key];
+    elLocation.textContent = `DAY ${state.day} · 썸 돌파 위기!`;
+    elSceneTag.textContent = '긴급 위기';
+    elSceneTag.className = 'scene-tag boss';
+    elSceneTitle.textContent = ev.title;
+    elWeaknessPill.classList.add('hidden');
+    elEnemyHpWrap.classList.add('hidden');
+    elQuoteBubble.textContent = ev.quote;
+    elQuoteBubble.classList.remove('hidden');
+    elSceneImage.src = ev.image;
+    elSceneImage.classList.remove('hidden');
+    elBattleLog.textContent = ev.text;
+    elChoicesPanel.className = 'choices-panel';
+
+    ev.choices.forEach((ch) => {
+      const btn = document.createElement('button');
+      btn.className = 'choice-btn row-btn';
+      btn.innerHTML = `<span>${ch.text}</span><span class="choice-sub">${ch.sub} (필요 ${ch.reqStat === 'law' ? '법률' : ch.reqStat === 'guts' ? '배짱' : '언변'} ${ch.reqVal}+)</span>`;
+      btn.addEventListener('click', () => {
+        const ok = (state.stats[ch.reqStat] || 0) >= ch.reqVal;
+        if (ok) {
+          sfx.victory();
+          if (!state.someCleared) state.someCleared = { yuki: false, chloe: false };
+          state.someCleared[key] = true;
+          state.love[key] = clamp((state.love[key] || 0) + 12, 0, 100);
+          if (key === 'yuki') grantClue('clue_cafe');
+          else grantClue('clue_cctv');
+          state.log = `💖 [썸 돌파 성공!!] ${ch.okLog} (호감도 +12 · 100까지 해금!)`;
+        } else {
+          sfx.damage();
+          state.log = `😅 [아쉬운 대처] ${ch.failLog}`;
+        }
+        advanceTime();
+        state.phase = 'romance';
+        saveGame();
+        render();
+      });
+      elChoicesPanel.appendChild(btn);
+    });
+    return;
+  }
+
+  // 4-R1.6. 연애 라이벌 견제 이벤트
+  if (state.phase === 'rival_scene') {
+    const key = state.romanceTarget === 'chloe' ? 'chloe' : 'yuki';
+    const ev = RIVAL_EVENTS[key];
+    elLocation.textContent = `DAY ${state.day} · 연애 라이벌 출현`;
+    elSceneTag.textContent = '라이벌 견제';
+    elSceneTag.className = 'scene-tag boss';
+    elSceneTitle.textContent = ev.title;
+    elWeaknessPill.classList.add('hidden');
+    elEnemyHpWrap.classList.add('hidden');
+    elQuoteBubble.classList.add('hidden');
+    elSceneImage.src = HEROINES[key].imgNormal;
+    elSceneImage.classList.remove('hidden');
+    elBattleLog.textContent = ev.text;
+    elChoicesPanel.className = 'choices-panel';
+
+    ev.choices.forEach((ch) => {
+      const btn = document.createElement('button');
+      btn.className = 'choice-btn row-btn';
+      btn.innerHTML = `<span>${ch.text}</span><span class="choice-sub">라이벌 대처</span>`;
+      btn.addEventListener('click', () => {
+        let ok = true;
+        if (ch.cost) {
+          if (state.points < ch.cost) { sfx.damage(); state.log = '💸 포인트가 부족합니다!'; render(); return; }
+          state.points -= ch.cost;
+        } else if (ch.reqStat) {
+          ok = (state.stats[ch.reqStat] || 0) >= ch.reqVal;
+        } else if (ch.reqFollowers) {
+          ok = (state.followers || 120) >= ch.reqFollowers;
+        }
+        if (ok) {
+          sfx.victory();
+          state.love[key] = clamp((state.love[key] || 0) + 8, 0, state.someCleared?.[key] ? 100 : 75);
+          state.log = `✨ ${ch.okText}`;
+        } else {
+          sfx.damage();
+          state.love[key] = clamp((state.love[key] || 0) - 4, 0, 100);
+          state.log = `💢 ${ch.failText}`;
+        }
+        advanceTime();
+        state.phase = 'romance';
+        saveGame();
+        render();
+      });
+      elChoicesPanel.appendChild(btn);
+    });
+    return;
+  }
+
   // 4-R2. 데이트 & 고백 미연시 씬
   if (state.phase === 'date_scene') {
     const key = state.romanceTarget === 'chloe' ? 'chloe' : 'yuki';
     const otherKey = key === 'yuki' ? 'chloe' : 'yuki';
     const langKey = key === 'yuki' ? 'jp' : 'en';
     const hero = HEROINES[key];
-    const isConfess = (state.love[key] || 0) >= 90 && (state.lang[langKey] || 0) >= 4 && !state.lovers.includes(key);
+    const isConfess = key === 'yuki'
+      ? (state.love.yuki || 0) >= 95 && (state.lang.jp || 0) >= 6 && (state.dateCount?.yuki || 0) >= 3 && state.lawful >= 20 && state.stats.speech >= 5 && !state.lovers.includes('yuki')
+      : (state.love.chloe || 0) >= 95 && (state.lang.en || 0) >= 6 && (state.dateCount?.chloe || 0) >= 3 && state.stats.guts >= 5 && (state.followers || 0) >= 500 && !state.lovers.includes('chloe');
     const normalPool = [...DATE_EVENTS[key].normal];
     if (key === 'yuki' && state.pet?.adopted && DATE_EVENTS.yuki.petDate) {
       normalPool.push(DATE_EVENTS.yuki.petDate);
@@ -1970,7 +2244,10 @@ function render() {
         else sfx.victory();
         vibrate([30, 30, 50]);
 
-        state.love[key] = clamp((state.love[key] || 0) + loveGain, 0, 100);
+        const maxLoveCap = state.someCleared?.[key] ? 100 : 75;
+        state.love[key] = clamp((state.love[key] || 0) + loveGain, 0, maxLoveCap);
+        if (key === 'yuki' && state.love.yuki >= 40) grantClue('clue_cafe');
+        if (key === 'chloe' && state.love.chloe >= 40) grantClue('clue_cctv');
         if (ch.lawful) state.lawful += ch.lawful;
         if (ch.chaotic) state.chaotic += ch.chaotic;
         if (ch.maxHp) state.maxHp += ch.maxHp;
@@ -1984,12 +2261,18 @@ function render() {
           state.lovers.push(key);
         }
 
-        // 양다리 질투 리스크: 상대 호감도 50+ 시 30% 확률로 들킴
-        if (!isConfess && (state.love[otherKey] || 0) >= 50 && Math.random() < 0.30) {
+        // 양다리 질투 리스크: 상대 호감도 60+ 시 30% 확률로 들킴 + 40% 확률로 삐짐(전투 불참)
+        if (!isConfess && (state.love[otherKey] || 0) >= 60 && Math.random() < 0.30) {
           state.love[key] = clamp(state.love[key] - 12, 0, 100);
           state.love[otherKey] = clamp(state.love[otherKey] - 12, 0, 100);
           const otherName = otherKey === 'yuki' ? '유키' : '클로이';
-          extraMsg += `\n😱 [양다리 질투 발각!!] ${otherName}에게 데이트가 들켜 양쪽 호감도가 -12 깎였습니다!`;
+          if (Math.random() < 0.40) {
+            if (!state.sulky) state.sulky = { yuki: false, chloe: false };
+            state.sulky[otherKey] = true;
+            extraMsg += `\n💢 [수라장 발발!!] ${otherName}가 단단히 삐져서 화해 전까지 데이트·전투에 불참합니다!`;
+          } else {
+            extraMsg += `\n😱 [양다리 질투 발각!!] ${otherName}에게 데이트가 들켜 양쪽 호감도가 -12 깎였습니다!`;
+          }
         }
 
         // V15.0: 성향별 리액션 & 데이트 후 톡방 후일담 발송
@@ -2452,6 +2735,10 @@ function render() {
       const badges = [];
       if (state.enemyBroken) badges.push({ cls: 'is-break', txt: '💥 멘붕 브레이크 (피해 1.5배!)' });
       if (state.enemyStunned) badges.push({ cls: 'is-stun', txt: '💫 기절 (행동불능)' });
+      if ((state.enemyApologyTurns || 0) > 0) badges.push({ cls: 'is-stun', txt: `📝 반성문 (${state.enemyApologyTurns}턴·공격-40%)` });
+      if (state.lovers?.includes('yuki') && !state.sulky?.yuki) badges.push({ cls: 'is-pet', txt: '💚 유키 매턴 HP+6' });
+      if (state.lovers?.includes('chloe') && !state.sulky?.chloe) badges.push({ cls: 'is-combo', txt: '📸 클로이 치명+18%' });
+      if ((state.allies?.length || 0) > 0) badges.push({ cls: 'is-pet', txt: `🤝 영웅단 ${state.allies.length}명` });
       if ((state.weakCombo || 0) > 0) badges.push({ cls: 'is-combo', txt: `⚡ 약점콤보 ${state.weakCombo}/2` });
       if (state.pet?.adopted) badges.push({ cls: 'is-pet', txt: `🐶 콩이 Lv.${state.pet.level} 지원` });
       if (state.timeIndex >= 2) badges.push({ cls: '', txt: '🌙 야간 보너스 +25%' });
@@ -2467,8 +2754,8 @@ function render() {
     showEnemyVisual(enemy);
     if (elFrame) elFrame.classList.add('combat-stage');
     elHeroSprite.classList.remove('hidden');
-    const hasYuki = !!state.lovers?.includes('yuki');
-    const hasChloe = !!state.lovers?.includes('chloe');
+    const hasYuki = !!state.lovers?.includes('yuki') && !state.sulky?.yuki;
+    const hasChloe = !!state.lovers?.includes('chloe') && !state.sulky?.chloe;
     const hasPet = !!state.pet?.adopted;
     elHeroSprite.classList.toggle('with-yuki', hasYuki);
     if (elYukiSprite) elYukiSprite.classList.toggle('hidden', !hasYuki);
@@ -2727,8 +3014,8 @@ function render() {
     showEnemyVisual(enemy);
     if (elFrame) elFrame.classList.add('combat-stage');
     elHeroSprite.classList.remove('hidden');
-    const hasYuki = !!state.lovers?.includes('yuki');
-    const hasChloe = !!state.lovers?.includes('chloe');
+    const hasYuki = !!state.lovers?.includes('yuki') && !state.sulky?.yuki;
+    const hasChloe = !!state.lovers?.includes('chloe') && !state.sulky?.chloe;
     const hasPet = !!state.pet?.adopted;
     elHeroSprite.classList.toggle('with-yuki', hasYuki);
     if (elYukiSprite) elYukiSprite.classList.toggle('hidden', !hasYuki);
@@ -2886,8 +3173,8 @@ function renderPhoneModal() {
   endCard.className = 'inv-item';
   endCard.innerHTML = `
     <div class="inv-info">
-      <h4>🏆 엔딩 도감 (${unlockedEndings.length}/15)</h4>
-      <p>15가지 멀티 엔딩 달성 조건 힌트와 회상 보기</p>
+      <h4>🏆 엔딩 도감 (${unlockedEndings.length}/16)</h4>
+      <p>16가지 멀티 엔딩 달성 조건 힌트와 회상 보기</p>
     </div>
   `;
   const eBtn = document.createElement('button');
@@ -2901,6 +3188,27 @@ function renderPhoneModal() {
   });
   endCard.appendChild(eBtn);
   elPhoneBody.appendChild(endCard);
+
+  // 2.55. V19.0 흑막 추적 & 갱생 동료 카드
+  const clueIds = state.clues || [];
+  const clueCard = document.createElement('div');
+  clueCard.className = 'rep-card';
+  const clueHtml = CLUES.map((c) => {
+    const has = clueIds.includes(c.id);
+    return `<div style="font-size:0.74rem;margin-top:3px;color:${has ? '#2d6a4f' : '#8c7352'};">${has ? '✅' : '🔒'} ${c.num}. ${has ? `${c.title} — ${c.desc}` : `미확보 (${c.source})`}</div>`;
+  }).join('');
+  const allyIds = state.allies || [];
+  const allyHtml = REFORMED_ALLIES.map((a) => {
+    const has = allyIds.includes(a.id);
+    return `<div style="font-size:0.74rem;margin-top:2px;color:${has ? '#1d3557' : '#8c7352'};">${has ? '🤝' : '⬜'} ${a.name}: ${a.desc}</div>`;
+  }).join('');
+  clueCard.innerHTML = `
+    <div style="font-size:0.8rem;font-weight:800;">🕵️ [블랙 튜브 MCN] 흑막 단서 (${clueIds.length}/5)</div>
+    ${clueHtml}
+    <div style="font-size:0.8rem;font-weight:800;margin-top:8px;">🤝 시민영웅단 갱생 동료 (${allyIds.length}/3)</div>
+    ${allyHtml}
+  `;
+  elPhoneBody.appendChild(clueCard);
 
   // 2.6. V14.0 업적 도감 카드
   const achCount = (state.unlockedAch || []).length;
