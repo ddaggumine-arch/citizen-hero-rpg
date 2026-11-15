@@ -5,7 +5,10 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V27.5
+## 현재 최신 버전: V27.6
+- **V27.6**:
+  - **적 반격 공격력 스케일링 버그 수정 + 저체력 회복 경고 (`app.js`)**: `startBattle`에서 계산한 `currentEnemyAtk`(레벨·보스·특성·난이도 반영)가 `enemyCounterTurn`에 전달되지 않아 Lv.1 기본 공격력으로만 때리던 버그 수정 + 비가드 시 최소 관통 피해(`scaledAtk * 22%`) 보장 + 인내심 30% 이하 시 전투 로그/토스트 위험 경고 출력 (`?v=52`)
+- **V27.5**:
 - **V27.5**:
   - **적 레벨 연동 장비 드랍 & 유니크 확률 스케일링 + 신규 고레벨 에픽/유니크 6종 (`data/v24Systems.js`, `app.js`)**: `rollGearDrop(isBoss, enemyLv)`가 적 레벨(`Lv.1~10` / `11~20` / `21~30` / `31~40` / `41+`)에 따라 에픽·유니크 확률(최대 12배)과 드랍 티어를 스케일링하고, 신규 Lv.20+ 에픽 3종(`고압 팩트 테이저건`, `중장갑 진압 패딩`, `초음파 정의의 호각`) 및 Lv.35+ 유니크 3종(`대법관의 황금 의사봉`, `네오 서울 히어로 아머`, `영웅단의 무지개 사이다 코어`) 추가 (`GEAR_LOOT_POOL` 총 18종) + Lv.15+/20+ 처치 시 추가 영웅 고철·보급품 드랍
   - **유키/클로이 주말 이벤트 스토리 해금 연동 (`data/v19Story.js`, `app.js`)**: `WEEKEND_EVENTS`에서 유키(`15화 해금`)·클로이(`17화 해금`) 합류 전에는 해당 히로인 주말 이벤트/호감도가 조기 등장하지 않도록 `requireHeroine` + `isFeatureUnlocked` 게이팅 적용 (`?v=51`)

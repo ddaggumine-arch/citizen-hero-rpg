@@ -1252,6 +1252,7 @@ function startBattle(enemyId) {
   state.phase = 'combat';
   state.currentEnemyId = enemy.id;
   state.currentEnemyLv = enemyLv;
+  state.currentEnemyAtk = enemy.atk;
   state.enemyHp = startHp;
   state.enemyMaxHp = enemy.maxHp;
   state.enemyStunned = false;
@@ -1356,7 +1357,7 @@ function enemyCounterTurn(enemy, isGuarding = false) {
 
   const intentObj = ENEMY_INTENTS.find((i) => i.id === state.enemyIntent) || ENEMY_INTENTS[0];
   const chaosMult = (state.chaosLevel ?? 25) >= 70 ? 1.2 : 1.0;
-  const diffAtkMult = getDiffObj().atkMult * (1 + (state.ngPlus || 0) * 0.3);
+  const scaledAtk = state.currentEnemyAtk || Math.round(enemy.atk * getDiffObj().atkMult * (1 + (state.ngPlus || 0) * 0.3));
   const eqBonus = getEquippedBonuses();
 
   if (!isGuarding && !state.usedLogicCounter && Math.random() < 0.18) {
@@ -1368,7 +1369,7 @@ function enemyCounterTurn(enemy, isGuarding = false) {
     return;
   }
 
-  let dmg = Math.round((enemy.atk * diffAtkMult + Math.floor(Math.random() * 5) - 2) * intentObj.mult * chaosMult);
+  let dmg = Math.round((scaledAtk + Math.floor(Math.random() * 5) - 2) * intentObj.mult * chaosMult);
   if ((state.weather || 'sunny') === 'rain' && ['smoker', 'spitter', 'street_smoker', 'cafe_boss'].includes(enemy.id)) {
     dmg = Math.max(2, Math.round(dmg * 0.8));
     state.log += `\n☔ [우천 약화] 빗줄기에 빌런 기세가 꺾여 피해 -20%!`;
@@ -1383,8 +1384,9 @@ function enemyCounterTurn(enemy, isGuarding = false) {
   }
   const totalDef = (eqBonus.def || 0) + (state.flatDef || 0) + Math.floor(((state.level || 1) - 1) / 3);
   if (totalDef > 0) {
-    const blocked = Math.min(dmg - 2, totalDef);
-    dmg = Math.max(2, dmg - totalDef);
+    const minDmg = isGuarding ? 2 : Math.max(4, Math.round(scaledAtk * 0.22));
+    const blocked = Math.max(0, dmg - Math.max(minDmg, dmg - totalDef));
+    dmg = Math.max(minDmg, dmg - totalDef);
     if (blocked > 0) state.log += `\n🛡️ [방어력 경감 -${blocked}]`;
   }
   const totalReflect = (eqBonus.reflect || 0) + (state.pet?.adopted && state.pet.job === 'guard' ? 0.15 : 0);
@@ -1426,6 +1428,9 @@ function enemyCounterTurn(enemy, isGuarding = false) {
     state.phase = 'gameover';
     state.log = `혈압이 한계치를 돌파했습니다... (${enemy.name}에게 패배)`;
     vibrate([200, 80, 200]);
+  } else if (state.hp / state.maxHp <= 0.30) {
+    state.log += `\n🚨 [인내심 위험!! (${state.hp}/${state.maxHp})] 체력이 30% 이하입니다! 🎒 가방에서 회복 아이템을 사용하거나 🛡️ 가드하세요!`;
+    showToast('🚨 [위험!] 인내심이 30% 이하입니다! 회복 아이템을 사용하세요! 🎒', 'break');
   }
   saveGame();
   render();
