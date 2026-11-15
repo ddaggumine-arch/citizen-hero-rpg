@@ -10,6 +10,7 @@ import { COURT_CASES, COSTUMES, CAPSULE_POOL, PET_WALK_EVENTS } from './data/v17
 import { CLUES, SOME_CRISIS_EVENTS, RIVAL_EVENTS, REFORMED_ALLIES, GETTING_TO_KNOW_EVENTS, STORY_INTERLUDES, WEEKEND_EVENTS } from './data/v19Story.js';
 import { DIFFICULTIES, RARITY_INFO, GEAR_LOOT_POOL, PET_JOBS, LOGIC_COUNTERS, generateCommunityPosts } from './data/v24Systems.js';
 import { KISS_SCENES, LOVER_ACTIONS } from './data/v25Romance.js';
+import { UNLOCK_MILESTONES, isFeatureUnlocked, SEOUL_DISTRICTS, getDistrictIdForEnemy, getClearedDistrictCount } from './data/v26World.js';
 import { sfx } from './sound.js';
 
 const SAVE_KEY = 'citizen_hero_gta_save_v4';
@@ -173,6 +174,9 @@ function createNewGameState() {
     kissCollection: [],
     activeKissAction: null,
     loverActionIdx: 0,
+    districts: { mapo: 0, seongsu: 0, gangnam: 0, jongno: 0, yeouido: 0 },
+    nightmareFloor: 0,
+    bestNightmareFloor: 0,
   };
 }
 
@@ -207,7 +211,7 @@ function saveToSlot(idx) {
   const timeStr = `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   slots[idx] = {
     savedAt: timeStr,
-    summary: `DAY ${state.day} · 제${Math.min(12, state.chapterIndex + 1)}화 · ${rep.label} · ${state.points}P`,
+    summary: `DAY ${state.day} · 제${Math.min(30, state.chapterIndex + 1)}화 · ${rep.label} · ${state.points}P`,
     data: JSON.parse(JSON.stringify(state)),
   };
   try { localStorage.setItem(SAVE_SLOTS_KEY, JSON.stringify(slots)); } catch (_) {}
@@ -522,6 +526,14 @@ function advanceTime() {
       state.sp = clamp(state.sp + 12, 0, state.maxSp);
     }
 
+    // V26.0: 평화구역 정화 일일 시민 후원금
+    const clearedDist = getClearedDistrictCount(state);
+    if (clearedDist > 0) {
+      const distBonus = clearedDist * 25;
+      state.points += distBonus;
+      showToast(`🕊️ 평화구역 ${clearedDist}곳 시민 후원금 +${distBonus} P!`, 'good');
+    }
+
     // V16.0: 서울 테마 주식 시세 변동
     if (!state.stockPrices) state.stockPrices = { cider_pharma: 30, manner_ent: 45, hanriver_ev: 60 };
     STOCKS.forEach((st) => {
@@ -766,7 +778,20 @@ function getEquippedBonuses() {
     res.spRegen += g.spRegen || 0;
     res.reflect += g.reflect || 0;
   });
+  const d = state.districts || {};
+  if ((d.gangnam || 0) >= 100) res.atk += 4;
+  if ((d.seongsu || 0) >= 100) res.crit += 0.06;
+  if ((d.jongno || 0) >= 100) res.def += 3;
+  if ((d.mapo || 0) >= 100) res.spRegen += 3;
   return res;
+}
+
+function notifyNewUnlocks(prevChapter, nextChapter) {
+  Object.values(UNLOCK_MILESTONES).forEach((m) => {
+    if (prevChapter < m.chapter && nextChapter >= m.chapter) {
+      showToast(`🔓 신규 기능 해금! [${m.label}]`, 'break');
+    }
+  });
 }
 
 function rollGearDrop(isBoss = false) {
@@ -774,9 +799,11 @@ function rollGearDrop(isBoss = false) {
   const dropChance = isBoss ? 1.0 : diff.dropChance;
   if (Math.random() > dropChance) return null;
 
-  const uRate = diff.uniqueRate * (isBoss ? 5 : 1);
+  const yeouidoBonus = (state.districts?.yeouido || 0) >= 100 ? 1.25 : 1;
+  const nmBonus = (state.nightmareFloor || 0) > 0 ? (1 + state.nightmareFloor * 0.5) : 1;
+  const uRate = diff.uniqueRate * (isBoss ? 5 : 1) * yeouidoBonus * nmBonus;
   const eRate = isBoss ? 0.22 : (state.difficulty === 'hell' ? 0.08 : 0.03);
-  const rRate = isBoss ? 1.0 : (state.difficulty === 'normal' ? 0.16 : 0.28);
+  const rRate = (isBoss ? 1.0 : (state.difficulty === 'normal' ? 0.16 : 0.28)) * yeouidoBonus;
 
   const roll = Math.random();
   let rarity = 'common';
@@ -807,10 +834,15 @@ function rollGearDrop(isBoss = false) {
 function startBattle(enemyId) {
   const baseEnemy = getEnemyById(enemyId);
   const floor = state.towerFloor || 0;
+  const nmFloor = state.nightmareFloor || 0;
   const diff = getDiffObj();
   const ngMult = 1 + (state.ngPlus || 0) * 0.3;
-  const rawMaxHp = floor > 0 ? baseEnemy.maxHp + floor * 18 : baseEnemy.maxHp;
-  const rawAtk = floor > 0 ? baseEnemy.atk + floor * 2 : baseEnemy.atk;
+  const rawMaxHp = nmFloor > 0
+    ? baseEnemy.maxHp + nmFloor * 35
+    : (floor > 0 ? baseEnemy.maxHp + floor * 18 : baseEnemy.maxHp);
+  const rawAtk = nmFloor > 0
+    ? baseEnemy.atk + nmFloor * 3
+    : (floor > 0 ? baseEnemy.atk + floor * 2 : baseEnemy.atk);
   const enemy = {
     ...baseEnemy,
     name: floor > 0 ? `[타워 ${floor}층] ${baseEnemy.name}` : baseEnemy.name,
@@ -1047,8 +1079,32 @@ function handleEnemyDefeated(enemy) {
     return;
   }
 
+  // V26.0 서울 5대 구역 치안 게이지 상승
+  if (!state.districts) state.districts = { mapo: 0, seongsu: 0, gangnam: 0, jongno: 0, yeouido: 0 };
+  const dId = getDistrictIdForEnemy(enemy.id);
+  const prevDist = state.districts[dId] || 0;
+  const distGain = isBossId(enemy.id) ? 40 : 20;
+  state.districts[dId] = Math.min(100, prevDist + distGain);
+  if (prevDist < 100 && state.districts[dId] >= 100) {
+    const dInfo = SEOUL_DISTRICTS.find((d) => d.id === dId);
+    if (dInfo) showToast(`🕊️ [${dInfo.name}] 치안 100% 평화구역 달성!! (${dInfo.buffDesc})`, 'break');
+  }
+
+  // V26.0 심야 마계 보스 러시 승리
+  if ((state.nightmareFloor || 0) > 0) {
+    const nmCleared = state.nightmareFloor;
+    state.points += nmCleared * 25;
+    if (nmCleared > (state.bestNightmareFloor || 0)) state.bestNightmareFloor = nmCleared;
+    state.phase = 'nightmare_clear';
+    state.log = `🌃 [마계 보스 러시 ${nmCleared}층 격파!!] 보너스 +${nmCleared * 25} P!`;
+    saveGame();
+    render();
+    return;
+  }
+
   advanceTime();
 
+  const prevCh = state.chapterIndex;
   const currentCh = STORY_CHAPTERS[state.chapterIndex];
   if (currentCh && currentCh.bossId === enemy.id) {
     state.chapterIndex += 1;
@@ -1056,14 +1112,15 @@ function handleEnemyDefeated(enemy) {
     if (state.chapterIndex < STORY_CHAPTERS.length) {
       state.unreadMessages += 1;
     }
+    notifyNewUnlocks(prevCh, state.chapterIndex);
   }
 
   if (isBossId(enemy.id) && !state.defeatedBossIds.includes(enemy.id)) {
     state.defeatedBossIds.push(enemy.id);
   }
 
-  if (enemy.id === HIDDEN_BOSS.id || state.defeatedBossIds.length >= BOSSES.length) {
-    if (enemy.id !== HIDDEN_BOSS.id && (state.clues || []).length >= 5) {
+  if (enemy.id === HIDDEN_BOSS.id || state.chapterIndex >= STORY_CHAPTERS.length) {
+    if (enemy.id !== HIDDEN_BOSS.id && state.chapterIndex >= 29 && state.defeatedBossIds.length >= BOSSES.length && (state.clues || []).length >= 5) {
       showToast('🎭 4대 보스 격파! 최종 흑막 [닥터 카오스] 본사 결전 돌입!!', 'break');
       startBattle(HIDDEN_BOSS.id);
       return;
@@ -1778,12 +1835,24 @@ function render() {
 
     const yukiLove = state.love?.yuki || 0;
     const chloeLove = state.love?.chloe || 0;
+    const romanceUnlocked = isFeatureUnlocked(state, 'yuki');
     const romanceBtn = document.createElement('button');
     romanceBtn.className = 'choice-btn';
-    romanceBtn.style.background = 'linear-gradient(180deg, #fff0f5 0%, #ffe0ec 100%)';
-    romanceBtn.style.borderColor = '#d46a92';
-    romanceBtn.innerHTML = `<span>💘 연애·어학</span><span class="choice-sub" style="color:#9d2d57;">🇯🇵${yukiLove} · 🇺🇸${chloeLove}</span>`;
+    romanceBtn.style.background = romanceUnlocked
+      ? 'linear-gradient(180deg, #fff0f5 0%, #ffe0ec 100%)'
+      : 'linear-gradient(180deg, #f3f0ea 0%, #e5dfd3 100%)';
+    romanceBtn.style.borderColor = romanceUnlocked ? '#d46a92' : '#9c8f7a';
+    romanceBtn.innerHTML = romanceUnlocked
+      ? `<span>💘 연애·어학</span><span class="choice-sub" style="color:#9d2d57;">🇯🇵${yukiLove} · 🇺🇸${chloeLove}</span>`
+      : `<span>🔒 연애·어학 (15화 해금)</span><span class="choice-sub">유키 합류 시 개방</span>`;
     romanceBtn.addEventListener('click', () => {
+      if (!romanceUnlocked) {
+        sfx.damage();
+        showToast('🔒 제15화에서 유키를 만나면 연애·어학 모드가 해금됩니다!', 'warn');
+        state.log = '🔒 아직 히로인을 만나기 전입니다! 메인 스토리를 15화까지 진행해 보세요.';
+        render();
+        return;
+      }
       sfx.powerup();
       state.phase = 'romance';
       state.log = '외국어를 공부하고 유키·클로이와 설레는 데이트를 즐겨보세요!';
@@ -1793,12 +1862,24 @@ function render() {
 
     const petTxt = state.pet?.adopted ? `🐶Lv.${state.pet.level}` : '🐶미입양';
     const carTxt = (state.carLevel || 0) >= 1 ? `🚗T${state.carLevel}` : '🚗뚜벅이';
+    const gearUnlocked = isFeatureUnlocked(state, 'gear');
     const lifeBtn = document.createElement('button');
     lifeBtn.className = 'choice-btn';
-    lifeBtn.style.background = 'linear-gradient(180deg, #f3fbe9 0%, #dff2cc 100%)';
-    lifeBtn.style.borderColor = '#5b8c38';
-    lifeBtn.innerHTML = `<span>🐶 펫·🚗 차고·🔧 강화</span><span class="choice-sub" style="color:#37611a;">${petTxt} · ${carTxt}</span>`;
+    lifeBtn.style.background = gearUnlocked
+      ? 'linear-gradient(180deg, #f3fbe9 0%, #dff2cc 100%)'
+      : 'linear-gradient(180deg, #f3f0ea 0%, #e5dfd3 100%)';
+    lifeBtn.style.borderColor = gearUnlocked ? '#5b8c38' : '#9c8f7a';
+    lifeBtn.innerHTML = gearUnlocked
+      ? `<span>🐶 펫·🚗 차고·🔧 강화</span><span class="choice-sub" style="color:#37611a;">${petTxt} · ${carTxt}</span>`
+      : `<span>🔒 공방·라이프 (3화 해금)</span><span class="choice-sub">제3화 클리어 시 개방</span>`;
     lifeBtn.addEventListener('click', () => {
+      if (!gearUnlocked) {
+        sfx.damage();
+        showToast('🔒 제3화 클리어 후 공방·라이프가 개방됩니다!', 'warn');
+        state.log = '🔒 공방·라이프 허브는 제3화 이후 이용할 수 있습니다.';
+        render();
+        return;
+      }
       sfx.click();
       state.phase = 'lifestyle';
       state.lifeTab = 'main';
@@ -1807,13 +1888,24 @@ function render() {
     });
     elChoicesPanel.appendChild(lifeBtn);
 
+    const towerUnlocked = isFeatureUnlocked(state, 'foundation');
     const towerBtn = document.createElement('button');
-    towerBtn.className = 'choice-btn row-btn';
-    towerBtn.style.gridColumn = 'span 2';
-    towerBtn.style.background = 'linear-gradient(180deg, #f9ecec 0%, #f1d4d4 100%)';
-    towerBtn.style.borderColor = '#9e2a2b';
-    towerBtn.innerHTML = `<span>🏢 서울 빌런 배틀타워 (최고 ${state.bestTowerFloor || 0}층)</span><span class="choice-sub" style="color:#9e2a2b;">무한 연승 도전 ▶</span>`;
+    towerBtn.className = 'choice-btn';
+    towerBtn.style.background = towerUnlocked
+      ? 'linear-gradient(180deg, #f9ecec 0%, #f1d4d4 100%)'
+      : 'linear-gradient(180deg, #f3f0ea 0%, #e5dfd3 100%)';
+    towerBtn.style.borderColor = towerUnlocked ? '#9e2a2b' : '#9c8f7a';
+    towerBtn.innerHTML = towerUnlocked
+      ? `<span>🏢 배틀타워 (최고 ${state.bestTowerFloor || 0}층)</span><span class="choice-sub" style="color:#9e2a2b;">무한 연승 도전 ▶</span>`
+      : `<span>🔒 배틀타워 (24화 해금)</span><span class="choice-sub">4부 총력전 이후 개방</span>`;
     towerBtn.addEventListener('click', () => {
+      if (!towerUnlocked) {
+        sfx.damage();
+        showToast('🔒 제24화 이후 배틀타워가 개방됩니다!', 'warn');
+        state.log = '🔒 서울 빌런 배틀타워는 제24화 이후 도전할 수 있습니다.';
+        render();
+        return;
+      }
       sfx.powerup();
       state.towerFloor = 1;
       const pool = [...VILLAINS, ...GUERRILLA_VILLAINS];
@@ -1821,6 +1913,48 @@ function render() {
       startBattle(pick.id);
     });
     elChoicesPanel.appendChild(towerBtn);
+
+    // V26.0 서울 5대 구역 치안 현황
+    const distCleared = getClearedDistrictCount(state);
+    const distBtn = document.createElement('button');
+    distBtn.className = 'choice-btn';
+    distBtn.style.background = 'linear-gradient(180deg, #edf6ff 0%, #d8ecff 100%)';
+    distBtn.style.borderColor = '#2b6cb0';
+    distBtn.innerHTML = `<span>🏙️ 서울 5대 구역 치안 (${distCleared}/5)</span><span class="choice-sub" style="color:#1e4e8c;">평화구역 영구 버프 & 후원</span>`;
+    distBtn.addEventListener('click', () => {
+      sfx.click();
+      openDistrictsModal();
+    });
+    elChoicesPanel.appendChild(distBtn);
+
+    // V26.0 심야 마계 보스 러시 (25화 해금)
+    const nmUnlocked = isFeatureUnlocked(state, 'nightmare');
+    const nmBtn = document.createElement('button');
+    nmBtn.className = 'choice-btn row-btn';
+    nmBtn.style.gridColumn = 'span 2';
+    nmBtn.style.background = nmUnlocked
+      ? 'linear-gradient(180deg, #2d1b3d 0%, #1d1128 100%)'
+      : 'linear-gradient(180deg, #f3f0ea 0%, #e5dfd3 100%)';
+    nmBtn.style.borderColor = nmUnlocked ? '#a855f7' : '#9c8f7a';
+    if (nmUnlocked) nmBtn.style.color = '#f3e8ff';
+    nmBtn.innerHTML = nmUnlocked
+      ? `<span>🌃 심야 마계 보스 러시 (최고 ${state.bestNightmareFloor || 0}층)</span><span class="choice-sub" style="color:#d8b4fe;">보스 연속 격파 · 유니크 드랍↑ ▶</span>`
+      : `<span>🔒 심야 마계 보스 러시 (25화 해금)</span><span class="choice-sub">5부 잠입작전 돌입 시 개방</span>`;
+    nmBtn.addEventListener('click', () => {
+      if (!nmUnlocked) {
+        sfx.damage();
+        showToast('🔒 제25화 진입 시 심야 마계 보스 러시가 해금됩니다!', 'warn');
+        state.log = '🔒 심야 마계 보스 러시는 제25화 이후 개방됩니다.';
+        render();
+        return;
+      }
+      sfx.powerup();
+      state.nightmareFloor = 1;
+      const bossPool = [...BOSSES, HIDDEN_BOSS];
+      const pick = bossPool[Math.floor(Math.random() * bossPool.length)];
+      startBattle(pick.id);
+    });
+    elChoicesPanel.appendChild(nmBtn);
     return;
   }
 
@@ -1857,17 +1991,18 @@ function render() {
     elChoicesPanel.className = 'choices-panel grid-2';
 
     const tabRow = [
-      { id: 'main', label: '🐶 펫·🚗·🔧' },
-      { id: 'room', label: `🏠 방(${(state.roomUpgrades || []).length}/4)` },
-      { id: 'stock', label: '📈 주식·🎰' },
-      { id: 'costume', label: '🧥 코스튬' },
-      { id: 'foundation', label: '🏛️ 재단' },
+      { id: 'main', label: '🐶 펫·🚗·🔧', unlockKey: 'gear', reqCh: 3 },
+      { id: 'room', label: `🏠 방(${(state.roomUpgrades || []).length}/4)`, unlockKey: 'room_stock', reqCh: 12 },
+      { id: 'stock', label: '📈 주식·🎰', unlockKey: 'room_stock', reqCh: 12 },
+      { id: 'costume', label: '🧥 코스튬', unlockKey: 'car_costume', reqCh: 21 },
+      { id: 'foundation', label: '🏛️ 재단', unlockKey: 'foundation', reqCh: 24 },
     ];
     const tabWrap = document.createElement('div');
     tabWrap.style.gridColumn = 'span 2';
     tabWrap.style.display = 'flex';
     tabWrap.style.gap = '4px';
     tabRow.forEach((tb) => {
+      const ok = isFeatureUnlocked(state, tb.unlockKey);
       const tBtn = document.createElement('button');
       tBtn.className = 'choice-btn';
       tBtn.style.flex = '1';
@@ -1876,8 +2011,15 @@ function render() {
         tBtn.style.background = '#e7d5b1';
         tBtn.style.borderColor = '#9e2a2b';
       }
-      tBtn.innerHTML = `<span style="font-size:0.74rem;text-align:center;">${tb.label}</span>`;
+      tBtn.innerHTML = `<span style="font-size:0.74rem;text-align:center;">${ok ? tb.label : `🔒(${tb.reqCh}화)`}</span>`;
       tBtn.addEventListener('click', () => {
+        if (!ok) {
+          sfx.damage();
+          showToast(`🔒 제${tb.reqCh}화 진행 시 [${tb.label}] 탭이 해금됩니다!`, 'warn');
+          state.log = `🔒 [${tb.label}] 기능은 제${tb.reqCh}화 이후 이용할 수 있습니다.`;
+          render();
+          return;
+        }
         sfx.click();
         state.lifeTab = tb.id;
         render();
@@ -2122,9 +2264,18 @@ function render() {
       });
     }
 
+    const petUnlocked = isFeatureUnlocked(state, 'pet');
     const petBtn = document.createElement('button');
     petBtn.className = 'choice-btn';
-    if (!state.pet.adopted) {
+    if (!petUnlocked) {
+      petBtn.innerHTML = '<span>🔒 시바견 콩이 입양 (18화 해금)</span><span class="choice-sub">제18화에서 콩이를 구조하면 해금!</span>';
+      petBtn.addEventListener('click', () => {
+        sfx.damage();
+        showToast('🔒 제18화에서 유기견 콩이를 만나면 입양할 수 있습니다!', 'warn');
+        state.log = '🔒 시바견 콩이는 제18화 스토리를 진행하면 입양할 수 있습니다.';
+        render();
+      });
+    } else if (!state.pet.adopted) {
       petBtn.innerHTML = '<span>🐶 시바견 콩이 입양 (60P)</span><span class="choice-sub">전투 지원 + 데이트 호감+5</span>';
       petBtn.addEventListener('click', () => {
         if (state.points < 60) {
@@ -2172,9 +2323,18 @@ function render() {
     }
     elChoicesPanel.appendChild(petBtn);
 
+    const carUnlocked = isFeatureUnlocked(state, 'car_costume');
     const carBtn = document.createElement('button');
     carBtn.className = 'choice-btn';
-    if (nextCar) {
+    if (!carUnlocked) {
+      carBtn.innerHTML = '<span>🔒 차량 구매 (21화 해금)</span><span class="choice-sub">제21화 이후 드라이브 차량 해금</span>';
+      carBtn.addEventListener('click', () => {
+        sfx.damage();
+        showToast('🔒 제21화 이후 차량 구매가 개방됩니다!', 'warn');
+        state.log = '🔒 차량 구매는 제21화 이후 이용할 수 있습니다.';
+        render();
+      });
+    } else if (nextCar) {
       carBtn.innerHTML = `<span>🚗 ${nextCar.name} 구매 (${nextCar.cost}P)</span><span class="choice-sub">드라이브 데이트 +${nextCar.driveBonus}</span>`;
       carBtn.addEventListener('click', () => {
         if (state.points < nextCar.cost) {
@@ -2338,6 +2498,7 @@ function render() {
       render();
     };
 
+    const chloeUnlocked = isFeatureUnlocked(state, 'chloe');
     const rActions = [
       {
         title: '🇯🇵 일본어 공부 (유키)',
@@ -2356,9 +2517,16 @@ function render() {
         },
       },
       {
-        title: '🇺🇸 영어 공부 (클로이)',
-        sub: state.lastStudyDay.en === state.day ? '오늘 공부 완료 (내일 가능)' : `Lv.${state.lang.en} · 하루 1회 · 호감+4`,
+        title: chloeUnlocked ? '🇺🇸 영어 공부 (클로이)' : '🔒 영어 공부 (17화 해금)',
+        sub: !chloeUnlocked ? '제17화 클로이 합류 시 해금' : (state.lastStudyDay.en === state.day ? '오늘 공부 완료 (내일 가능)' : `Lv.${state.lang.en} · 하루 1회 · 호감+4`),
         run: () => {
+          if (!chloeUnlocked) {
+            sfx.damage();
+            showToast('🔒 제17화에서 클로이를 만나면 영어 공부가 해금됩니다!', 'warn');
+            state.log = '🔒 클로이는 제17화에서 합류합니다!';
+            render();
+            return;
+          }
           if (state.lastStudyDay.en === state.day) {
             state.log = '📚 오늘은 이미 영어 공부를 완료했습니다! 내일 다시 공부하세요.';
             render();
@@ -2377,9 +2545,18 @@ function render() {
         run: () => tryStartDate('yuki'),
       },
       {
-        title: chloeReady ? '💖 클로이에게 고백하기!' : (chloeCanDate ? '📸 클로이와 데이트 (35P)' : '💬 클로이와 알아가기 (15P)'),
-        sub: state.lastDateDay.chloe === state.day ? '오늘 완료 (내일 가능)' : (chloeCanDate ? '하루 1회 · 취향 공략' : '호감 35 달성 시 데이트 해금'),
-        run: () => tryStartDate('chloe'),
+        title: !chloeUnlocked ? '🔒 클로이 데이트 (17화 해금)' : (chloeReady ? '💖 클로이에게 고백하기!' : (chloeCanDate ? '📸 클로이와 데이트 (35P)' : '💬 클로이와 알아가기 (15P)')),
+        sub: !chloeUnlocked ? '제17화 클로이 합류 시 해금' : (state.lastDateDay.chloe === state.day ? '오늘 완료 (내일 가능)' : (chloeCanDate ? '하루 1회 · 취향 공략' : '호감 35 달성 시 데이트 해금')),
+        run: () => {
+          if (!chloeUnlocked) {
+            sfx.damage();
+            showToast('🔒 제17화에서 클로이를 만나면 데이트가 해금됩니다!', 'warn');
+            state.log = '🔒 클로이는 제17화에서 합류합니다!';
+            render();
+            return;
+          }
+          tryStartDate('chloe');
+        },
       },
     ];
 
@@ -3167,12 +3344,17 @@ function render() {
           if (ef.speech) state.stats.speech += ef.speech;
           if (ef.guts) state.stats.guts += ef.guts;
           if (ef.law) state.stats.law += ef.law;
+          if (ef.loveYuki) state.love.yuki = clamp((state.love.yuki || 0) + ef.loveYuki, 0, 100);
+          if (ef.loveChloe) state.love.chloe = clamp((state.love.chloe || 0) + ef.loveChloe, 0, 100);
+          if (ef.followers) state.followers = (state.followers || 120) + ef.followers;
         }
         if (choice.completeChapterOnly) {
           sfx.victory();
+          const prevCh = state.chapterIndex;
           state.chapterIndex += 1;
           state.storySceneIndex = 0;
           state.unreadMessages += 1;
+          notifyNewUnlocks(prevCh, state.chapterIndex);
           advanceTime();
           state.phase = 'map';
           state.log = `✅ [제${ch.chapterNum}화] ${ch.title} 클리어! 다음 이야기가 해금되었습니다.`;
@@ -3718,6 +3900,54 @@ function render() {
     return;
   }
 
+  // 7-0. V26.0 심야 마계 보스 러시 클리어 화면
+  if (state.phase === 'nightmare_clear') {
+    const floor = state.nightmareFloor || 1;
+    elLocation.textContent = `🌃 심야 마계 보스 러시 · ${floor}층`;
+    elSceneTag.textContent = '마계 승리';
+    elSceneTag.className = 'scene-tag event';
+    elSceneTitle.textContent = `🌃 마계 보스 ${floor}층 격파!`;
+    elWeaknessPill.classList.add('hidden');
+    elEnemyHpWrap.classList.add('hidden');
+    elQuoteBubble.classList.add('hidden');
+    showSceneCard(
+      `🌃 NIGHTMARE BOSS RUSH · ${floor}F CLEAR`,
+      ` 현재 연승: ${floor}층 · 역대 최고: ${state.bestNightmareFloor || floor}층\n` +
+      ` 유니크 드랍 배율: ${(1 + floor * 0.5).toFixed(1)}배 · 다음 층 보너스: +${(floor + 1) * 25} P\n` +
+      ` ─────────────────────────────────\n` +
+      ` 더 강한 보스에 도전하시겠습니까?`,
+      '연승이 쌓일수록 보스가 강해지지만 전설 장비 드랍률이 폭등합니다!'
+    );
+    elBattleLog.textContent = state.log;
+    elChoicesPanel.className = 'choices-panel';
+
+    const nextNm = document.createElement('button');
+    nextNm.className = 'choice-btn row-btn story-main-btn';
+    nextNm.innerHTML = `<span>🔥 다음 마계 보스 (${floor + 1}층) 도전!</span><span class="choice-sub">보스 HP+${(floor + 1) * 35} · 유니크 ${(1 + (floor + 1) * 0.5).toFixed(1)}배</span>`;
+    nextNm.addEventListener('click', () => {
+      sfx.powerup();
+      state.nightmareFloor = floor + 1;
+      const bossPool = [...BOSSES, HIDDEN_BOSS];
+      const pick = bossPool[Math.floor(Math.random() * bossPool.length)];
+      startBattle(pick.id);
+    });
+    elChoicesPanel.appendChild(nextNm);
+
+    const exitNm = document.createElement('button');
+    exitNm.className = 'choice-btn row-btn';
+    exitNm.innerHTML = '<span>🏙️ 보상 챙기고 안전 귀환</span><span class="choice-sub">서울 지도로 복귀</span>';
+    exitNm.addEventListener('click', () => {
+      sfx.click();
+      state.nightmareFloor = 0;
+      state.phase = 'map';
+      state.log = `🌃 마계 보스 러시 ${floor}층까지 정복하고 무사 귀환했습니다!`;
+      saveGame();
+      render();
+    });
+    elChoicesPanel.appendChild(exitNm);
+    return;
+  }
+
   // 7-1. V17.0 배틀타워 층 클리어 화면
   if (state.phase === 'tower_clear') {
     const floor = state.towerFloor || 1;
@@ -4015,12 +4245,18 @@ function renderPhoneModal() {
   });
   reportCard.appendChild(rBtn);
   if (state.pendingReports >= 2) {
+    const courtUnlocked = isFeatureUnlocked(state, 'court');
     const cBtn = document.createElement('button');
     cBtn.className = 'use-btn';
-    cBtn.style.background = '#9e2a2b';
+    cBtn.style.background = courtUnlocked ? '#9e2a2b' : '#7a7063';
     cBtn.style.marginLeft = '4px';
-    cBtn.textContent = '⚖️즉결재판';
+    cBtn.textContent = courtUnlocked ? '⚖️즉결재판' : '🔒재판(9화)';
     cBtn.addEventListener('click', () => {
+      if (!courtUnlocked) {
+        sfx.damage();
+        showToast('🔒 제9화 이후 즉결재판이 해금됩니다!', 'warn');
+        return;
+      }
       sfx.powerup();
       elPhoneModal.classList.add('hidden');
       state.courtCaseIdx = Math.floor(Math.random() * COURT_CASES.length);
@@ -4089,17 +4325,33 @@ function renderPhoneModal() {
       <p>장착 보너스: 공격 +${eqBon.atk} · 🛡️ 방어 +${eqBon.def} · 치명 +${Math.round(eqBon.crit * 100)}%</p>
     </div>
   `;
+  const gearUnlocked = isFeatureUnlocked(state, 'gear');
+  const commUnlocked = isFeatureUnlocked(state, 'community');
   const gBtn = document.createElement('button');
   gBtn.className = 'use-btn';
-  gBtn.style.background = '#7e22ce';
-  gBtn.textContent = '장비';
-  gBtn.addEventListener('click', () => { sfx.click(); elPhoneModal.classList.add('hidden'); openGearModal(); });
+  gBtn.style.background = gearUnlocked ? '#7e22ce' : '#7a7063';
+  gBtn.textContent = gearUnlocked ? '장비' : '🔒(3화)';
+  gBtn.addEventListener('click', () => {
+    if (!gearUnlocked) {
+      sfx.damage();
+      showToast('🔒 제3화 클리어 후 파밍 장비 창고가 해금됩니다!', 'warn');
+      return;
+    }
+    sfx.click(); elPhoneModal.classList.add('hidden'); openGearModal();
+  });
   const cBtn2 = document.createElement('button');
   cBtn2.className = 'use-btn';
-  cBtn2.style.background = '#1d4ed8';
+  cBtn2.style.background = commUnlocked ? '#1d4ed8' : '#7a7063';
   cBtn2.style.marginLeft = '4px';
-  cBtn2.textContent = '커뮤니티';
-  cBtn2.addEventListener('click', () => { sfx.click(); elPhoneModal.classList.add('hidden'); openCommunityModal(); });
+  cBtn2.textContent = commUnlocked ? '커뮤니티' : '🔒(6화)';
+  cBtn2.addEventListener('click', () => {
+    if (!commUnlocked) {
+      sfx.damage();
+      showToast('🔒 제6화 클리어 후 서울 익명 커뮤니티가 해금됩니다!', 'warn');
+      return;
+    }
+    sfx.click(); elPhoneModal.classList.add('hidden'); openCommunityModal();
+  });
   gearCard.appendChild(gBtn);
   gearCard.appendChild(cBtn2);
   elPhoneBody.appendChild(gearCard);
@@ -4607,6 +4859,37 @@ function openEndingsModal() {
     elEndingsList.appendChild(card);
   });
   elEndingsModal.classList.remove('hidden');
+}
+
+function openDistrictsModal() {
+  elActivityModalTitle.textContent = `🏙️ 서울 5대 구역 치안 (${getClearedDistrictCount(state)}/5 평화구역)`;
+  elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+  const dState = state.districts || {};
+  SEOUL_DISTRICTS.forEach((d) => {
+    const pct = Math.min(100, dState[d.id] || 0);
+    const cleared = pct >= 100;
+    const card = document.createElement('div');
+    card.className = 'inv-item';
+    card.innerHTML = `
+      <div class="inv-info">
+        <h4>${cleared ? '🕊️' : '🚨'} ${d.name} (${pct}%${cleared ? ' · 평화구역' : ''})</h4>
+        <p>${d.desc} · <b>${d.buffDesc}</b>${cleared ? ' ✅ 적용 중!' : ' (100% 달성 시 영구 해금)'}</p>
+      </div>
+    `;
+    const btn = document.createElement('button');
+    btn.className = 'use-btn';
+    btn.textContent = cleared ? '순찰' : '출동';
+    btn.addEventListener('click', () => {
+      elActivityModal.classList.add('hidden');
+      const pool = (d.enemies || []).filter((id) => VILLAINS.some((v) => v.id === id) || GUERRILLA_VILLAINS.some((v) => v.id === id));
+      const pickId = pool.length ? pool[Math.floor(Math.random() * pool.length)] : d.enemies[0];
+      startBattle(pickId);
+    });
+    card.appendChild(btn);
+    elActivityList.appendChild(card);
+  });
+  elActivityModal.classList.remove('hidden');
 }
 
 function openActivityModal(cat) {
