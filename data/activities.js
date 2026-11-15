@@ -8,8 +8,11 @@ export const ACTIVITY_CATEGORIES = [
     image: 'assets/images/act_patrol.jpg',
     animClass: 'cutscene-patrol',
     items: [
-      { id: 'patrol_alley', name: '🛣️ 원룸촌 골목 순찰', desc: '골목 빌런 조우 + 순찰 카운트 +1', battleZone: 'alley', isPatrol: true },
-      { id: 'patrol_transit', name: '🚇 지하철·버스 순찰', desc: '대중교통 빌런 조우 + 순찰 카운트 +1', battleZone: 'transit', isPatrol: true },
+      { id: 'patrol_mapo', name: '🎸 마포·원룸촌 순찰 (Lv.1~10)', desc: '초보자 권장 구역 · 10종 빌런 조우 + 순찰 +1', battleDistrict: 'mapo', minLv: 1, isPatrol: true },
+      { id: 'patrol_seongsu', name: '🎨 성수·2호선 순찰 (Lv.11~20)', desc: '중급 구역 · 10종 빌런 조우 + 순찰 +1', battleDistrict: 'seongsu', minLv: 11, isPatrol: true },
+      { id: 'patrol_jongno', name: '💼 종로·도심 순찰 (Lv.21~30)', desc: '상급 구역 · 10종 빌런 조우 + 순찰 +1', battleDistrict: 'jongno', minLv: 21, isPatrol: true },
+      { id: 'patrol_gangnam', name: '💎 강남·번화가 순찰 (Lv.31~40)', desc: '고위험 구역 · 10종 빌런 조우 + 순찰 +1', battleDistrict: 'gangnam', minLv: 31, isPatrol: true },
+      { id: 'patrol_yeouido', name: '🌃 여의도·본거지 순찰 (Lv.41~50)', desc: '최고위험 구역 · 10종 정예 빌런 + 순찰 +1', battleDistrict: 'yeouido', minLv: 41, isPatrol: true },
       { id: 'patrol_cctv', name: '📹 골목 CCTV 사각지대 채증', desc: '채증 +1 · 모범 +5 · 민폐도 -5%', effect: { report: 1, lawful: 5, chaos: -5 }, isPatrol: true, msg: '📹 사각지대 불법 투기 증거 확보! (채증 +1, 민폐도 -5%)' },
       { id: 'patrol_elder', name: '👵 경비실 어르신 탐문', desc: '단서 획득 · +15P · 사이다 +10', effect: { points: 15, sp: 10, lawful: 4 }, isPatrol: true, msg: '👵 어르신이 빌런 동선과 떡을 주셨습니다! (+15 P, 사이다 +10)' },
       { id: 'patrol_event', name: '⚡ 서울 핫플 돌발 탐방', desc: '100% 랜덤 거리 사건 발생!', forceEvent: true, isPatrol: true },

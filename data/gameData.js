@@ -1,3 +1,5 @@
+import { EXTRA_MOBS_40 } from './mobs40.js?v=48';
+
 export const TIME_SLOTS = ['🌅 오전', '☀️ 오후', '🌙 밤', '🦉 심야'];
 
 export const ITEMS = {
@@ -376,6 +378,7 @@ export const VILLAINS = [
     ],
     defeatQuote: '"죄, 죄송합니다! 짐 챙겨서 1인석으로 옮길게요..."',
   },
+  ...EXTRA_MOBS_40,
 ];
 
 export const BOSSES = [

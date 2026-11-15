@@ -1,6 +1,6 @@
-import { TIME_SLOTS, ITEMS, TRAITS, VILLAINS, BOSSES, HIDDEN_BOSS, WEATHERS, RANDOM_EVENTS, STORY_MESSAGES } from './data/gameData.js?v=46';
-import { STORY_CHAPTERS } from './data/storyChapters.js?v=46';
-import { ACTIVITY_CATEGORIES } from './data/activities.js';
+import { TIME_SLOTS, ITEMS, TRAITS, VILLAINS, BOSSES, HIDDEN_BOSS, WEATHERS, RANDOM_EVENTS, STORY_MESSAGES } from './data/gameData.js?v=48';
+import { STORY_CHAPTERS } from './data/storyChapters.js?v=48';
+import { ACTIVITY_CATEGORIES } from './data/activities.js?v=48';
 import { MINI_EVENTS, ENEMY_INTENTS, createFeedForVictory } from './data/liveEvents.js';
 import { ENDINGS, evaluateEnding } from './data/endings.js';
 import { HEROINES, LANG_QUIZZES, DATE_EVENTS } from './data/romance.js';
@@ -10,7 +10,7 @@ import { COURT_CASES, COSTUMES, CAPSULE_POOL, PET_WALK_EVENTS } from './data/v17
 import { CLUES, SOME_CRISIS_EVENTS, RIVAL_EVENTS, REFORMED_ALLIES, GETTING_TO_KNOW_EVENTS, STORY_INTERLUDES, WEEKEND_EVENTS } from './data/v19Story.js';
 import { DIFFICULTIES, RARITY_INFO, GEAR_LOOT_POOL, PET_JOBS, LOGIC_COUNTERS, generateCommunityPosts } from './data/v24Systems.js';
 import { KISS_SCENES, LOVER_ACTIONS } from './data/v25Romance.js';
-import { UNLOCK_MILESTONES, isFeatureUnlocked, SEOUL_DISTRICTS, getDistrictIdForEnemy, getClearedDistrictCount } from './data/v26World.js';
+import { UNLOCK_MILESTONES, isFeatureUnlocked, SEOUL_DISTRICTS, getDistrictIdForEnemy, getClearedDistrictCount } from './data/v26World.js?v=48';
 import { STORY_BOSSES } from './data/storyBosses.js?v=45';
 import { sfx } from './sound.js';
 
@@ -1142,27 +1142,46 @@ function startBattle(enemyId) {
     ? ENEMY_MODIFIERS[Math.floor(Math.random() * ENEMY_MODIFIERS.length)]
     : null;
   state.enemyModifier = mod ? mod.id : null;
-  const lvScale = 1 + Math.max(0, (state.level || 1) - 1) * 0.10 + Math.min(29, state.chapterIndex || 0) * 0.055;
-  const atkScale = 1 + Math.max(0, (state.level || 1) - 1) * 0.06 + Math.min(29, state.chapterIndex || 0) * 0.035;
-  const bossHpBoost = isBossEnemy ? 1.85 : 1.55;
-  const bossAtkBoost = isBossEnemy ? 1.25 : 1.18;
+  const heroLv = state.level || 1;
+  const distId = baseEnemy.district || getDistrictIdForEnemy(baseEnemy.id);
+  const distInfo = SEOUL_DISTRICTS.find((d) => d.id === distId);
+  const minZoneLv = distInfo?.minLv || 1;
+  const maxZoneLv = distInfo?.maxLv || 50;
+  // 구역 티어를 지키되 주인공이 고레벨이면 저레벨 구역 적도 절반 속도로 동반 성장!
+  const enemyLv = isBossEnemy
+    ? Math.max(heroLv, Math.min(50, Math.round((state.chapterIndex || 0) * 1.65) + 2))
+    : Math.max(minZoneLv, Math.min(maxZoneLv + Math.floor(Math.max(0, heroLv - maxZoneLv) * 0.55), heroLv + Math.max(0, minZoneLv - heroLv)));
+
+  const lvScale = 1 + Math.max(0, enemyLv - 1) * 0.115;
+  const atkScale = 1 + Math.max(0, enemyLv - 1) * 0.065;
+  const bossHpBoost = isBossEnemy ? 1.9 : 1.55;
+  const bossAtkBoost = isBossEnemy ? 1.25 : 1.15;
   const modHpMult = mod ? mod.hpMult : 1;
   const modAtkMult = mod ? mod.atkMult : 1;
   const modRewardMult = mod ? mod.rewardMult : 1;
-  const baseScaledHp = Math.round(baseEnemy.maxHp * lvScale * bossHpBoost * modHpMult);
+
+  // V27.2 주인공 현재 화력 연동 HP 보정: 잡몹도 최소 3~5턴 공방을 주고받는 쫀득한 전투!
+  const avgStat = ((state.stats?.speech || 2) + (state.stats?.guts || 2) + (state.stats?.law || 2)) / 3;
+  const eqAtk = getEquippedBonuses().atk || 0;
+  const estHeroHit = Math.round((22 + avgStat * 4.2 + (state.bonusDmg || 0) + eqAtk) * 1.28);
+  const targetTurns = isBossEnemy ? 6.5 : 4.2;
+  const coScaledHp = Math.round(estHeroHit * targetTurns * (enemyLv > heroLv ? 1 + (enemyLv - heroLv) * 0.04 : 1) * modHpMult);
+
+  const rawFormulaHp = Math.round(baseEnemy.maxHp * lvScale * bossHpBoost * modHpMult);
+  const baseScaledHp = Math.max(rawFormulaHp, coScaledHp);
   const baseScaledAtk = Math.round(baseEnemy.atk * atkScale * bossAtkBoost * modAtkMult);
   const rawMaxHp = nmFloor > 0
-    ? baseScaledHp + nmFloor * 48
-    : (floor > 0 ? baseScaledHp + floor * 26 : baseScaledHp);
+    ? baseScaledHp + nmFloor * 52
+    : (floor > 0 ? baseScaledHp + floor * 28 : baseScaledHp);
   const rawAtk = nmFloor > 0
     ? baseScaledAtk + nmFloor * 4
     : (floor > 0 ? baseScaledAtk + floor * 2 : baseScaledAtk);
   const enemy = {
     ...baseEnemy,
-    name: `${mod ? `[${mod.label}] ` : ''}${floor > 0 ? `[타워 ${floor}층] ` : ''}${baseEnemy.name}`,
+    name: `[Lv.${enemyLv}] ${mod ? `[${mod.label}] ` : ''}${floor > 0 ? `[타워 ${floor}층] ` : ''}${baseEnemy.name}`,
     maxHp: Math.round(rawMaxHp * diff.hpMult * ngMult),
     atk: Math.round(rawAtk * diff.atkMult * ngMult),
-    reward: Math.round((floor > 0 ? 25 + floor * 12 : baseEnemy.reward) * diff.rewardMult * modRewardMult),
+    reward: Math.round((floor > 0 ? 25 + floor * 12 : baseEnemy.reward + enemyLv * 2) * diff.rewardMult * modRewardMult),
   };
   const rep = getReputationInfo();
   let startHp = enemy.maxHp;
@@ -5768,7 +5787,8 @@ function openActivityModal(cat) {
 
     const card = document.createElement('div');
     card.className = 'inv-item';
-    card.innerHTML = `<div class="inv-info"><h4>${act.name}</h4><p>${act.desc}</p></div>`;
+    const dangerTag = (act.minLv && (state.level || 1) < act.minLv) ? ` <span style="color:#c9184a;font-size:0.7rem;">(⚠️고위험 Lv.${act.minLv}+)</span>` : '';
+    card.innerHTML = `<div class="inv-info"><h4>${act.name}${dangerTag}</h4><p>${act.desc}</p></div>`;
 
     const btn = document.createElement('button');
     btn.className = 'use-btn';
@@ -5806,6 +5826,19 @@ function executeActivity(act, cat) {
   if (cat && cat.id) state.mapLoc = cat.id;
   if (cat && cat.image) {
     state.lastCutscene = { image: cat.image, animClass: cat.animClass || '' };
+  }
+
+  if (act.battleDistrict) {
+    state.lastCutscene = null;
+    sfx.click();
+    if (Math.random() < 0.20) {
+      triggerRandomEvent();
+      return;
+    }
+    const pool = VILLAINS.filter((v) => getDistrictIdForEnemy(v.id) === act.battleDistrict);
+    const picked = pool[Math.floor(Math.random() * pool.length)] || VILLAINS[0];
+    startBattle(picked.id);
+    return;
   }
 
   if (act.battleZone) {
