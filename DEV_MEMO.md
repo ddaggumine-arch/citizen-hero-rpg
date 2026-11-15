@@ -5,7 +5,10 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V24.1
+## 현재 최신 버전: V25.0
+- **V25.0**:
+  - **💋 연인 로맨틱 키스신 모드 (`kiss_scene`, `kiss_yuki.jpg`, `kiss_chloe.jpg`)**: 정식 연인 달성 후 `romance` 메뉴/데이트 이어하기로 감상 가능 + 3지선다 반응 + `📸 추억 앨범` 수록
+  - **💑 연인 전용 데이트 행동양식 각 10종 (유키 10종 + 클로이 10종 = 총 20종, `data/v25Romance.js`)**: `couple-stage` 커플 투명 PNG 스프라이트(`couple_yuki_cafe.png`, `couple_yuki_hug.png` + 주인공·히로인 듀오 배치) 데이트 연출 (`?v=28`)
 - **V24.1**:
   - **2026 현대 한국인 웹툰풍 투명 PNG 적 스프라이트 9종 적용** (높이 `504px` 정규화로 주인공 `hero_idle.png`와 크기·발끝 정렬, `.enemy-sprite` 숨쉬기/그림자/`boss-scale` 적용, `?v=27`)
   - **기존 이미지 미구현 적 6명 스프라이트 교체**: `shorts_terrorist`, `pen_clicker`, `boss_dr_chaos`, `night_biker`, `subway_legger`, `illegal_parker`

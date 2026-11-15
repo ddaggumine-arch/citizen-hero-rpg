@@ -806,6 +806,48 @@ body {
   max-width: 52%;
 }
 
+/* V25.0 커플 데이트 스프라이트 스테이지 */
+.illustration-frame.couple-stage #scene-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.86) saturate(1.1);
+}
+
+.couple-sprite {
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  transform: translateX(-50%);
+  height: 84% !important;
+  width: auto !important;
+  max-width: 82%;
+  object-fit: contain;
+  z-index: 7;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.55));
+  animation: coupleFloat 2.4s ease-in-out infinite;
+}
+
+.illustration-frame.couple-stage .hero-sprite.couple-left {
+  left: 34%;
+  transform: translateX(-50%);
+  height: 76% !important;
+  z-index: 7;
+}
+
+.illustration-frame.couple-stage .partner-sprite.couple-right {
+  left: 63%;
+  transform: translateX(-50%);
+  height: 72% !important;
+  z-index: 7;
+}
+
+@keyframes coupleFloat {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-4px); }
+}
+
 .illustration-frame.combat-stage .wanted-poster {
   width: 56%;
   margin-left: auto;
