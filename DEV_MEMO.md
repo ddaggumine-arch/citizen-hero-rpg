@@ -5,7 +5,9 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V26.4
+## 현재 최신 버전: V26.5
+- **V26.5**:
+  - **제2막 (7~12화) 10배 풀볼륨 웹툰형 스토리 리뉴얼 (`data/storyAct2.js`)**: 각 화 6씬 기승전결(총 36씬) 확장, 신규 보스 `sb_07`~`sb_12` 캐릭터성과 100% 연동 (노량진 딸깍이·2호선 100L 거북선·시내버스 아아 테러녀·개찰구 파쿠르·에스컬레이터 폰좀비·심야 폭주두목 + 진상연합 단톡방 해킹, `?v=38`)
 - **V26.4**:
   - **스토리 1~30화 전용 신규 보스 30종 & 투명 PNG 스프라이트 완비 (`data/storyBosses.js`, `assets/images/sb_01.png`~`sb_30.png`)**: 5장(3×2) 웹툰 캐릭터 시트에서 30종 전부 투명 PNG(`504px` 발끝 정렬)로 추출, 순찰/배틀타워 랜덤 풀과 분리된 `storyOnly: true` 전용 보스로 1~30화 전 챕터에 1:1 배치 (`📖 빌런 도감` 수집 포함, `?v=37`)
 - **V26.3**:
