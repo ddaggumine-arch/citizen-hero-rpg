@@ -673,6 +673,7 @@ function isBossId(id) {
 
 function showSceneCard(badge, ascii, sub = '') {
   elSceneImage.classList.add('hidden');
+  elSceneImage.classList.remove('enemy-sprite', 'boss-scale');
   elWantedPoster.classList.add('hidden');
   elSceneCard.classList.remove('hidden');
   elSceneCardBadge.textContent = badge;
@@ -683,11 +684,15 @@ function showSceneCard(badge, ascii, sub = '') {
 function showEnemyVisual(enemy) {
   elSceneCard.classList.add('hidden');
   if (enemy.image) {
+    const isPngSprite = enemy.image.endsWith('.png');
     elSceneImage.src = enemy.image;
     elSceneImage.classList.remove('hidden');
+    elSceneImage.classList.toggle('enemy-sprite', isPngSprite);
+    elSceneImage.classList.toggle('boss-scale', isPngSprite && enemy.id === HIDDEN_BOSS.id);
     elWantedPoster.classList.add('hidden');
   } else {
     elSceneImage.classList.add('hidden');
+    elSceneImage.classList.remove('enemy-sprite', 'boss-scale');
     elWantedPoster.classList.remove('hidden');
     elWantedEmoji.textContent = enemy.wanted?.emoji || '🚨';
     elWantedName.textContent = enemy.name;

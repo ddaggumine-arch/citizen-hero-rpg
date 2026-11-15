@@ -44,6 +44,7 @@ export const GUERRILLA_VILLAINS = [
     reward: 95,
     weakness: 'law',
     weaknessLabel: '약점: ⚖️ 법지식',
+    image: 'assets/images/night_biker_sprite.png',
     banterQuotes: [
       '"부아아앙!! 내 오토바이 배기음 예술이지?!"',
       '"새벽에 좀 달릴 수도 있지 뭘 신고를 해!"',
@@ -60,6 +61,7 @@ export const GUERRILLA_VILLAINS = [
     reward: 85,
     weakness: 'guts',
     weaknessLabel: '약점: 🦁 깡다구',
+    image: 'assets/images/subway_legger_sprite.png',
     banterQuotes: [
       '"내 다리가 길어서 어쩔 수 없는데? 불편하면 서서 가!"',
       '"구두에 흙 묻었잖아! 물어낼 거야?!"',
@@ -76,6 +78,7 @@ export const GUERRILLA_VILLAINS = [
     reward: 105,
     weakness: 'speech',
     weaknessLabel: '약점: 🗣️ 언변',
+    image: 'assets/images/illegal_parker_sprite.png',
     banterQuotes: [
       '"잠깐 비상등 켜고 5분만 대놓은 건데 왜 난리야!"',
       '"내 차 긁히면 네가 책임질 거냐?!"',

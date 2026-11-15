@@ -787,6 +787,25 @@ body {
   margin-right: 4px;
 }
 
+.illustration-frame.combat-stage #scene-image.enemy-sprite {
+  position: absolute;
+  right: 12px;
+  bottom: 2px;
+  height: 78% !important;
+  width: auto !important;
+  max-width: 48%;
+  margin: 0;
+  object-fit: contain;
+  z-index: 6;
+  filter: drop-shadow(-2px 4px 6px rgba(0, 0, 0, 0.55));
+  animation: heroBreathe 2.0s ease-in-out infinite;
+}
+
+.illustration-frame.combat-stage #scene-image.enemy-sprite.boss-scale {
+  height: 85% !important;
+  max-width: 52%;
+}
+
 .illustration-frame.combat-stage .wanted-poster {
   width: 56%;
   margin-left: auto;
