@@ -1,5 +1,5 @@
 import { TIME_SLOTS, ITEMS, TRAITS, VILLAINS, BOSSES, HIDDEN_BOSS, WEATHERS, RANDOM_EVENTS, STORY_MESSAGES } from './data/gameData.js';
-import { STORY_CHAPTERS } from './data/storyChapters.js';
+import { STORY_CHAPTERS } from './data/storyChapters.js?v=44';
 import { ACTIVITY_CATEGORIES } from './data/activities.js';
 import { MINI_EVENTS, ENEMY_INTENTS, createFeedForVictory } from './data/liveEvents.js';
 import { ENDINGS, evaluateEnding } from './data/endings.js';
@@ -1726,8 +1726,9 @@ function render() {
     elEnemyHpWrap.classList.add('hidden');
     elQuoteBubble.textContent = '"잠깐! 그 완장은 3년 전 실종된 [1대 시민영웅]의 것인데?!"';
     elQuoteBubble.classList.remove('hidden');
-    elSceneImage.src = 'assets/images/officer_kim.jpg';
-    elSceneImage.classList.remove('hidden');
+    elSceneImage.src = 'assets/images/hero_idle.png';
+    elSceneImage.classList.remove('hidden', 'enemy-sprite', 'boss-scale');
+    if (elFrame) elFrame.classList.add('story-stage');
     elSceneCard.classList.add('hidden');
     setLogText(
       '빌런이 쩔쩔매며 도망가고, 시민들이 찍은 영상이 순식간에 SNS 팔로워 1,200명 돌파!\n' +
