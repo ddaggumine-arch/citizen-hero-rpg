@@ -5,7 +5,12 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V27.0
+## 현재 최신 버전: V27.1
+- **V27.1**:
+  - **레벨업 스킬포인트 자유 분배 & 100P 리셋 (`index.html`, `style.css`, `app.js`)**: 레벨업마다 `skillPoints +2` 지급, 상단 스탯 바 `✨+N` 배지 표시 및 `openMiniStatsHelpModal()`에서 언변(치명+2%)·깡다구(HP+6)·법지식(공+2)·인내심단련(HP+15·방어+1) 자유 투자 및 100P 초기화 지원
+  - **장비 +1~+10 강화 & 강화석 분해 (`openGearModal`, `getEquippedBonuses`)**: 장비 분해 시 `🔨 강화석` 획득 + 최대 `+10강`까지 강화(+1강당 공+3·방+2)
+  - **빌런 랜덤 기질 4종 (`ENEMY_MODIFIERS`) & 예절 피버 타임 (`addFever`, `feverTurns`)**: 일반 빌런 45% 확률 기질(`🔥열받은/🛡️철벽/💎황금빛/⚡민첩한`) 부여 + 전투 중 피버 100% 도달 시 2턴간 약점·치명 확정 & 필살기 사이다 반값(20)
+  - **노멀 잡몹/보스 난이도 상향 (`startBattle`)**: 잡몹 `1.55x HP / 1.18x ATK`, 보스 `1.85x HP / 1.25x ATK` 및 레벨/챕터 스케일링 상향으로 3~4턴 이상의 쫀득한 턴제 전투 확보 (`?v=47`)
 - **V27.0**:
   - **승리 보상 3지선다 대개편 (`data/gameData.js`, `app.js` `buildDraftOptions` / `applyDraftReward`)**: 신규 특성 8종 추가(총 16종) + 기존 특성 **Lv.1~Lv.5 중첩 강화** + 특성 외 다종 보상 카드(`🛠️ 장비 연마석`, `📦 전리품 보급상자`, `📚 실전 특훈(스탯+EXP)`, `💊 긴급 구호 세트`, `💰 특별 현상금&채증`) 혼합 등장으로 상비약 반복 현상 완전 해소
   - **시민영웅 Lv.50 성장 시스템 (`getExpToNextLevel`, `getHeroRankTitle`, `gainHeroExp`)**: 전투·스토리 클리어·보상으로 EXP 획득 → Lv.1~50 성장 시 최대 인내심+5·최대 사이다+1·기본 공격+1 (3레벨마다 방어력+1, 5레벨마다 전스탯+1, 10레벨마다 칭호 승급). 상단 HUD `?` 스탯 안내 모달에서 현재 레벨/EXP 확인 가능

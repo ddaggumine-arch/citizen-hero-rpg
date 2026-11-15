@@ -167,6 +167,13 @@ function createNewGameState() {
     bossDmgMult: 0,
     startSpBonus: 0,
     rewardMultBonus: 0,
+    skillPoints: 0,
+    allocatedStats: { speech: 0, guts: 0, law: 0, hp: 0 },
+    scrap: 0,
+    gearPlus: {},
+    feverGauge: 0,
+    feverTurns: 0,
+    enemyModifier: null,
     pendingWeekend: false,
     statueBuilt: false,
     difficulty: 'normal',
@@ -339,6 +346,7 @@ const elStatGuts = document.getElementById('stat-guts');
 const elStatLaw = document.getElementById('stat-law');
 const elStatPoints = document.getElementById('stat-points');
 const elMiniStatsBtn = document.getElementById('mini-stats-btn');
+const elMiniSpDot = document.getElementById('mini-sp-dot');
 const elInvCount = document.getElementById('inv-count');
 const elTraitCount = document.getElementById('trait-count');
 const elPhoneBadge = document.getElementById('phone-badge');
@@ -802,6 +810,7 @@ function gainHeroExp(amount) {
     state.exp -= need;
     state.level += 1;
     ups += 1;
+    state.skillPoints = (state.skillPoints || 0) + 2;
     state.maxHp += 5;
     state.hp = Math.min(state.maxHp, state.hp + 14);
     state.maxSp += 1;
@@ -815,9 +824,28 @@ function gainHeroExp(amount) {
   if (state.level >= 50) state.exp = 0;
   if (ups > 0) {
     sfx.powerup();
-    showToast(`🎉 LEVEL UP! Lv.${state.level} [${getHeroRankTitle(state.level)}] 달성!`, 'good');
+    showToast(`🎉 LEVEL UP! Lv.${state.level} [${getHeroRankTitle(state.level)}] (+스킬P ${ups * 2})`, 'good');
   }
   return ups;
+}
+
+const ENEMY_MODIFIERS = [
+  { id: 'enraged', label: '🔥 열받은', hpMult: 1.15, atkMult: 1.25, rewardMult: 1.45, expMult: 1.3 },
+  { id: 'iron', label: '🛡️ 철벽', hpMult: 1.42, atkMult: 0.95, rewardMult: 1.35, expMult: 1.25 },
+  { id: 'golden', label: '💎 황금빛', hpMult: 1.12, atkMult: 0.90, rewardMult: 2.0, expMult: 1.6 },
+  { id: 'swift', label: '⚡ 민첩한', hpMult: 1.08, atkMult: 1.18, rewardMult: 1.3, expMult: 1.25 },
+];
+
+function addFever(amount) {
+  if ((state.feverTurns || 0) > 0) return false;
+  state.feverGauge = Math.min(100, (state.feverGauge || 0) + amount);
+  if (state.feverGauge >= 100) {
+    state.feverGauge = 0;
+    state.feverTurns = 2;
+    showToast('🔥 예절 피버 타임 발동!! (2턴 약점·치명 확정 + 필살기 반값!)', 'break');
+    return true;
+  }
+  return false;
 }
 
 function buildDraftOptions(enemy) {
@@ -1042,8 +1070,8 @@ function getEquippedBonuses() {
     if (!id) return;
     const g = GEAR_LOOT_POOL.find((x) => x.id === id);
     if (!g) return;
-    res.atk += g.atk || 0;
-    res.def += g.def || 0;
+    res.atk += (g.atk || 0) + (state.gearPlus?.[id] || 0) * 3;
+    res.def += (g.def || 0) + (state.gearPlus?.[id] || 0) * 2;
     res.crit += g.crit || 0;
     res.spRegen += g.spRegen || 0;
     res.reflect += g.reflect || 0;
@@ -1110,24 +1138,31 @@ function startBattle(enemyId) {
   const diff = getDiffObj();
   const ngMult = 1 + (state.ngPlus || 0) * 0.3;
   const isBossEnemy = isBossId(baseEnemy.id) || !!baseEnemy.storyOnly || baseEnemy.id === HIDDEN_BOSS.id;
-  const lvScale = 1 + Math.max(0, (state.level || 1) - 1) * 0.085 + Math.min(29, state.chapterIndex || 0) * 0.045;
-  const atkScale = 1 + Math.max(0, (state.level || 1) - 1) * 0.05 + Math.min(29, state.chapterIndex || 0) * 0.03;
-  const bossHpBoost = isBossEnemy ? 1.32 : 1.15;
-  const bossAtkBoost = isBossEnemy ? 1.12 : 1.0;
-  const baseScaledHp = Math.round(baseEnemy.maxHp * lvScale * bossHpBoost);
-  const baseScaledAtk = Math.round(baseEnemy.atk * atkScale * bossAtkBoost);
+  const mod = (!isBossEnemy && Math.random() < 0.45)
+    ? ENEMY_MODIFIERS[Math.floor(Math.random() * ENEMY_MODIFIERS.length)]
+    : null;
+  state.enemyModifier = mod ? mod.id : null;
+  const lvScale = 1 + Math.max(0, (state.level || 1) - 1) * 0.10 + Math.min(29, state.chapterIndex || 0) * 0.055;
+  const atkScale = 1 + Math.max(0, (state.level || 1) - 1) * 0.06 + Math.min(29, state.chapterIndex || 0) * 0.035;
+  const bossHpBoost = isBossEnemy ? 1.85 : 1.55;
+  const bossAtkBoost = isBossEnemy ? 1.25 : 1.18;
+  const modHpMult = mod ? mod.hpMult : 1;
+  const modAtkMult = mod ? mod.atkMult : 1;
+  const modRewardMult = mod ? mod.rewardMult : 1;
+  const baseScaledHp = Math.round(baseEnemy.maxHp * lvScale * bossHpBoost * modHpMult);
+  const baseScaledAtk = Math.round(baseEnemy.atk * atkScale * bossAtkBoost * modAtkMult);
   const rawMaxHp = nmFloor > 0
-    ? baseScaledHp + nmFloor * 42
-    : (floor > 0 ? baseScaledHp + floor * 22 : baseScaledHp);
+    ? baseScaledHp + nmFloor * 48
+    : (floor > 0 ? baseScaledHp + floor * 26 : baseScaledHp);
   const rawAtk = nmFloor > 0
-    ? baseScaledAtk + nmFloor * 3
+    ? baseScaledAtk + nmFloor * 4
     : (floor > 0 ? baseScaledAtk + floor * 2 : baseScaledAtk);
   const enemy = {
     ...baseEnemy,
-    name: floor > 0 ? `[타워 ${floor}층] ${baseEnemy.name}` : baseEnemy.name,
+    name: `${mod ? `[${mod.label}] ` : ''}${floor > 0 ? `[타워 ${floor}층] ` : ''}${baseEnemy.name}`,
     maxHp: Math.round(rawMaxHp * diff.hpMult * ngMult),
     atk: Math.round(rawAtk * diff.atkMult * ngMult),
-    reward: Math.round((floor > 0 ? 25 + floor * 12 : baseEnemy.reward) * diff.rewardMult),
+    reward: Math.round((floor > 0 ? 25 + floor * 12 : baseEnemy.reward) * diff.rewardMult * modRewardMult),
   };
   const rep = getReputationInfo();
   let startHp = enemy.maxHp;
@@ -1154,6 +1189,7 @@ function startBattle(enemyId) {
   state.skillChain = [];
   state.enemyBroken = false;
   state.citizenAssistUsed = false;
+  state.feverTurns = 0;
   if ((state.startSpBonus || 0) > 0) {
     state.sp = clamp(state.sp + state.startSpBonus, 0, state.maxSp);
   }
@@ -1475,6 +1511,7 @@ function performGuard() {
   state.sp = clamp(state.sp + 18, 0, state.maxSp);
   state.enemyHp = clamp(state.enemyHp - counterDmg, 0, state.enemyMaxHp);
   state.weakCombo = (state.weakCombo || 0) + 1;
+  addFever(25);
   playHeroAnim('guard');
   sfx.hit(true);
   state.log = `🛡️ 완벽 가드 & 카운터! (반격 -${counterDmg} · 사이다 +18)`;
@@ -1523,11 +1560,13 @@ function performAttack(type) {
     if (state.skillChain.length > 3) state.skillChain.shift();
   }
 
+  const isFever = (state.feverTurns || 0) > 0;
+  const spCost = isFever ? 20 : 40;
   if (type === 'speech') {
     const base = 18 + state.stats.speech * 4 + state.bonusDmg + allyFirstBonus + sodaBonus;
-    const isWeak = enemy.weakness === 'speech';
+    const isWeak = isFever || enemy.weakness === 'speech';
     hitWeakness = isWeak;
-    const critRoll = Math.random() < (0.15 + state.critBonus + chloeCrit);
+    const critRoll = isFever || Math.random() < (0.15 + state.critBonus + chloeCrit);
     if (critRoll && chloeCrit > 0) triggerPartnerCallout('chloe', 'Nice Shot! 📸');
     dmg = Math.round(base * (isWeak ? 1.45 : 1) * (critRoll ? 1.5 : 1));
     isCrit = isWeak || critRoll;
@@ -1536,9 +1575,9 @@ function performAttack(type) {
     state.log = `🗣️ 논리정연한 팩트폭력! (적 멘탈 -${dmg}${isWeak ? ' · 약점 적중!' : ''}${critRoll ? ' · 치명타!' : ''})`;
   } else if (type === 'guts') {
     const base = 16 + state.stats.guts * 4 + state.bonusDmg + allyFirstBonus;
-    const isWeak = enemy.weakness === 'guts';
+    const isWeak = isFever || enemy.weakness === 'guts';
     hitWeakness = isWeak;
-    const critRoll = Math.random() < chloeCrit;
+    const critRoll = isFever || Math.random() < chloeCrit;
     dmg = Math.round(base * (isWeak ? 1.45 : 1) * (critRoll ? 1.5 : 1));
     isCrit = isWeak || critRoll;
     const spGain = 15 + state.gutsSpBonus;
@@ -1551,10 +1590,10 @@ function performAttack(type) {
     const repBonus = rep.mode === 'lawful' ? 2 : 0;
     const costumeLawBonus = state.costume === 'police' ? 3 : 0;
     const total = roll + state.stats.law + state.diceBonus + repBonus + costumeLawBonus;
-    const isWeak = enemy.weakness === 'law';
+    const isWeak = isFever || enemy.weakness === 'law';
     hitWeakness = isWeak;
     state.lawful += 10;
-    if (total >= 12) {
+    if (total >= 12 || isFever) {
       dmg = Math.round((24 + state.stats.law * 5 + state.bonusDmg + allyFirstBonus) * (isWeak ? 1.4 : 1));
       isCrit = true;
       state.enemyStunned = true;
@@ -1566,8 +1605,8 @@ function performAttack(type) {
       state.log = `⚖️ [주사위 ${roll} + 보정 = ${total}] 법 조항이 가물가물... (적 멘탈 -${dmg})`;
     }
   } else if (type === 'special') {
-    if (state.sp < 40) return;
-    state.sp -= 40;
+    if (state.sp < spCost) return;
+    state.sp -= spCost;
     dmg = 45 + state.spDmgBonus + state.bonusDmg + (state.stats.speech + state.stats.guts + state.stats.law) * 2;
     isCrit = true;
     hitWeakness = true;
@@ -1618,6 +1657,11 @@ function performAttack(type) {
   }
 
   state.enemyHp = clamp(state.enemyHp - dmg, 0, state.enemyMaxHp);
+  if (isFever) {
+    state.feverTurns = Math.max(0, (state.feverTurns || 0) - 1);
+  } else if (type !== 'special') {
+    addFever(hitWeakness ? 25 : 14);
+  }
   checkStreamMission(type);
   triggerEnemyHit(dmg, isCrit);
   enemyCounterTurn(enemy);
@@ -1697,6 +1741,11 @@ function render() {
   elStatGuts.textContent = state.stats.guts;
   elStatLaw.textContent = state.stats.law;
   elStatPoints.textContent = state.points;
+  if (elMiniSpDot) {
+    const spPts = state.skillPoints || 0;
+    elMiniSpDot.textContent = `✨+${spPts}`;
+    elMiniSpDot.classList.toggle('hidden', spPts <= 0);
+  }
   elInvCount.textContent = state.inventory.length;
   elTraitCount.textContent = state.traits.length;
 
@@ -4199,6 +4248,15 @@ function render() {
       if (eqB.def > 0) badges.push({ cls: 'is-pet', txt: `🛡️ 방어+${eqB.def}` });
       if ((state.allies?.length || 0) > 0) badges.push({ cls: 'is-pet', txt: `🤝 영웅단 ${state.allies.length}명` });
       if ((state.weakCombo || 0) > 0) badges.push({ cls: 'is-combo', txt: `⚡ 약점콤보 ${state.weakCombo}/2` });
+      if ((state.feverTurns || 0) > 0) {
+        badges.push({ cls: 'is-break', txt: `🔥 FEVER 타임 (${state.feverTurns}턴·필살기 반값!)` });
+      } else {
+        badges.push({ cls: 'is-combo', txt: `⚡ 피버 ${state.feverGauge || 0}%` });
+      }
+      if (state.enemyModifier) {
+        const modObj = ENEMY_MODIFIERS.find((m) => m.id === state.enemyModifier);
+        if (modObj) badges.push({ cls: 'is-break', txt: `기질: ${modObj.label}` });
+      }
       if (state.pet?.adopted) badges.push({ cls: 'is-pet', txt: `🐶 콩이 Lv.${state.pet.level} 지원` });
       if (state.timeIndex >= 2) badges.push({ cls: '', txt: '🌙 야간 보너스 +25%' });
       if (state.streamMission) badges.push({ cls: 'is-combo', txt: state.streamMission.label });
@@ -4296,9 +4354,11 @@ function render() {
       },
       {
         title: '🫧 사이다 필살기',
-        sub: state.sp >= 40 ? '사이다 40 · 확정기절!' : `사이다 부족 (${state.sp}/40)`,
+        sub: state.sp >= ((state.feverTurns || 0) > 0 ? 20 : 40)
+          ? `사이다 ${(state.feverTurns || 0) > 0 ? '20(피버 반값!)' : '40'} · 확정기절!`
+          : `사이다 부족 (${state.sp}/${(state.feverTurns || 0) > 0 ? 20 : 40})`,
         subClass: 'sp',
-        disabled: state.sp < 40,
+        disabled: state.sp < ((state.feverTurns || 0) > 0 ? 20 : 40),
         action: () => performAttack('special'),
       },
     ];
@@ -4328,6 +4388,7 @@ function render() {
           state.pendingReports += 2;
           state.sp = clamp(state.sp + 20, 0, state.maxSp);
           state.perfectSnaps = (state.perfectSnaps || 0) + 1;
+          addFever(35);
           state.log = `📸 [PERFECT 채증!!] 결정적 순간 포착! (멘탈 -${dmg} · 채증+2 · 사이다+20)`;
           checkAchievements();
         } else {
@@ -5248,53 +5309,106 @@ function openVillainCodexModal() {
 }
 
 function openMiniStatsHelpModal() {
+  if (!state.allocatedStats) state.allocatedStats = { speech: 0, guts: 0, law: 0, hp: 0 };
+  const spPts = state.skillPoints || 0;
   const s = state.stats || { speech: 2, guts: 2, law: 2 };
   const eq = typeof getEquippedBonuses === 'function' ? getEquippedBonuses() : { atk: 0, sp: 0, crit: 0, dice: 0 };
   const speechDmg = 18 + s.speech * 4 + (state.bonusDmg || 0) + (eq.atk || 0);
   const gutsDmg = 16 + s.guts * 4 + (state.bonusDmg || 0) + (eq.atk || 0);
   const lawDmg = 24 + s.law * 5 + (state.bonusDmg || 0) + (eq.atk || 0);
   const spDmg = 45 + (state.spDmgBonus || 0) + (state.bonusDmg || 0) + (eq.atk || 0) + (s.speech + s.guts + s.law) * 2;
-
   const lv = state.level || 1;
   const curExp = state.exp || 0;
   const needExp = lv >= 50 ? 0 : getExpToNextLevel(lv);
   const rankTitle = getHeroRankTitle(lv);
 
-  elEndingsModalTitle.textContent = `📊 시민영웅 Lv.${lv}/50 · 능력치 & 도덕P`;
+  elEndingsModalTitle.textContent = `📊 Lv.${lv}/50 · 스탯 분배 & 도덕P`;
   elEndingsList.innerHTML = '';
+
+  const totalAlloc = (state.allocatedStats.speech || 0) + (state.allocatedStats.guts || 0) + (state.allocatedStats.law || 0) + (state.allocatedStats.hp || 0);
+  const spBanner = document.createElement('div');
+  spBanner.className = 'inv-item';
+  spBanner.style.background = spPts > 0 ? 'rgba(217, 119, 6, 0.12)' : '';
+  spBanner.innerHTML = `
+    <div class="inv-info">
+      <h4>✨ 보유 스킬포인트: <span style="color:#b45309;">${spPts} pt</span></h4>
+      <p>레벨업마다 +2 pt 지급! 원하는 스탯에 자유롭게 투자하세요.</p>
+    </div>
+  `;
+  const resetBtn = document.createElement('button');
+  resetBtn.className = 'use-btn';
+  resetBtn.style.background = '#695544';
+  resetBtn.textContent = '리셋(100P)';
+  resetBtn.disabled = totalAlloc <= 0 || state.points < 100;
+  resetBtn.addEventListener('click', () => {
+    sfx.click();
+    const al = state.allocatedStats;
+    const refund = (al.speech || 0) + (al.guts || 0) + (al.law || 0) + (al.hp || 0);
+    if (refund <= 0 || state.points < 100) return;
+    state.points -= 100;
+    state.stats.speech = Math.max(1, state.stats.speech - (al.speech || 0));
+    state.critBonus = Math.max(0, (state.critBonus || 0) - (al.speech || 0) * 0.02);
+    state.stats.guts = Math.max(1, state.stats.guts - (al.guts || 0));
+    state.maxHp = Math.max(80, state.maxHp - (al.guts || 0) * 6 - (al.hp || 0) * 15);
+    state.stats.law = Math.max(1, state.stats.law - (al.law || 0));
+    state.bonusDmg = Math.max(0, (state.bonusDmg || 0) - (al.law || 0) * 2);
+    state.flatDef = Math.max(0, (state.flatDef || 0) - (al.hp || 0));
+    state.hp = Math.min(state.hp, state.maxHp);
+    state.skillPoints = (state.skillPoints || 0) + refund;
+    state.allocatedStats = { speech: 0, guts: 0, law: 0, hp: 0 };
+    showToast(`🔄 스탯 초기화 완료! (+${refund} pt 환급)`, 'good');
+    saveGame();
+    openMiniStatsHelpModal();
+    render();
+  });
+  spBanner.appendChild(resetBtn);
+  elEndingsList.appendChild(spBanner);
 
   const items = [
     {
       emoji: '🏅',
       title: `영웅 레벨 Lv.${lv} / 50 (${rankTitle})`,
       desc: lv >= 50
-        ? `최고 레벨 달성! 기본 방어력 보너스 +${Math.floor((lv - 1) / 3)} 적용 중!`
-        : `경험치 ${curExp} / ${needExp} EXP · 레벨업마다 최대 인내심 +5, 최대 사이다 +1, 기본 공격 +1 (5레벨마다 전스탯 +1 · 3레벨마다 방어력 +1)`,
+        ? `최고 레벨 달성! 기본 방어력 +${Math.floor((lv - 1) / 3)} 적용 중!`
+        : `경험치 ${curExp} / ${needExp} EXP · 레벨업 시 최대HP+5, 공+1, 스킬P+2 (3Lv마다 방어+1, 5Lv마다 전스탯+1)`,
     },
     {
       emoji: '🗣️',
+      allocKey: 'speech',
+      allocHint: '+1 투자 (언변+1 · 치명+2%)',
       title: `언변 (Speech) — 현재 ${s.speech}`,
-      desc: `논리정연한 [팩트폭력] 공격의 기본 위력(현재 약 ${speechDmg})을 올려주며 사이다 +10을 채웁니다. 또한 유키 고백 등 주요 이벤트 조건에도 쓰입니다.\n• 올리는 법: 자기계발(스피치·독서), 스토리·일상 이벤트`,
+      desc: `[팩트폭력] 위력(약 ${speechDmg}) 증가 & 사이다 +10. 투자 시 언변+1, 치명타+2%!`,
     },
     {
       emoji: '🦁',
+      allocKey: 'guts',
+      allocHint: '+1 투자 (깡다구+1 · HP+6)',
       title: `깡다구 (Guts) — 현재 ${s.guts}`,
-      desc: `뻔뻔한 [거울치료] 공격의 기본 위력(현재 약 ${gutsDmg})을 올려주며 사이다를 +15 이상 대량 회복합니다.\n• 올리는 법: 자기계발(철봉공원·담력훈련), 구역 활동·스토리 보상`,
+      desc: `[거울치료] 위력(약 ${gutsDmg}) 증가 & 사이다 +15+. 투자 시 깡다구+1, 최대HP+6!`,
     },
     {
       emoji: '⚖️',
+      allocKey: 'law',
+      allocHint: '+1 투자 (법지식+1 · 공+2)',
       title: `법지식 (Law) — 현재 ${s.law}`,
-      desc: `[법 조항 들이밀기] 주사위(1d20 + 법지식 + 보정 ≥ 12) 성공률과 위력(성공 시 약 ${lawDmg} + 적 기절 & 확률 반성문!)을 높여줍니다.\n• 올리는 법: 자기계발(생활법률 공부), 안전신문고·단서·스토리 보상`,
+      desc: `[법전] 주사위 성공률/위력(약 ${lawDmg} + 기절) 상승. 투자 시 법지식+1, 모든 공격+2!`,
+    },
+    {
+      emoji: '❤️',
+      allocKey: 'hp',
+      allocHint: '+1 투자 (HP+15 · 방어+1)',
+      title: `인내심 단련 — 최대 ${state.maxHp} / 방어 +${(state.flatDef || 0) + Math.floor((lv - 1) / 3)}`,
+      desc: `보스전 생존력 강화! 투자 시 최대 인내심 +15(즉시+15), 고정 방어력 +1!`,
     },
     {
       emoji: '🫧',
       title: `사이다 필살기 연동 — 총합 ${s.speech + s.guts + s.law}`,
-      desc: `3가지 능력치의 총합 × 2가 [사이다 필살기] 위력에 그대로 합산됩니다! (현재 예상 위력: 약 ${spDmg}, 적 확정 기절)`,
+      desc: `3개 스탯 총합×2가 필살기 위력에 합산됨 (예상 위력: 약 ${spDmg}, 피버 타임 시 사이다 반값!)`,
     },
     {
-      emoji: '🏅',
+      emoji: '💰',
       title: `도덕점수 (도덕P) — 현재 ${state.points}P`,
-      desc: `시민영웅의 활동 자금(골드)입니다. 24시 편의점(회복템·장비), 자기계발 수강, 오락실, 공방·라이프 등 거의 모든 성장에 사용됩니다.\n• 버는 법: 빌런 참교육 승리, 알바·수입, 스토리 클리어, 안전신문고`,
+      desc: `편의점·장비 강화·자기계발·오락실 등에 쓰이는 핵심 활동 자금입니다.`,
     },
   ];
 
@@ -5302,12 +5416,45 @@ function openMiniStatsHelpModal() {
     const card = document.createElement('div');
     card.className = 'inv-item';
     card.innerHTML = `
-      <div style="font-size:1.5rem;width:36px;text-align:center;flex-shrink:0;margin-right:8px;">${it.emoji}</div>
+      <div style="font-size:1.45rem;width:34px;text-align:center;flex-shrink:0;margin-right:8px;">${it.emoji}</div>
       <div class="inv-info">
         <h4>${it.title}</h4>
-        <p style="white-space:pre-line;line-height:1.45;">${it.desc}</p>
+        <p style="white-space:pre-line;line-height:1.4;">${it.desc}</p>
       </div>
     `;
+    if (it.allocKey) {
+      const btn = document.createElement('button');
+      btn.className = 'use-btn';
+      btn.style.background = spPts > 0 ? '#d97706' : '#8c7a6b';
+      btn.textContent = '+1';
+      btn.title = it.allocHint;
+      btn.disabled = spPts <= 0;
+      btn.addEventListener('click', () => {
+        if ((state.skillPoints || 0) <= 0) return;
+        sfx.powerup();
+        state.skillPoints -= 1;
+        state.allocatedStats[it.allocKey] = (state.allocatedStats[it.allocKey] || 0) + 1;
+        if (it.allocKey === 'speech') {
+          state.stats.speech += 1;
+          state.critBonus = (state.critBonus || 0) + 0.02;
+        } else if (it.allocKey === 'guts') {
+          state.stats.guts += 1;
+          state.maxHp += 6;
+          state.hp = Math.min(state.maxHp, state.hp + 6);
+        } else if (it.allocKey === 'law') {
+          state.stats.law += 1;
+          state.bonusDmg = (state.bonusDmg || 0) + 2;
+        } else if (it.allocKey === 'hp') {
+          state.maxHp += 15;
+          state.hp = Math.min(state.maxHp, state.hp + 15);
+          state.flatDef = (state.flatDef || 0) + 1;
+        }
+        saveGame();
+        openMiniStatsHelpModal();
+        render();
+      });
+      card.appendChild(btn);
+    }
     elEndingsList.appendChild(card);
   });
 
@@ -5364,11 +5511,14 @@ function openMemoryAlbumModal() {
 function openGearModal() {
   if (!state.gearBag) state.gearBag = [];
   if (!state.equipped) state.equipped = { weapon: null, armor: null, acc: null };
+  if (!state.gearPlus) state.gearPlus = {};
   const eqBon = getEquippedBonuses();
-  elEndingsModalTitle.textContent = `⚔️ 파밍 장비 창고 (공격+${eqBon.atk} · 방어+${eqBon.def})`;
+  const scrapCount = state.scrap || 0;
+  elEndingsModalTitle.textContent = `⚔️ 장비 창고 (공+${eqBon.atk}·방+${eqBon.def}·🔨${scrapCount})`;
   elEndingsList.innerHTML = '';
 
   const slotNames = { weapon: '⚔️ 무기', armor: '🧥 방어구', acc: '🎖️ 악세서리' };
+  const scrapMap = { common: 1, rare: 2, epic: 4, unique: 8 };
   if (state.gearBag.length === 0) {
     elEndingsList.innerHTML = '<p style="text-align:center;color:#695544;padding:16px 0;">아직 파밍한 장비가 없습니다. 빌런/보스를 처치해 레어~0.1% 유니크 장비를 획득하세요!</p>';
   } else {
@@ -5377,14 +5527,18 @@ function openGearModal() {
       if (!g) return;
       const rInfo = RARITY_INFO[g.rarity] || RARITY_INFO.common;
       const isEq = state.equipped[g.slot] === g.id;
+      const plus = state.gearPlus[g.id] || 0;
+      const needScrap = 1 + Math.floor(plus / 2);
+      const needPts = 30 + plus * 20;
+      const gainScrap = scrapMap[g.rarity] || 1;
       const card = document.createElement('div');
       card.className = 'inv-item';
       card.style.borderColor = rInfo.color;
       card.innerHTML = `
         ${itemImgHtml(g.icon, 'item-thumb')}
         <div class="inv-info">
-          <h4 style="color:${rInfo.color};">[${rInfo.label}] ${g.name} ${isEq ? '✅장착중' : ''}</h4>
-          <p>${slotNames[g.slot]} · ${g.desc}</p>
+          <h4 style="color:${rInfo.color};">[${rInfo.label}] ${g.name}${plus > 0 ? ` +${plus}` : ''} ${isEq ? '✅장착중' : ''}</h4>
+          <p>${slotNames[g.slot]} · ${g.desc}${plus > 0 ? ` (강화: 공+${plus * 3}, 방+${plus * 2})` : ''}</p>
         </div>
       `;
       const eqBtn = document.createElement('button');
@@ -5397,21 +5551,42 @@ function openGearModal() {
         openGearModal();
         render();
       });
+      const upBtn = document.createElement('button');
+      upBtn.className = 'use-btn';
+      upBtn.style.background = '#d97706';
+      upBtn.style.marginLeft = '4px';
+      upBtn.textContent = plus >= 10 ? 'MAX' : `강화(🔨${needScrap})`;
+      upBtn.title = plus >= 10 ? '최대 강화' : `강화석 ${needScrap}개 + ${needPts}P 필요`;
+      upBtn.disabled = plus >= 10 || scrapCount < needScrap || state.points < needPts;
+      upBtn.addEventListener('click', () => {
+        if (plus >= 10 || (state.scrap || 0) < needScrap || state.points < needPts) return;
+        sfx.powerup();
+        state.scrap -= needScrap;
+        state.points -= needPts;
+        state.gearPlus[g.id] = plus + 1;
+        showToast(`🔨 [${g.name}] +${plus + 1} 강화 성공! (공+3·방+2)`, 'good');
+        saveGame();
+        openGearModal();
+        render();
+      });
       const salBtn = document.createElement('button');
       salBtn.className = 'use-btn';
       salBtn.style.background = '#9e2a2b';
       salBtn.style.marginLeft = '4px';
-      salBtn.textContent = `분해(+${rInfo.salvageP}P)`;
+      salBtn.textContent = `분해(+🔨${gainScrap})`;
       salBtn.disabled = isEq;
       salBtn.addEventListener('click', () => {
         sfx.powerup();
         state.gearBag.splice(idx, 1);
         state.points += rInfo.salvageP;
+        state.scrap = (state.scrap || 0) + gainScrap;
+        showToast(`🔨 분해 완료! +${rInfo.salvageP}P · 강화석 +${gainScrap}개`, 'good');
         saveGame();
         openGearModal();
         render();
       });
       card.appendChild(eqBtn);
+      card.appendChild(upBtn);
       card.appendChild(salBtn);
       elEndingsList.appendChild(card);
     });

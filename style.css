@@ -262,6 +262,18 @@ body {
   margin-left: 1px;
 }
 
+.mini-sp-dot {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 4px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #d97706, #b45309);
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 800;
+  animation: heroBreathe 1.4s ease-in-out infinite;
+}
+
 .mini-stats b {
   margin-left: 1px;
   color: var(--accent-crimson);
