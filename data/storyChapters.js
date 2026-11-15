@@ -10,7 +10,7 @@ export const STORY_CHAPTERS = [
     mission: { key: 'stat_law', target: 3, label: '⚖️ 법지식 3 이상 달성' },
     chapterNum: 7,
     title: '정적을 깨는 딸깍임',
-    bossId: 'pen_clicker',
+    bossId: 'sb_7',
     scenes: [
       {
         image: 'assets/images/pen_clicker_sprite.png',
@@ -27,7 +27,7 @@ export const STORY_CHAPTERS = [
     mission: { key: 'stat_speech', target: 3, label: '🗣️ 언변 3 이상 달성' },
     chapterNum: 8,
     title: '272번 버스의 음파 테러',
-    bossId: 'shorts_terrorist',
+    bossId: 'sb_8',
     scenes: [
       {
         image: 'assets/images/shorts_terrorist_sprite.png',
@@ -44,7 +44,7 @@ export const STORY_CHAPTERS = [
     mission: { key: 'wins', target: 5, label: '⚔️ 빌런 총 5회 이상 승리' },
     chapterNum: 9,
     title: '출근길 새치기 엘보우',
-    bossId: 'line_cutter',
+    bossId: 'sb_9',
     scenes: [
       {
         image: 'assets/images/line_cutter_sprite.png',
@@ -61,7 +61,7 @@ export const STORY_CHAPTERS = [
     mission: null,
     chapterNum: 10,
     title: '카페 4인석 콘센트 점령',
-    bossId: 'cafe_hogger',
+    bossId: 'sb_10',
     scenes: [
       {
         image: 'assets/images/cafe_hogger_sprite.png',
@@ -78,7 +78,7 @@ export const STORY_CHAPTERS = [
     mission: { key: 'wins', target: 7, label: '⚔️ 빌런 총 7회 이상 승리' },
     chapterNum: 11,
     title: '철과 땀의 무법지대',
-    bossId: 'gym_villain',
+    bossId: 'sb_11',
     scenes: [
       {
         image: 'assets/images/gym_villain.jpg',
@@ -95,6 +95,7 @@ export const STORY_CHAPTERS = [
     mission: null,
     chapterNum: 12,
     title: '진상 연합 단톡방 해킹 작전 (2막 완결)',
+    bossId: 'sb_12',
     scenes: [
       {
         image: 'assets/images/act_patrol.jpg',
@@ -107,7 +108,7 @@ export const STORY_CHAPTERS = [
             text: '💻 증거를 백업하고 아지트를 정비한다',
             sub: '2막 완료 · 🔓 자취방 꾸미기 & 서울 주식 해금!',
             effect: { points: 80, law: 1 },
-            completeChapterOnly: true,
+            startBoss: true,
           },
         ],
       },
@@ -120,7 +121,7 @@ export const STORY_CHAPTERS = [
     mission: { key: 'wins', target: 9, label: '⚔️ 빌런 총 9회 이상 승리' },
     chapterNum: 13,
     title: '한강대로 새벽의 굉음',
-    bossId: 'night_biker',
+    bossId: 'sb_13',
     scenes: [
       {
         image: 'assets/images/night_biker_sprite.png',
@@ -137,7 +138,7 @@ export const STORY_CHAPTERS = [
     mission: null,
     chapterNum: 14,
     title: '홍대 북카페의 소동',
-    bossId: 'spitter',
+    bossId: 'sb_14',
     scenes: [
       {
         image: 'assets/images/yuki_normal.jpg',
@@ -154,6 +155,7 @@ export const STORY_CHAPTERS = [
     mission: null,
     chapterNum: 15,
     title: '빗속 북카페의 수호자',
+    bossId: 'sb_15',
     scenes: [
       {
         image: 'assets/images/yuki_blush.jpg',
@@ -166,7 +168,7 @@ export const STORY_CHAPTERS = [
             text: '💖 "좋아요! 앞으로 자주 놀러 올게요, 유키 씨!"',
             sub: '🔓 연애 모드(유키 루트 & 일본어) 해금! · 유키 호감도 +15',
             effect: { loveYuki: 15, sp: 20 },
-            completeChapterOnly: true,
+            startBoss: true,
           },
         ],
       },
@@ -177,7 +179,7 @@ export const STORY_CHAPTERS = [
     mission: null,
     chapterNum: 16,
     title: '성수동 촬영장의 훼방꾼',
-    bossId: 'parking_villain',
+    bossId: 'sb_16',
     scenes: [
       {
         image: 'assets/images/chloe_normal.jpg',
@@ -194,6 +196,7 @@ export const STORY_CHAPTERS = [
     mission: null,
     chapterNum: 17,
     title: '렌즈 너머의 미소',
+    bossId: 'sb_17',
     scenes: [
       {
         image: 'assets/images/chloe_wink.jpg',
@@ -206,7 +209,7 @@ export const STORY_CHAPTERS = [
             text: '📸 "영광이네요, 클로이! 잘 부탁해요!"',
             sub: '🔓 연애 모드(클로이 루트 & 영어) 해금! · 클로이 호감도 +15',
             effect: { loveChloe: 15, followers: 100 },
-            completeChapterOnly: true,
+            startBoss: true,
           },
         ],
       },
@@ -217,7 +220,7 @@ export const STORY_CHAPTERS = [
     mission: null,
     chapterNum: 18,
     title: '골목길 작은 꼬리의 구조',
-    bossId: 'trash_dumper',
+    bossId: 'sb_18',
     scenes: [
       {
         image: 'assets/images/pet_walk.jpg',
@@ -236,7 +239,7 @@ export const STORY_CHAPTERS = [
     mission: { key: 'wins', target: 11, label: '⚔️ 빌런 총 11회 이상 승리' },
     chapterNum: 19,
     title: '홍대 골목의 검은 연기',
-    bossId: 'street_smoker',
+    bossId: 'sb_19',
     scenes: [
       {
         image: 'assets/images/street_smoker.jpg',
@@ -253,7 +256,7 @@ export const STORY_CHAPTERS = [
     mission: { key: 'wins', target: 13, label: '⚔️ 빌런 총 13회 이상 승리' },
     chapterNum: 20,
     title: '2호선의 140도',
-    bossId: 'subway_manspreader',
+    bossId: 'sb_20',
     scenes: [
       {
         image: 'assets/images/subway_manspreader.jpg',
@@ -270,7 +273,7 @@ export const STORY_CHAPTERS = [
     mission: null,
     chapterNum: 21,
     title: '다리 꼬기 & 차고 해금 작전',
-    bossId: 'subway_legger',
+    bossId: 'sb_21',
     scenes: [
       {
         image: 'assets/images/subway_legger_sprite.png',
@@ -287,7 +290,7 @@ export const STORY_CHAPTERS = [
     mission: { key: 'wins', target: 15, label: '⚔️ 빌런 총 15회 이상 승리' },
     chapterNum: 22,
     title: '어둠 속의 반딧불이',
-    bossId: 'cinema_boss',
+    bossId: 'sb_22',
     scenes: [
       {
         image: 'assets/images/cinema_boss.jpg',
@@ -304,7 +307,7 @@ export const STORY_CHAPTERS = [
     mission: { key: 'wins', target: 17, label: '⚔️ 빌런 총 17회 이상 승리' },
     chapterNum: 23,
     title: '성수동의 검은 드래곤',
-    bossId: 'cafe_boss',
+    bossId: 'sb_23',
     scenes: [
       {
         image: 'assets/images/cafe_boss.jpg',
@@ -321,7 +324,7 @@ export const STORY_CHAPTERS = [
     mission: null,
     chapterNum: 24,
     title: '🚨 히로인 구출 & 합동 방어전!',
-    bossId: 'illegal_parker',
+    bossId: 'sb_24',
     scenes: [
       {
         image: 'assets/images/illegal_parker_sprite.png',
@@ -340,6 +343,7 @@ export const STORY_CHAPTERS = [
     mission: null,
     chapterNum: 25,
     title: '🕵️ 여의도 MCN 본사 위장 잠입',
+    bossId: 'sb_25',
     scenes: [
       {
         image: 'assets/images/dr_chaos_sprite.png',
@@ -352,13 +356,13 @@ export const STORY_CHAPTERS = [
             text: '🎭 "어제 새로 온 영상 편집팀 인턴입니다! 어그로 썸네일 수정 중입니다!"',
             sub: '완벽한 연기! · 법지식+2 · 모범+10 · 🔓 심야 마계 보스러시 해금',
             effect: { law: 2, lawful: 10, points: 60 },
-            completeChapterOnly: true,
+            startBoss: true,
           },
           {
             text: '😈 "조회수 100만 찍어오려다 길 막혀서 늦었습니다. 비키시죠."',
             sub: '광기의 당당함! · 깡다구+2 · 광인+10 · 🔓 심야 마계 보스러시 해금',
             effect: { guts: 2, chaotic: 10, sp: 25 },
-            completeChapterOnly: true,
+            startBoss: true,
           },
         ],
       },
@@ -369,7 +373,7 @@ export const STORY_CHAPTERS = [
     mission: null,
     chapterNum: 26,
     title: '알고리즘 조작실 돌파',
-    bossId: 'shorts_terrorist',
+    bossId: 'sb_26',
     scenes: [
       {
         image: 'assets/images/shorts_terrorist_sprite.png',
@@ -386,7 +390,7 @@ export const STORY_CHAPTERS = [
     mission: null,
     chapterNum: 27,
     title: '가짜 뉴스 편집실 격파',
-    bossId: 'cafe_hogger',
+    bossId: 'sb_27',
     scenes: [
       {
         image: 'assets/images/cafe_hogger_sprite.png',
@@ -403,7 +407,7 @@ export const STORY_CHAPTERS = [
     mission: { key: 'wins', target: 20, label: '⚔️ 빌런 총 20회 이상 승리' },
     chapterNum: 28,
     title: '사생팬 & 악플러 부대 돌파',
-    bossId: 'noise_villain',
+    bossId: 'sb_28',
     scenes: [
       {
         image: 'assets/images/noise_villain.jpg',
@@ -420,7 +424,7 @@ export const STORY_CHAPTERS = [
     mission: null,
     chapterNum: 29,
     title: 'MCN 옥상 헬기장 게이트',
-    bossId: 'gym_villain',
+    bossId: 'sb_29',
     scenes: [
       {
         image: 'assets/images/gym_villain.jpg',
@@ -437,7 +441,7 @@ export const STORY_CHAPTERS = [
     mission: null,
     chapterNum: 30,
     title: '🎭 흑막 총수 · 닥터 카오스 최종 결전',
-    bossId: 'boss_dr_chaos',
+    bossId: 'sb_30',
     scenes: [
       {
         image: 'assets/images/dr_chaos_sprite.png',

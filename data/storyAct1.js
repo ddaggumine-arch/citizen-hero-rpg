@@ -7,7 +7,7 @@ export const STORY_ACT_1 = [
     mission: null,
     chapterNum: 1,
     title: '골목길의 불청객',
-    bossId: 'spitter',
+    bossId: 'sb_1',
     scenes: [
       {
         image: 'assets/images/officer_kim.jpg',
@@ -94,7 +94,7 @@ export const STORY_ACT_1 = [
     mission: { key: 'patrols', target: 1, label: '🔍 [순찰·탐문] 1회 이상 진행' },
     chapterNum: 2,
     title: '좁은 인도의 통곡의 벽',
-    bossId: 'sidewalk_blockers',
+    bossId: 'sb_2',
     scenes: [
       {
         image: 'assets/images/act_patrol.jpg',
@@ -181,7 +181,7 @@ export const STORY_ACT_1 = [
     mission: { key: 'patrols', target: 2, label: '🔍 [순찰·탐문] 2회 이상 진행' },
     chapterNum: 3,
     title: '두 칸의 대각선',
-    bossId: 'parking_villain',
+    bossId: 'sb_3',
     scenes: [
       {
         image: 'assets/images/act_patrol.jpg',
@@ -268,7 +268,7 @@ export const STORY_ACT_1 = [
     mission: null,
     chapterNum: 4,
     title: '원룸촌 어둠 속의 무단투기',
-    bossId: 'trash_dumper',
+    bossId: 'sb_4',
     scenes: [
       {
         image: 'assets/images/act_patrol.jpg',
@@ -355,7 +355,7 @@ export const STORY_ACT_1 = [
     mission: { key: 'stat_guts', target: 3, label: '🦁 배짱(깡다구) 3 이상 달성' },
     chapterNum: 5,
     title: '새벽 2시의 발망치',
-    bossId: 'noise_villain',
+    bossId: 'sb_5',
     scenes: [
       {
         image: 'assets/images/hero_idle.png',
@@ -436,6 +436,7 @@ export const STORY_ACT_1 = [
     mission: null,
     chapterNum: 6,
     title: '골목 자경단의 밤 (1막 완결)',
+    bossId: 'sb_6',
     scenes: [
       {
         image: 'assets/images/officer_kim.jpg',
@@ -501,10 +502,10 @@ export const STORY_ACT_1 = [
         text: '1막 [동네 자경단 각성편]을 완벽하게 클리어했습니다! 예절폰의 [서울 커뮤니티]에서 시민들의 실시간 제보를 확인해 보세요.',
         choices: [
           {
-            text: '📱 "좋습니다! 서울 시내 전체로 순찰 범위를 넓히자!" (1막 완결)',
-            sub: '1막 완료 +50P · 팔로워 +300 · 🔓 커뮤니티 해금!',
+            text: '⚔️ "동네를 어지럽힌 블랙튜브 스카우터부터 꺾어버린다!" (1막 최종 보스전)',
+            sub: '전투 ▶ · 승리 시 +50P · 🔓 커뮤니티 해금!',
             effect: { points: 50, followers: 300 },
-            completeChapterOnly: true,
+            startBoss: true,
           },
         ],
       },

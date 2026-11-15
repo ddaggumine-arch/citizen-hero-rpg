@@ -11,6 +11,7 @@ import { CLUES, SOME_CRISIS_EVENTS, RIVAL_EVENTS, REFORMED_ALLIES, GETTING_TO_KN
 import { DIFFICULTIES, RARITY_INFO, GEAR_LOOT_POOL, PET_JOBS, LOGIC_COUNTERS, generateCommunityPosts } from './data/v24Systems.js';
 import { KISS_SCENES, LOVER_ACTIONS } from './data/v25Romance.js';
 import { UNLOCK_MILESTONES, isFeatureUnlocked, SEOUL_DISTRICTS, getDistrictIdForEnemy, getClearedDistrictCount } from './data/v26World.js';
+import { STORY_BOSSES } from './data/storyBosses.js';
 import { sfx } from './sound.js';
 
 const SAVE_KEY = 'citizen_hero_gta_save_v4';
@@ -757,7 +758,8 @@ function triggerPartnerCallout(who, text, isUnite = false) {
 
 function getEnemyById(id) {
   if (id === HIDDEN_BOSS.id) return HIDDEN_BOSS;
-  return BOSSES.find((b) => b.id === id)
+  return STORY_BOSSES.find((s) => s.id === id)
+    || BOSSES.find((b) => b.id === id)
     || GUERRILLA_VILLAINS.find((g) => g.id === id)
     || VILLAINS.find((v) => v.id === id)
     || VILLAINS[0];
@@ -784,7 +786,7 @@ function showEnemyVisual(enemy) {
     elSceneImage.src = enemy.image;
     elSceneImage.classList.remove('hidden');
     elSceneImage.classList.toggle('enemy-sprite', isPngSprite);
-    elSceneImage.classList.toggle('boss-scale', isPngSprite && enemy.id === HIDDEN_BOSS.id);
+    elSceneImage.classList.toggle('boss-scale', isPngSprite && (enemy.id === HIDDEN_BOSS.id || !!enemy.storyBossScale));
     elWantedPoster.classList.add('hidden');
   } else {
     elSceneImage.classList.add('hidden');
@@ -4626,7 +4628,7 @@ function renderPhoneModal() {
   elPhoneBody.appendChild(endCard);
 
   // 2.52. V23.0 빌런 도감 & 추억 앨범 버튼
-  const allEnemiesList = [...VILLAINS, ...GUERRILLA_VILLAINS, ...BOSSES, HIDDEN_BOSS];
+  const allEnemiesList = [...VILLAINS, ...GUERRILLA_VILLAINS, ...BOSSES, HIDDEN_BOSS, ...STORY_BOSSES];
   const metCount = allEnemiesList.filter((v) => (state.villainWins?.[v.id] || 0) > 0).length;
   const codexCard = document.createElement('div');
   codexCard.className = 'inv-item';
