@@ -15,6 +15,26 @@ const SAVE_SLOTS_KEY = 'citizen_hero_gta_slots_v1';
 const ENDINGS_KEY = 'citizen_hero_endings_v1';
 const SETTINGS_KEY = 'citizen_hero_gta_settings_v1';
 
+const ITEM_ICONS = {
+  water_gun: 'assets/images/items/water_gun.png',
+  megaphone: 'assets/images/items/megaphone.png',
+  mirror: 'assets/images/items/mirror.png',
+  cheongsimhwan: 'assets/images/items/cheongsimhwan.png',
+  cold_soda: 'assets/images/items/cold_soda.png',
+  gift_box: 'assets/images/items/gift_box.png',
+  car_1: 'assets/images/items/car_1.png',
+  car_2: 'assets/images/items/car_2.png',
+  car_3: 'assets/images/items/car_3.png',
+  police: 'assets/images/items/costume_police.png',
+  dark: 'assets/images/items/costume_dark.png',
+  couple: 'assets/images/items/costume_couple.png',
+};
+
+function itemImgHtml(key, cls = 'choice-thumb') {
+  const src = ITEM_ICONS[key];
+  return src ? `<img src="${src}" class="${cls}" alt="" />` : '';
+}
+
 function shuffle(arr) {
   const copy = [...arr];
   for (let i = copy.length - 1; i > 0; i--) {
@@ -1586,7 +1606,7 @@ function render() {
         const cBtn = document.createElement('button');
         cBtn.className = 'choice-btn';
         cBtn.disabled = !unlocked || equipped;
-        cBtn.innerHTML = `<span>${equipped ? '✅ ' : (unlocked ? '' : '🔒 ')}${ct.name}</span><span class="choice-sub">${unlocked ? ct.desc : ct.unlockText}</span>`;
+        cBtn.innerHTML = `<span style="display:flex;align-items:center;">${itemImgHtml(ct.id)}${equipped ? '✅ ' : (unlocked ? '' : '🔒 ')}${ct.name}</span><span class="choice-sub">${unlocked ? ct.desc : ct.unlockText}</span>`;
         cBtn.addEventListener('click', () => {
           state.costume = ct.id;
           sfx.powerup();
@@ -1693,7 +1713,7 @@ function render() {
         const cBtn = document.createElement('button');
         cBtn.className = 'choice-btn';
         cBtn.disabled = !unlocked || equipped;
-        cBtn.innerHTML = `<span>${equipped ? '✅ ' : (unlocked ? '' : '🔒 ')}${ct.name}</span><span class="choice-sub">${unlocked ? ct.desc : ct.unlockText}</span>`;
+        cBtn.innerHTML = `<span style="display:flex;align-items:center;">${itemImgHtml(ct.id)}${equipped ? '✅ ' : (unlocked ? '' : '🔒 ')}${ct.name}</span><span class="choice-sub">${unlocked ? ct.desc : ct.unlockText}</span>`;
         cBtn.addEventListener('click', () => {
           state.costume = ct.id;
           sfx.powerup();
@@ -1991,7 +2011,7 @@ function render() {
         dBtn.style.background = 'linear-gradient(180deg, #eef7ff 0%, #d8ecff 100%)';
         dBtn.style.borderColor = '#4a89c7';
         const nm = k === 'yuki' ? '유키' : '클로이';
-        dBtn.innerHTML = `<span>🚗 ${nm} 드라이브 (50P)</span><span class="choice-sub">${carObj.name} · 호감+${carObj.driveBonus}</span>`;
+        dBtn.innerHTML = `<span style="display:flex;align-items:center;">${itemImgHtml(`car_${state.carLevel || 1}`)}🚗 ${nm} 드라이브 (50P)</span><span class="choice-sub">${carObj.name} · 호감+${carObj.driveBonus}</span>`;
         dBtn.addEventListener('click', () => { sfx.click(); tryStartDate(k, true); });
         elChoicesPanel.appendChild(dBtn);
       });
@@ -2823,7 +2843,7 @@ function render() {
       const btn = document.createElement('button');
       btn.className = 'choice-btn row-btn';
       btn.disabled = state.points < si.cost;
-      btn.innerHTML = `<span>${si.label}</span><span class="choice-sub">${si.cost} P</span>`;
+      btn.innerHTML = `<span style="display:flex;align-items:center;">${itemImgHtml(si.id)}${si.label}</span><span class="choice-sub">${si.cost} P</span>`;
       btn.addEventListener('click', () => {
         if (state.points < si.cost) return;
         sfx.powerup();
@@ -3494,7 +3514,7 @@ btnInventory.addEventListener('click', () => {
       const used = !item.consumable && state.usedEquipThisBattle.includes(id);
       const card = document.createElement('div');
       card.className = 'inv-item';
-      card.innerHTML = `<div class="inv-info"><h4>${item.name}</h4><p>${item.desc}</p></div>`;
+      card.innerHTML = `${itemImgHtml(id, 'item-thumb')}<div class="inv-info"><h4>${item.name}</h4><p>${item.desc}</p></div>`;
       const uBtn = document.createElement('button');
       uBtn.className = 'use-btn';
       uBtn.textContent = used ? '사용완료' : '사용';

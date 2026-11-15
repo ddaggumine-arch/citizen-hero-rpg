@@ -5,7 +5,10 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V20.0
+## 현재 최신 버전: V21.0
+- **V21.0**:
+  - 챗지피티 웹툰풍 커스텀 RPG 아이템 아이콘 12종 투명 PNG 적용 (`assets/images/items/` — `water_gun`, `megaphone`, `mirror`, `cheongsimhwan`, `cold_soda`, `gift_box`, `car_1~3`, `costume_police/dark/couple`)
+  - 가방 모달, 편의점 상점, 드라이브 버튼, 코스튬 선택 UI에 커스텀 아이콘 반영 (`?v=23`)
 - **V20.0**:
   - `.scene-card` / `.scene-card-ascii` 모바일 텍스트 잘림 수정 (`white-space: pre-wrap`, `justify-content: flex-start`, `overflow-y: auto`)
   - 어학 공부 하루 1회 제한(`lastStudyDay`) & 호감도 상승량 `+4`로 하향
