@@ -59,7 +59,7 @@ export const STORY_BOSSES = [
     image: 'assets/images/sb_06.png',
     introQuote: '"너구나, 우리 동네 빌런들 조회수 망친 짭퉁 완장이?"',
     banterQuotes: ['"블랙튜브 MCN에 스카우트될 기회인데 아깝네~"', '"이 영상 편집해서 널 가해자로 만들어주지!"'],
-    defeatQuote: '"크윽... 본부에 보고할 거다! 2막에선 가만 안 둬!"',
+    defeatQuote: '"크윽... 본부에 보고할 거다! 서울 도심에 발을 들인 걸 후회하게 해주지!"',
   },
   {
     id: 'sb_7', storyOnly: true, zone: 'transit',

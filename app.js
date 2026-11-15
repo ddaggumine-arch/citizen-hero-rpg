@@ -1,5 +1,5 @@
 import { TIME_SLOTS, ITEMS, TRAITS, VILLAINS, BOSSES, HIDDEN_BOSS, WEATHERS, RANDOM_EVENTS, STORY_MESSAGES } from './data/gameData.js';
-import { STORY_CHAPTERS } from './data/storyChapters.js?v=44';
+import { STORY_CHAPTERS } from './data/storyChapters.js?v=45';
 import { ACTIVITY_CATEGORIES } from './data/activities.js';
 import { MINI_EVENTS, ENEMY_INTENTS, createFeedForVictory } from './data/liveEvents.js';
 import { ENDINGS, evaluateEnding } from './data/endings.js';
@@ -11,7 +11,7 @@ import { CLUES, SOME_CRISIS_EVENTS, RIVAL_EVENTS, REFORMED_ALLIES, GETTING_TO_KN
 import { DIFFICULTIES, RARITY_INFO, GEAR_LOOT_POOL, PET_JOBS, LOGIC_COUNTERS, generateCommunityPosts } from './data/v24Systems.js';
 import { KISS_SCENES, LOVER_ACTIONS } from './data/v25Romance.js';
 import { UNLOCK_MILESTONES, isFeatureUnlocked, SEOUL_DISTRICTS, getDistrictIdForEnemy, getClearedDistrictCount } from './data/v26World.js';
-import { STORY_BOSSES } from './data/storyBosses.js';
+import { STORY_BOSSES } from './data/storyBosses.js?v=45';
 import { sfx } from './sound.js';
 
 const SAVE_KEY = 'citizen_hero_gta_save_v4';
