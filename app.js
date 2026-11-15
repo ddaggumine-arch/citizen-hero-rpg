@@ -7,8 +7,8 @@ import { HEROINES, LANG_QUIZZES, DATE_EVENTS } from './data/romance.js';
 import { CARS, GEAR_UPGRADES, ACHIEVEMENTS } from './data/lifestyle.js';
 import { STREAM_MISSIONS, ROOM_UPGRADES, GUERRILLA_VILLAINS, STOCKS, HEROINE_GIFTS } from './data/v16Systems.js';
 import { COURT_CASES, COSTUMES, CAPSULE_POOL, PET_WALK_EVENTS } from './data/v17Systems.js';
-import { CLUES, SOME_CRISIS_EVENTS, RIVAL_EVENTS, REFORMED_ALLIES, GETTING_TO_KNOW_EVENTS, STORY_INTERLUDES, WEEKEND_EVENTS } from './data/v19Story.js';
-import { DIFFICULTIES, RARITY_INFO, GEAR_LOOT_POOL, PET_JOBS, LOGIC_COUNTERS, generateCommunityPosts } from './data/v24Systems.js';
+import { CLUES, SOME_CRISIS_EVENTS, RIVAL_EVENTS, REFORMED_ALLIES, GETTING_TO_KNOW_EVENTS, STORY_INTERLUDES, WEEKEND_EVENTS } from './data/v19Story.js?v=51';
+import { DIFFICULTIES, RARITY_INFO, GEAR_LOOT_POOL, PET_JOBS, LOGIC_COUNTERS, generateCommunityPosts } from './data/v24Systems.js?v=51';
 import { KISS_SCENES, LOVER_ACTIONS } from './data/v25Romance.js';
 import { UNLOCK_MILESTONES, isFeatureUnlocked, SEOUL_DISTRICTS, getDistrictIdForEnemy, getClearedDistrictCount } from './data/v26World.js?v=48';
 import { STORY_BOSSES } from './data/storyBosses.js?v=45';
@@ -1120,16 +1120,38 @@ function notifyNewUnlocks(prevChapter, nextChapter) {
   });
 }
 
-function rollGearDrop(isBoss = false) {
+function rollGearDrop(isBoss = false, enemyLv = state.currentEnemyLv || state.level || 1) {
   const diff = getDiffObj();
-  const dropChance = isBoss ? 1.0 : diff.dropChance;
+  const dropChance = isBoss ? 1.0 : Math.min(0.95, diff.dropChance + (enemyLv >= 25 ? 0.1 : 0));
   if (Math.random() > dropChance) return null;
+
+  const lv = Math.max(1, Number(enemyLv) || 1);
+  let uMult = 0;
+  let eBase = 0.01;
+  let rBase = 0.14;
+  if (lv >= 41) {
+    uMult = 12;
+    eBase = 0.50;
+    rBase = 0.30;
+  } else if (lv >= 31) {
+    uMult = 6;
+    eBase = 0.40;
+    rBase = 0.35;
+  } else if (lv >= 21) {
+    uMult = 3;
+    eBase = 0.24;
+    rBase = 0.42;
+  } else if (lv >= 11) {
+    uMult = 1;
+    eBase = 0.08;
+    rBase = 0.35;
+  }
 
   const yeouidoBonus = (state.districts?.yeouido || 0) >= 100 ? 1.25 : 1;
   const nmBonus = (state.nightmareFloor || 0) > 0 ? (1 + state.nightmareFloor * 0.5) : 1;
-  const uRate = diff.uniqueRate * (isBoss ? 5 : 1) * yeouidoBonus * nmBonus;
-  const eRate = isBoss ? 0.22 : (state.difficulty === 'hell' ? 0.08 : 0.03);
-  const rRate = (isBoss ? 1.0 : (state.difficulty === 'normal' ? 0.16 : 0.28)) * yeouidoBonus;
+  const uRate = diff.uniqueRate * uMult * (isBoss ? 5 : 1) * yeouidoBonus * nmBonus;
+  const eRate = (isBoss ? Math.max(eBase, 0.30) : eBase) * (state.difficulty === 'hell' ? 1.25 : 1);
+  const rRate = (isBoss ? Math.max(rBase, 0.65) : rBase) * yeouidoBonus;
 
   const roll = Math.random();
   let rarity = 'common';
@@ -1137,7 +1159,8 @@ function rollGearDrop(isBoss = false) {
   else if (roll < uRate + eRate) rarity = 'epic';
   else if (roll < uRate + eRate + rRate) rarity = 'rare';
 
-  const pool = GEAR_LOOT_POOL.filter((g) => g.rarity === rarity);
+  let pool = GEAR_LOOT_POOL.filter((g) => g.rarity === rarity && (g.minDropLv || 1) <= lv);
+  if (pool.length === 0) pool = GEAR_LOOT_POOL.filter((g) => g.rarity === rarity);
   const picked = pool[Math.floor(Math.random() * pool.length)];
   if (!picked) return null;
 
@@ -1150,8 +1173,8 @@ function rollGearDrop(isBoss = false) {
   const rLabel = RARITY_INFO[rarity]?.label || rarity;
   showToast(
     rarity === 'unique'
-      ? `🟨✨ [0.1% 기적!! 유니크 드랍!] ${picked.name} 획득!!`
-      : `🎁 [${rLabel}] ${picked.name} 획득!`,
+      ? `🟨✨ [Lv.${lv} 기적!! 유니크 드랍!] ${picked.name} 획득!!`
+      : `🎁 [Lv.${lv} · ${rLabel}] ${picked.name} 획득!`,
     rarity === 'unique' ? 'break' : 'good'
   );
   return picked;
@@ -1422,7 +1445,20 @@ function handleEnemyDefeated(enemy) {
     state.pendingReports += 1;
     showToast('🕵️ [탐지견 콩이] 추가 채증 +1 확보!', 'good');
   }
-  rollGearDrop(isBossId(enemy.id) || enemy.id === HIDDEN_BOSS.id);
+  const enemyLv = state.currentEnemyLv || enemy.lv || state.level || 1;
+  rollGearDrop(isBossId(enemy.id) || enemy.id === HIDDEN_BOSS.id, enemyLv);
+  if (enemyLv >= 15 && Math.random() < (enemyLv >= 35 ? 0.65 : 0.40)) {
+    const scrapGain = enemyLv >= 35 ? 3 : (enemyLv >= 25 ? 2 : 1);
+    state.scrap = (state.scrap || 0) + scrapGain;
+    showToast(`🔩 [Lv.${enemyLv} 전리품] 영웅 고철 +${scrapGain} 획득!`, 'good');
+  }
+  if (enemyLv >= 20 && Math.random() < (enemyLv >= 35 ? 0.35 : 0.20)) {
+    if (!state.items) state.items = {};
+    const dropKey = Math.random() < 0.5 ? 'cheongsimhwan' : 'cold_soda';
+    const dropName = dropKey === 'cheongsimhwan' ? '황금 청심환' : '시원한 사이다';
+    state.items[dropKey] = (state.items[dropKey] || 0) + 1;
+    showToast(`🥤 [Lv.${enemyLv} 보급품] ${dropName} +1 획득!`, 'good');
+  }
   state.winCount = (state.winCount || 0) + 1;
   if (!state.villainWins) state.villainWins = {};
   state.villainWins[enemy.id] = (state.villainWins[enemy.id] || 0) + 1;
@@ -2202,8 +2238,9 @@ function render() {
     state.phase = 'weekend_event';
   }
   if (state.phase === 'weekend_event') {
-    const idx = Math.floor((state.day / 7 - 1)) % WEEKEND_EVENTS.length;
-    const wv = WEEKEND_EVENTS[Math.max(0, idx)];
+    const availWeekend = WEEKEND_EVENTS.filter((w) => !w.requireHeroine || isFeatureUnlocked(state, w.requireHeroine));
+    const idx = Math.floor((state.day / 7 - 1)) % availWeekend.length;
+    const wv = availWeekend[Math.max(0, idx)] || WEEKEND_EVENTS[0];
     const chaos = state.chaosLevel ?? 25;
     const weeklyGrade = chaos <= 25 ? 'S (모범 도시! +50P)' : (chaos <= 55 ? 'A (안정적! +25P)' : 'B (분발 필요!)');
     elLocation.textContent = `DAY ${state.day} · 주말 특별`;
@@ -2234,8 +2271,8 @@ function render() {
         if (ch.guts) state.stats.guts += ch.guts;
         if (ch.maxHp) { state.maxHp += ch.maxHp; state.hp = clamp(state.hp + ch.maxHp, 1, state.maxHp); }
         if (ch.fullHeal) state.hp = state.maxHp;
-        if (ch.yukiLove) state.love.yuki = clamp((state.love.yuki || 0) + ch.yukiLove, 0, state.someCleared?.yuki ? 100 : 75);
-        if (ch.chloeLove) state.love.chloe = clamp((state.love.chloe || 0) + ch.chloeLove, 0, state.someCleared?.chloe ? 100 : 75);
+        if (ch.yukiLove && isFeatureUnlocked(state, 'yuki')) state.love.yuki = clamp((state.love.yuki || 0) + ch.yukiLove, 0, state.someCleared?.yuki ? 100 : 75);
+        if (ch.chloeLove && isFeatureUnlocked(state, 'chloe')) state.love.chloe = clamp((state.love.chloe || 0) + ch.chloeLove, 0, state.someCleared?.chloe ? 100 : 75);
         state.phase = 'map';
         state.log = `🎉 주말 특별 이벤트 완료!${weekBonus > 0 ? ` (주간 성적표 보너스 +${weekBonus} P)` : ''}`;
         saveGame();

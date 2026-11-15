@@ -254,6 +254,7 @@ export const WEEKEND_EVENTS = [
   },
   {
     title: '🛍️ [주말 특별] 홍대 인디 플리마켓 질서유지',
+    requireHeroine: 'yuki',
     badge: 'WEEKEND FESTIVAL',
     ascii: '  🎨 [ 홍대 걷고싶은거리 ]  \n  버스킹 · 수공예 플리마켓 대성황!\n  🎸 유키도 구경 나와 있을지도?',
     quote: '"여기 예쁜 굿즈가 정말 많네요! 줄 서서 구경해요~"',
@@ -265,6 +266,7 @@ export const WEEKEND_EVENTS = [
   },
   {
     title: '🏃 [주말 특별] 서울 시민 평화 마라톤',
+    requireHeroine: 'chloe',
     badge: 'WEEKEND FESTIVAL',
     ascii: '  🏅 [ 광화문 → 잠실 코스 ]  \n  시민영웅과 함께 달리는 건강한 주말!\n  📸 클로이가 공식 포토그래퍼로 참여!',
     quote: '"Hey! 여기 보고 스마일~ 완벽한 주말 샷이야!"',

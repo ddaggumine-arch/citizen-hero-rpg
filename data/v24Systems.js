@@ -45,19 +45,25 @@ export const GEAR_LOOT_POOL = [
   { id: 'w_whistle_c', name: '교통 호루라기', slot: 'weapon', rarity: 'common', atk: 4, def: 0, crit: 0.03, icon: 'golden_whistle', desc: '공격 +4 · 치명 +3%' },
   { id: 'w_lawbook_r', name: '포켓 경범죄 법전', slot: 'weapon', rarity: 'rare', atk: 9, def: 1, crit: 0.08, icon: 'fact_book', desc: '공격 +9 · 방어 +1 · 치명 +8%' },
   { id: 'w_megaphone_e', name: '특수 확성기 Mk.II', slot: 'weapon', rarity: 'epic', atk: 17, def: 2, crit: 0.14, icon: 'megaphone', desc: '공격 +17 · 방어 +2 · 치명 +14%' },
+  { id: 'w_taser_e', name: '고압 팩트 테이저건', slot: 'weapon', rarity: 'epic', minDropLv: 20, atk: 24, def: 3, crit: 0.18, icon: 'megaphone', desc: '공격 +24 · 방어 +3 · 치명 +18% (Lv.20+)' },
   { id: 'u_fact_bible', name: '팩트 대백과 초판본', slot: 'weapon', rarity: 'unique', atk: 30, def: 4, crit: 0.25, icon: 'fact_book', desc: '공격 +30 · 방어 +4 · 치명 +25%' },
+  { id: 'u_gavel_legend', name: '대법관의 황금 의사봉', slot: 'weapon', rarity: 'unique', minDropLv: 35, atk: 44, def: 6, crit: 0.32, icon: 'fact_book', desc: '공격 +44 · 방어 +6 · 치명 +32% (Lv.35+ 전설!)' },
 
   // 방어구 (armor)
   { id: 'a_vest_c', name: '형광 순찰 조끼', slot: 'armor', rarity: 'common', atk: 0, def: 4, reflect: 0, icon: 'costume_police', desc: '방어력 +4' },
   { id: 'a_hoodie_r', name: '방풍 데님 자켓', slot: 'armor', rarity: 'rare', atk: 2, def: 8, reflect: 0.05, icon: 'costume_couple', desc: '방어력 +8 · 공격 +2 · 반사 5%' },
   { id: 'a_uniform_e', name: '기동대 특수 방검복', slot: 'armor', rarity: 'epic', atk: 4, def: 14, reflect: 0.12, icon: 'costume_police', desc: '방어력 +14 · 공격 +4 · 반사 12%' },
+  { id: 'a_riotshield_e', name: '중장갑 진압 패딩', slot: 'armor', rarity: 'epic', minDropLv: 20, atk: 5, def: 19, reflect: 0.16, icon: 'costume_police', desc: '방어력 +19 · 공격 +5 · 반사 16% (Lv.20+)' },
   { id: 'u_riot_jacket', name: '방탄 시위 진압 코트', slot: 'armor', rarity: 'unique', atk: 6, def: 22, reflect: 0.20, icon: 'costume_dark', desc: '방어력 +22 · 공격 +6 · 적 피해 20% 반사!' },
+  { id: 'u_aegis_coat', name: '네오 서울 히어로 아머', slot: 'armor', rarity: 'unique', minDropLv: 35, atk: 10, def: 32, reflect: 0.28, icon: 'costume_dark', desc: '방어력 +32 · 공격 +10 · 적 피해 28% 반사! (Lv.35+)' },
 
   // 악세서리 (acc)
   { id: 'x_mirror_c', name: '미니 반사 배지', slot: 'acc', rarity: 'common', atk: 2, def: 2, spRegen: 2, icon: 'mirror', desc: '공격 +2 · 방어 +2 · 매턴 사이다 +2' },
   { id: 'x_soda_r', name: '탄산 에너지 뱃지', slot: 'acc', rarity: 'rare', atk: 5, def: 4, spRegen: 4, icon: 'cold_soda', desc: '공격 +5 · 방어 +4 · 매턴 사이다 +4' },
   { id: 'x_pill_e', name: '황금 청심환 부적', slot: 'acc', rarity: 'epic', atk: 10, def: 7, spRegen: 6, icon: 'cheongsimhwan', desc: '공격 +10 · 방어 +7 · 매턴 사이다 +6' },
+  { id: 'x_siren_e', name: '초음파 정의의 호각', slot: 'acc', rarity: 'epic', minDropLv: 20, atk: 14, def: 9, spRegen: 8, icon: 'golden_whistle', desc: '공격 +14 · 방어 +9 · 매턴 사이다 +8 (Lv.20+)' },
   { id: 'u_first_armband', name: '1대 영웅의 황금 호루라기', slot: 'acc', rarity: 'unique', atk: 18, def: 10, spRegen: 8, icon: 'golden_whistle', desc: '공격 +18 · 방어 +10 · 매턴 사이다 +8!' },
+  { id: 'u_cider_core', name: '영웅단의 무지개 사이다 코어', slot: 'acc', rarity: 'unique', minDropLv: 35, atk: 24, def: 14, spRegen: 12, icon: 'cold_soda', desc: '공격 +24 · 방어 +14 · 매턴 사이다 +12! (Lv.35+)' },
 ];
 
 export const PET_JOBS = [

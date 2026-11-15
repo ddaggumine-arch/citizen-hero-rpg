@@ -5,7 +5,10 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V27.4
+## 현재 최신 버전: V27.5
+- **V27.5**:
+  - **적 레벨 연동 장비 드랍 & 유니크 확률 스케일링 + 신규 고레벨 에픽/유니크 6종 (`data/v24Systems.js`, `app.js`)**: `rollGearDrop(isBoss, enemyLv)`가 적 레벨(`Lv.1~10` / `11~20` / `21~30` / `31~40` / `41+`)에 따라 에픽·유니크 확률(최대 12배)과 드랍 티어를 스케일링하고, 신규 Lv.20+ 에픽 3종(`고압 팩트 테이저건`, `중장갑 진압 패딩`, `초음파 정의의 호각`) 및 Lv.35+ 유니크 3종(`대법관의 황금 의사봉`, `네오 서울 히어로 아머`, `영웅단의 무지개 사이다 코어`) 추가 (`GEAR_LOOT_POOL` 총 18종) + Lv.15+/20+ 처치 시 추가 영웅 고철·보급품 드랍
+  - **유키/클로이 주말 이벤트 스토리 해금 연동 (`data/v19Story.js`, `app.js`)**: `WEEKEND_EVENTS`에서 유키(`15화 해금`)·클로이(`17화 해금`) 합류 전에는 해당 히로인 주말 이벤트/호감도가 조기 등장하지 않도록 `requireHeroine` + `isFeatureUnlocked` 게이팅 적용 (`?v=51`)
 - **V27.4**:
   - **일반 잡몹 50종 100% 투명 PNG 웹툰 스프라이트 완비 (`assets/images/mob_*.png`, `*_sprite.png`, `data/gameData.js`, `data/mobs40.js`)**: 5개 구역 시트(3×3 × 5 = 45종) 투명 PNG(`504px` 발끝 정렬) 추출 + 기존 5종 합쳐 일반 잡몹 50종 전원 1:1 투명 PNG 스프라이트 적용 완료 (`PNG_OK: 50 / MISSING: 0`, `?v=50`)
 - **V27.3**:
