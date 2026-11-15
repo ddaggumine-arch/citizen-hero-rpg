@@ -1180,7 +1180,23 @@ function rollGearDrop(isBoss = false, enemyLv = state.currentEnemyLv || state.le
   return picked;
 }
 
-function startBattle(enemyId) {
+function pickLevelAppropriateVillain(pool, heroLv = state.level || 1) {
+  const lv = Math.max(1, Number(heroLv) || 1);
+  const filtered = pool.filter((v) => {
+    const dId = v.district || getDistrictIdForEnemy(v.id);
+    const dInfo = SEOUL_DISTRICTS.find((d) => d.id === dId);
+    return (dInfo?.minLv || 1) <= lv + 4;
+  });
+  const candidates = filtered.length > 0 ? filtered : pool.filter((v) => {
+    const dId = v.district || getDistrictIdForEnemy(v.id);
+    const dInfo = SEOUL_DISTRICTS.find((d) => d.id === dId);
+    return (dInfo?.minLv || 1) <= 15;
+  });
+  const finalPool = candidates.length > 0 ? candidates : pool;
+  return finalPool[Math.floor(Math.random() * finalPool.length)] || VILLAINS[0];
+}
+
+function startBattle(enemyId, isRandomEncounter = false) {
   const baseEnemy = getEnemyById(enemyId);
   if (!state.villainEncounters) state.villainEncounters = {};
   state.villainEncounters[baseEnemy.id] = (state.villainEncounters[baseEnemy.id] || 0) + 1;
@@ -1198,13 +1214,15 @@ function startBattle(enemyId) {
   const distInfo = SEOUL_DISTRICTS.find((d) => d.id === distId);
   const minZoneLv = distInfo?.minLv || 1;
   const maxZoneLv = distInfo?.maxLv || 50;
-  // 구역 티어를 지키되 주인공이 고레벨이면 저레벨 구역 적도 절반 속도로 동반 성장!
+  // 랜덤 인카운터는 주인공 현재 레벨(-1 ~ +2)에 맞춤, 구역 지정 출동은 해당 구역 티어 유지
   const enemyLv = isBossEnemy
     ? Math.max(heroLv, Math.min(50, Math.round((state.chapterIndex || 0) * 1.65) + 2))
-    : Math.max(minZoneLv, Math.min(maxZoneLv + Math.floor(Math.max(0, heroLv - maxZoneLv) * 0.55), heroLv + Math.max(0, minZoneLv - heroLv)));
+    : (isRandomEncounter
+      ? Math.max(1, Math.min(50, heroLv + Math.floor(Math.random() * 3) - 1))
+      : Math.max(minZoneLv, Math.min(maxZoneLv + Math.floor(Math.max(0, heroLv - maxZoneLv) * 0.55), heroLv + Math.max(0, minZoneLv - heroLv))));
 
   const lvScale = 1 + Math.max(0, enemyLv - 1) * 0.115;
-  const atkScale = 1 + Math.max(0, enemyLv - 1) * 0.065;
+  const atkScale = 1 + Math.max(0, enemyLv - 1) * 0.085;
   const bossHpBoost = isBossEnemy ? 1.9 : 1.55;
   const bossAtkBoost = isBossEnemy ? 1.25 : 1.15;
   const modHpMult = mod ? mod.hpMult : 1;
@@ -1384,9 +1402,11 @@ function enemyCounterTurn(enemy, isGuarding = false) {
   }
   const totalDef = (eqBonus.def || 0) + (state.flatDef || 0) + Math.floor(((state.level || 1) - 1) / 3);
   if (totalDef > 0) {
-    const minDmg = isGuarding ? 2 : Math.max(4, Math.round(scaledAtk * 0.22));
-    const blocked = Math.max(0, dmg - Math.max(minDmg, dmg - totalDef));
-    dmg = Math.max(minDmg, dmg - totalDef);
+    const minDmg = isGuarding ? 2 : Math.max(5, Math.round(scaledAtk * 0.25));
+    const maxFlatBlock = isGuarding ? totalDef : Math.min(totalDef, Math.round(dmg * 0.55));
+    const nextDmg = Math.max(minDmg, dmg - maxFlatBlock);
+    const blocked = Math.max(0, dmg - nextDmg);
+    dmg = nextDmg;
     if (blocked > 0) state.log += `\n🛡️ [방어력 경감 -${blocked}]`;
   }
   const totalReflect = (eqBonus.reflect || 0) + (state.pet?.adopted && state.pet.job === 'guard' ? 0.15 : 0);
@@ -5931,8 +5951,8 @@ function executeActivity(act, cat) {
       return;
     }
     const pool = VILLAINS.filter((v) => v.zone === act.battleZone);
-    const picked = pool[Math.floor(Math.random() * pool.length)] || VILLAINS[0];
-    startBattle(picked.id);
+    const picked = pickLevelAppropriateVillain(pool, state.level || 1);
+    startBattle(picked.id, true);
     return;
   }
 
@@ -6058,10 +6078,9 @@ function executeActivity(act, cat) {
 
   // V8.0: 30% 확률로 2단 돌발 이벤트 발동 (또는 민폐도 90% 이상 시 35% 확률로 빌런 기습!)
   if ((state.chaosLevel ?? 25) >= 90 && Math.random() < 0.35) {
-    const ambushPool = VILLAINS;
-    const picked = ambushPool[Math.floor(Math.random() * ambushPool.length)];
+    const picked = pickLevelAppropriateVillain(VILLAINS, state.level || 1);
     state.log = `🚨 [서울 민폐도 비상!] 거리가 난장판이 되어 [${picked.name}]이(가) 기습했습니다!`;
-    startBattle(picked.id);
+    startBattle(picked.id, true);
     return;
   }
 

@@ -5,7 +5,10 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V27.6
+## 현재 최신 버전: V27.7
+- **V27.7**:
+  - **랜덤 인카운터 레벨 매칭 & 방어력 경감 상한(55%) 밸런싱 (`pickLevelAppropriateVillain`, `startBattle`, `enemyCounterTurn`)**: 동네 순찰·기습 등 랜덤 인카운터 시 여의도(Lv.41~50) 등 고레벨 몹이 Lv.9 구간에 난입하지 않고 내 레벨(`-1 ~ +1`)에 맞춰 출현하도록 수정 + 비가드 시 방어력 경감 최대치를 55%(최소 관통 25%)로 조정해 적 공격이 체감되도록 개선 (`?v=53`)
+- **V27.6**:
 - **V27.6**:
   - **적 반격 공격력 스케일링 버그 수정 + 저체력 회복 경고 (`app.js`)**: `startBattle`에서 계산한 `currentEnemyAtk`(레벨·보스·특성·난이도 반영)가 `enemyCounterTurn`에 전달되지 않아 Lv.1 기본 공격력으로만 때리던 버그 수정 + 비가드 시 최소 관통 피해(`scaledAtk * 22%`) 보장 + 인내심 30% 이하 시 전투 로그/토스트 위험 경고 출력 (`?v=52`)
 - **V27.5**:
