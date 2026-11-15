@@ -31,18 +31,18 @@ export const ITEMS = {
   cheongsimhwan: {
     id: 'cheongsimhwan',
     name: '💊 우황청심환',
-    desc: '즉시 인내심을 40 회복합니다. (소모품)',
+    desc: '최대 인내심의 45%(최소 60) 회복 + 사이다 +15! (소모품)',
     consumable: true,
-    useEffect: { hp: 40 },
-    price: 30,
+    useEffect: { hpPct: 0.45, hpMin: 60, sp: 15 },
+    price: 35,
   },
   cold_soda: {
     id: 'cold_soda',
     name: '🫧 칠성사이다 캔',
-    desc: '즉시 사이다력을 45 충전합니다. (소모품)',
+    desc: '사이다 +65 + 인내심 +25 + 다음 전투 공격력 +12! (소모품)',
     consumable: true,
-    useEffect: { sp: 45 },
-    price: 25,
+    useEffect: { sp: 65, hp: 25, tempDmg: 12 },
+    price: 30,
   },
 };
 

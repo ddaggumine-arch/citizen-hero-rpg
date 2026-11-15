@@ -26,7 +26,7 @@ export const ACTIVITY_CATEGORIES = [
       { id: 'work_delivery', name: '🛵 도보 배달 알바', desc: 'HP -14 · +48 P · 최대HP +2', minHp: 16, effect: { hp: -14, points: 48, maxHp: 2 }, msg: '🛵 골목길 5km 주파! (+48 P, 최대HP +2)' },
       { id: 'work_cafe', name: '☕ 카페 피크타임 알바', desc: 'HP -12 · +38 P · 사이다 +12', minHp: 14, effect: { hp: -12, points: 38, sp: 12 }, msg: '☕ 아이스 아메리카노 100잔 제조! (+38 P, 사이다 +12)' },
       { id: 'work_tutor', name: '📚 시민 법규 과외', desc: 'HP -8 · +32 P · 법률 +1', minHp: 10, effect: { hp: -8, points: 32, law: 1 }, msg: '📚 생활 법률 강의 성공! (+32 P, 법률 +1)' },
-      { id: 'work_traffic', name: '🦺 등굣길 교통봉사', desc: '모범 +10 · +25 P · 민폐도 -6%', effect: { lawful: 10, points: 25, chaos: -6 }, msg: '🦺 아이들이 안전하게 건넜습니다! (+25 P, 민폐도 -6%)' },
+      { id: 'work_traffic', name: '🦺 등굣길 교통봉사', desc: 'HP -10 · 모범 +6 · +18 P · 민폐도 -3%', minHp: 12, effect: { hp: -10, lawful: 6, points: 18, chaos: -3 }, msg: '🦺 땡볕 아래 아이들이 안전하게 건넜습니다! (+18 P, 민폐도 -3%)' },
     ],
   },
   {

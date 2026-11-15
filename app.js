@@ -7,7 +7,7 @@ import { HEROINES, LANG_QUIZZES, DATE_EVENTS } from './data/romance.js';
 import { CARS, GEAR_UPGRADES, ACHIEVEMENTS } from './data/lifestyle.js';
 import { STREAM_MISSIONS, ROOM_UPGRADES, GUERRILLA_VILLAINS, STOCKS, HEROINE_GIFTS } from './data/v16Systems.js';
 import { COURT_CASES, COSTUMES, CAPSULE_POOL, PET_WALK_EVENTS } from './data/v17Systems.js';
-import { CLUES, SOME_CRISIS_EVENTS, RIVAL_EVENTS, REFORMED_ALLIES } from './data/v19Story.js';
+import { CLUES, SOME_CRISIS_EVENTS, RIVAL_EVENTS, REFORMED_ALLIES, GETTING_TO_KNOW_EVENTS, STORY_INTERLUDES } from './data/v19Story.js';
 import { sfx } from './sound.js';
 
 const SAVE_KEY = 'citizen_hero_gta_save_v4';
@@ -119,6 +119,11 @@ function createNewGameState() {
     allies: [],
     enemyApologyTurns: 0,
     isFirstTurn: true,
+    lastStudyDay: { jp: 0, en: 0 },
+    usedKnowIdx: { yuki: [], chloe: [] },
+    seenInterludes: [],
+    pendingInterlude: null,
+    sodaBuffDmg: 0,
   };
 }
 
@@ -613,9 +618,15 @@ function grantClue(clueId) {
   if (cObj) {
     showToast(`🕵️ 흑막 단서 확보 (${state.clues.length}/5): ${cObj.title}`, 'good');
   }
+  if (state.clues.length === 2 && !state.seenInterludes?.includes('interlude_1')) {
+    state.pendingInterlude = 'interlude_1';
+  }
   if (state.clues.length === 4 && !state.clues.includes('clue_mastermind')) {
     state.clues.push('clue_mastermind');
     showToast('🕵️ 모든 단서 연결 완료! 흑막 [닥터 카오스] 정체 발각! (5/5)', 'break');
+    if (!state.seenInterludes?.includes('interlude_2')) {
+      state.pendingInterlude = 'interlude_2';
+    }
   }
   return true;
 }
@@ -907,10 +918,12 @@ function performAttack(type) {
 
   const chloeCrit = state.lovers?.includes('chloe') && !state.sulky?.chloe ? 0.18 : 0;
   const allyFirstBonus = state.isFirstTurn && state.allies?.includes('parking_bro') ? 8 : 0;
+  const sodaBonus = state.sodaBuffDmg || 0;
   state.isFirstTurn = false;
+  if (sodaBonus > 0) state.sodaBuffDmg = 0;
 
   if (type === 'speech') {
-    const base = 18 + state.stats.speech * 4 + state.bonusDmg + allyFirstBonus;
+    const base = 18 + state.stats.speech * 4 + state.bonusDmg + allyFirstBonus + sodaBonus;
     const isWeak = enemy.weakness === 'speech';
     hitWeakness = isWeak;
     const critRoll = Math.random() < (0.15 + state.critBonus + chloeCrit);
@@ -996,10 +1009,16 @@ function useItem(itemId, invIndex) {
   if (item.consumable) {
     sfx.powerup();
     vibrate(30);
-    if (item.useEffect.hp) state.hp = clamp(state.hp + item.useEffect.hp, 0, state.maxHp);
+    if (item.useEffect.hpPct) {
+      const healAmt = Math.max(item.useEffect.hpMin || 40, Math.round(state.maxHp * item.useEffect.hpPct));
+      state.hp = clamp(state.hp + healAmt, 0, state.maxHp);
+    } else if (item.useEffect.hp) {
+      state.hp = clamp(state.hp + item.useEffect.hp, 0, state.maxHp);
+    }
     if (item.useEffect.sp) state.sp = clamp(state.sp + item.useEffect.sp, 0, state.maxSp);
+    if (item.useEffect.tempDmg) state.sodaBuffDmg = (state.sodaBuffDmg || 0) + item.useEffect.tempDmg;
     state.inventory.splice(invIndex, 1);
-    state.log = `[${item.name}]을(를) 사용했습니다! 기운이 솟아납니다.`;
+    state.log = `[${item.name}]을(를) 사용했습니다! 기운이 펄펄 솟아납니다!`;
     elInvModal.classList.add('hidden');
     saveGame();
     render();
@@ -1290,6 +1309,54 @@ function render() {
   }
 
   // 4. 오픈월드 서울 맵
+  // 3.5. 흑막 추적 중간 스토리 컷신
+  if (state.phase === 'map' && state.pendingInterlude) {
+    state.phase = 'story_interlude';
+  }
+  if (state.phase === 'story_interlude') {
+    const intId = state.pendingInterlude || 'interlude_1';
+    const iv = STORY_INTERLUDES[intId] || STORY_INTERLUDES.interlude_1;
+    elLocation.textContent = `DAY ${state.day} · 메인 스토리`;
+    elSceneTag.textContent = '긴급 막간';
+    elSceneTag.className = 'scene-tag boss';
+    elSceneTitle.textContent = iv.title;
+    elWeaknessPill.classList.add('hidden');
+    elEnemyHpWrap.classList.add('hidden');
+    elQuoteBubble.textContent = iv.quote;
+    elQuoteBubble.classList.remove('hidden');
+    showSceneCard(iv.badge, iv.ascii, '흑막 추적 진실에 한 걸음 더 다가갔다');
+    elBattleLog.textContent = iv.text;
+    elChoicesPanel.className = 'choices-panel';
+    iv.choices.forEach((ch) => {
+      const b = document.createElement('button');
+      b.className = 'choice-btn row-btn';
+      b.innerHTML = `<span>${ch.text}</span><span class="choice-sub">${ch.sub}</span>`;
+      b.addEventListener('click', () => {
+        sfx.powerup();
+        if (!state.seenInterludes) state.seenInterludes = [];
+        if (!state.seenInterludes.includes(intId)) state.seenInterludes.push(intId);
+        state.pendingInterlude = null;
+        if (ch.lawful) state.lawful += ch.lawful;
+        if (ch.chaotic) state.chaotic += ch.chaotic;
+        if (ch.law) state.stats.law += ch.law;
+        if (ch.guts) state.stats.guts += ch.guts;
+        if (ch.sp) state.sp = clamp(state.sp + ch.sp, 0, state.maxSp);
+        if (ch.bonusDmg) state.bonusDmg += ch.bonusDmg;
+        if (ch.fullHeal) {
+          state.maxHp += 15;
+          state.hp = state.maxHp;
+          state.sp = clamp(state.sp + 30, 0, state.maxSp);
+        }
+        state.phase = 'map';
+        state.log = `📖 [${iv.title}] 기록 완료!`;
+        saveGame();
+        render();
+      });
+      elChoicesPanel.appendChild(b);
+    });
+    return;
+  }
+
   if (state.phase === 'map') {
     const rep = getReputationInfo();
     elLocation.textContent = `DAY ${state.day} · ${timeLabel}`;
@@ -1777,8 +1844,12 @@ function render() {
     if (!state.dateCount) state.dateCount = { yuki: 0, chloe: 0 };
     if (!state.sulky) state.sulky = { yuki: false, chloe: false };
 
+    if (!state.lastStudyDay) state.lastStudyDay = { jp: 0, en: 0 };
+
     const yukiReady = state.love.yuki >= 95 && state.lang.jp >= 6 && (state.dateCount.yuki || 0) >= 3 && state.lawful >= 20 && state.stats.speech >= 5 && !state.lovers.includes('yuki');
     const chloeReady = state.love.chloe >= 95 && state.lang.en >= 6 && (state.dateCount.chloe || 0) >= 3 && state.stats.guts >= 5 && (state.followers || 0) >= 500 && !state.lovers.includes('chloe');
+    const yukiCanDate = (state.love.yuki || 0) >= 35;
+    const chloeCanDate = (state.love.chloe || 0) >= 35;
 
     elLocation.textContent = `DAY ${state.day} · 연애 & 어학`;
     elSceneTag.textContent = '미연시';
@@ -1788,12 +1859,11 @@ function render() {
     elEnemyHpWrap.classList.add('hidden');
     elQuoteBubble.classList.add('hidden');
     showSceneCard(
-      '💘 ROMANCE & LANGUAGE (HARD)',
-      ` 🇯🇵 유키 (일본어 Lv.${state.lang.jp}/6) — 호감도 ${state.love.yuki}/100 · 데이트 ${state.dateCount.yuki || 0}/3 ${state.lovers.includes('yuki') ? '💖연인' : (state.sulky.yuki ? '💢삐짐' : '')}\n` +
-      ` 🇺🇸 클로이 (영어 Lv.${state.lang.en}/6) — 호감도 ${state.love.chloe}/100 · 데이트 ${state.dateCount.chloe || 0}/3 ${state.lovers.includes('chloe') ? '💖연인' : (state.sulky.chloe ? '💢삐짐' : '')}\n` +
-      ` ─────────────────────────────────\n` +
-      ` 고백: 호감도95+어학Lv.6+데이트3회 (유키:모범20·언변5 / 클로이:배짱5·팔로워500)`,
-      '호감도 75에서 썸 돌파 위기 발생! · 양다리 발각 시 삐져서 전투 불참!'
+      '💘 ROMANCE & LANGUAGE',
+      `🇯🇵 유키(일어 Lv.${state.lang.jp}/6) 호감 ${state.love.yuki}/100 · 데이트 ${state.dateCount.yuki || 0}/3 ${state.lovers.includes('yuki') ? '💖' : (state.sulky.yuki ? '💢' : '')}\n` +
+      `🇺🇸 클로이(영어 Lv.${state.lang.en}/6) 호감 ${state.love.chloe}/100 · 데이트 ${state.dateCount.chloe || 0}/3 ${state.lovers.includes('chloe') ? '💖' : (state.sulky.chloe ? '💢' : '')}\n` +
+      `고백: 호감95+어학Lv.6+데이트3회 (유키:모범20·언변5 / 클로이:배짱5·팔로워500)`,
+      '호감도 35 미만: 알아가기 단계 · 75: 썸 위기 · 어학 공부 하루 1회!'
     );
     elBattleLog.textContent = state.log || '공부하고 싶은 언어와 만나고 싶은 히로인을 선택하세요!';
     elChoicesPanel.className = 'choices-panel grid-2';
@@ -1806,7 +1876,22 @@ function render() {
         return;
       }
       if (state.lastDateDay[key] === state.day) {
-        state.log = `📅 오늘은 이미 ${kName}와 데이트했습니다! 내일(DAY ${state.day + 1}) 다시 신청하세요.`;
+        state.log = `📅 오늘은 이미 ${kName}와 만났습니다! 내일(DAY ${state.day + 1}) 다시 신청하세요.`;
+        render();
+        return;
+      }
+      if ((state.love[key] || 0) < 35) {
+        if (state.points < 15) {
+          state.log = '💸 차 한 잔 비용(15 P)이 부족합니다!';
+          render();
+          return;
+        }
+        state.points -= 15;
+        state.lastDateDay[key] = state.day;
+        state.romanceTarget = key;
+        if (!state.usedKnowIdx) state.usedKnowIdx = { yuki: [], chloe: [] };
+        state.currentQuizIdx = pickNonRepeatingIdx(GETTING_TO_KNOW_EVENTS[key].length, state.usedKnowIdx[key]);
+        state.phase = 'getting_to_know';
         render();
         return;
       }
@@ -1847,8 +1932,13 @@ function render() {
     const rActions = [
       {
         title: '🇯🇵 일본어 공부 (유키)',
-        sub: `Lv.${state.lang.jp} · 정답+10 / 오답-5`,
+        sub: state.lastStudyDay.jp === state.day ? '오늘 공부 완료 (내일 가능)' : `Lv.${state.lang.jp} · 하루 1회 · 호감+4`,
         run: () => {
+          if (state.lastStudyDay.jp === state.day) {
+            state.log = '📚 오늘은 이미 일본어 공부를 완료했습니다! 내일 다시 공부하세요.';
+            render();
+            return;
+          }
           state.romanceTarget = 'yuki';
           if (!state.usedQuizIdx) state.usedQuizIdx = { jp: [], en: [] };
           state.currentQuizIdx = pickNonRepeatingIdx(LANG_QUIZZES.jp.length, state.usedQuizIdx.jp);
@@ -1858,8 +1948,13 @@ function render() {
       },
       {
         title: '🇺🇸 영어 공부 (클로이)',
-        sub: `Lv.${state.lang.en} · 정답+10 / 오답-5`,
+        sub: state.lastStudyDay.en === state.day ? '오늘 공부 완료 (내일 가능)' : `Lv.${state.lang.en} · 하루 1회 · 호감+4`,
         run: () => {
+          if (state.lastStudyDay.en === state.day) {
+            state.log = '📚 오늘은 이미 영어 공부를 완료했습니다! 내일 다시 공부하세요.';
+            render();
+            return;
+          }
           state.romanceTarget = 'chloe';
           if (!state.usedQuizIdx) state.usedQuizIdx = { jp: [], en: [] };
           state.currentQuizIdx = pickNonRepeatingIdx(LANG_QUIZZES.en.length, state.usedQuizIdx.en);
@@ -1868,13 +1963,13 @@ function render() {
         },
       },
       {
-        title: yukiReady ? '💖 유키에게 고백하기!' : '🍵 유키와 데이트 (35P)',
-        sub: state.lastDateDay.yuki === state.day ? '오늘 완료 (내일 가능)' : '하루 1회 · 취향 공략',
+        title: yukiReady ? '💖 유키에게 고백하기!' : (yukiCanDate ? '🍵 유키와 데이트 (35P)' : '💬 유키와 알아가기 (15P)'),
+        sub: state.lastDateDay.yuki === state.day ? '오늘 완료 (내일 가능)' : (yukiCanDate ? '하루 1회 · 취향 공략' : '호감 35 달성 시 데이트 해금'),
         run: () => tryStartDate('yuki'),
       },
       {
-        title: chloeReady ? '💖 클로이에게 고백하기!' : '📸 클로이와 데이트 (35P)',
-        sub: state.lastDateDay.chloe === state.day ? '오늘 완료 (내일 가능)' : '하루 1회 · 취향 공략',
+        title: chloeReady ? '💖 클로이에게 고백하기!' : (chloeCanDate ? '📸 클로이와 데이트 (35P)' : '💬 클로이와 알아가기 (15P)'),
+        sub: state.lastDateDay.chloe === state.day ? '오늘 완료 (내일 가능)' : (chloeCanDate ? '하루 1회 · 취향 공략' : '호감 35 달성 시 데이트 해금'),
         run: () => tryStartDate('chloe'),
       },
     ];
@@ -1890,6 +1985,7 @@ function render() {
     if ((state.carLevel || 0) >= 1) {
       const carObj = CARS[state.carLevel - 1];
       ['yuki', 'chloe'].forEach((k) => {
+        if ((state.love[k] || 0) < 35) return;
         const dBtn = document.createElement('button');
         dBtn.className = 'choice-btn';
         dBtn.style.background = 'linear-gradient(180deg, #eef7ff 0%, #d8ecff 100%)';
@@ -2053,18 +2149,20 @@ function render() {
       btn.innerHTML = `<span>${idx + 1}. ${opt}</span><span class="choice-sub">선택</span>`;
       btn.addEventListener('click', () => {
         const correct = idx === quiz.answer;
+        if (!state.lastStudyDay) state.lastStudyDay = { jp: 0, en: 0 };
+        state.lastStudyDay[isJp ? 'jp' : 'en'] = state.day;
         if (correct) {
           sfx.victory();
           vibrate(30);
           if (isJp) {
             state.lang.jp += 1;
-            state.love.yuki = clamp(state.love.yuki + 10, 0, 100);
+            state.love.yuki = clamp(state.love.yuki + 4, 0, state.someCleared?.yuki ? 100 : 75);
             state.stats.speech += 1;
             if (!state.lastContactDay) state.lastContactDay = { yuki: state.day, chloe: state.day };
             state.lastContactDay.yuki = state.day;
           } else {
             state.lang.en += 1;
-            state.love.chloe = clamp(state.love.chloe + 10, 0, 100);
+            state.love.chloe = clamp(state.love.chloe + 4, 0, state.someCleared?.chloe ? 100 : 75);
             state.stats.guts += 1;
             if (!state.lastContactDay) state.lastContactDay = { yuki: state.day, chloe: state.day };
             state.lastContactDay.chloe = state.day;
@@ -2072,13 +2170,58 @@ function render() {
           state.followers = (state.followers || 120) + 120;
           const dayStudyBonus = state.timeIndex <= 1 ? 5 : 0;
           if (dayStudyBonus > 0) state.points += dayStudyBonus;
-          state.log = `🎉 정답!! ${quiz.reactOk}${dayStudyBonus > 0 ? '\n☀️ [낮 스터디 보너스] 도덕점수 +5 P!' : ''}`;
+          state.log = `🎉 정답!! ${quiz.reactOk.replace(/호감도\+\d+/g, '호감도+4')}${dayStudyBonus > 0 ? '\n☀️ [낮 스터디 보너스] 도덕점수 +5 P!' : ''}`;
         } else {
           sfx.damage();
           if (isJp) state.love.yuki = clamp(state.love.yuki - 5, 0, 100);
           else state.love.chloe = clamp(state.love.chloe - 5, 0, 100);
           state.log = `😅 오답! ${quiz.reactNo}`;
         }
+        advanceTime();
+        state.phase = 'romance';
+        saveGame();
+        render();
+      });
+      elChoicesPanel.appendChild(btn);
+    });
+    return;
+  }
+
+  // 4-R1.2. 알아가는 단계 (호감도 35 미만 · 일러스트 없는 텍스트 중심)
+  if (state.phase === 'getting_to_know') {
+    const key = state.romanceTarget === 'chloe' ? 'chloe' : 'yuki';
+    const pool = GETTING_TO_KNOW_EVENTS[key];
+    const ev = pool[(state.currentQuizIdx || 0) % pool.length];
+    elLocation.textContent = `DAY ${state.day} · 알아가는 중`;
+    elSceneTag.textContent = '첫 만남';
+    elSceneTag.className = 'scene-tag event';
+    elSceneTitle.textContent = ev.title;
+    elWeaknessPill.classList.add('hidden');
+    elEnemyHpWrap.classList.add('hidden');
+    elQuoteBubble.textContent = ev.quote;
+    elQuoteBubble.classList.remove('hidden');
+    showSceneCard('💬 GETTING TO KNOW', ev.ascii, '호감도 35 달성 시 정식 데이트 & 일러스트 해금!');
+    elBattleLog.textContent = ev.text;
+    elChoicesPanel.className = 'choices-panel';
+
+    ev.choices.forEach((ch) => {
+      const btn = document.createElement('button');
+      btn.className = 'choice-btn row-btn';
+      btn.innerHTML = `<span>${ch.text}</span><span class="choice-sub">${ch.sub}</span>`;
+      btn.addEventListener('click', () => {
+        sfx.victory();
+        state.love[key] = clamp((state.love[key] || 0) + (ch.love || 8), 0, 100);
+        if (ch.lawful) state.lawful += ch.lawful;
+        if (ch.chaotic) state.chaotic += ch.chaotic;
+        if (ch.speech) state.stats.speech += ch.speech;
+        if (ch.guts) state.stats.guts += ch.guts;
+        if (ch.law) state.stats.law += ch.law;
+        if (ch.sp) state.sp = clamp(state.sp + ch.sp, 0, state.maxSp);
+        if (ch.followers) state.followers = (state.followers || 120) + ch.followers;
+        if (!state.lastContactDay) state.lastContactDay = { yuki: state.day, chloe: state.day };
+        state.lastContactDay[key] = state.day;
+        const unlockedDate = state.love[key] >= 35;
+        state.log = `💬 ${ch.reply}${unlockedDate ? `\n🎉 이제 ${key === 'yuki' ? '유키' : '클로이'}와 꽤 친해졌습니다! 정식 데이트가 해금되었습니다!` : ''}`;
         advanceTime();
         state.phase = 'romance';
         saveGame();
@@ -2667,8 +2810,8 @@ function render() {
 
     elChoicesPanel.className = 'choices-panel';
     const shopItems = [
-      { id: 'cheongsimhwan', label: '💊 우황청심환 (인내심 +40)', cost: 30 },
-      { id: 'cold_soda', label: '🫧 칠성사이다 캔 (사이다 +45)', cost: 25 },
+      { id: 'cheongsimhwan', label: '💊 우황청심환 (최대HP 45%+사이다15)', cost: 35 },
+      { id: 'cold_soda', label: '🫧 칠성사이다 캔 (사이다65+HP25+공격12)', cost: 30 },
     ];
     ['water_gun', 'megaphone', 'mirror'].forEach((eqId) => {
       if (!state.inventory.includes(eqId)) {
