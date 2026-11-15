@@ -1,4 +1,4 @@
-import { EXTRA_MOBS_40 } from './mobs40.js?v=48';
+import { EXTRA_MOBS_40 } from './mobs40.js?v=50';
 
 export const TIME_SLOTS = ['🌅 오전', '☀️ 오후', '🌙 밤', '🦉 심야'];
 
@@ -158,7 +158,7 @@ export const VILLAINS = [
     reward: 35,
     weakness: 'law',
     weaknessLabel: '⚖️ 약점: 법지식(과태료)',
-    image: 'assets/images/spitter_villain.jpg',
+    image: 'assets/images/spitter_sprite.png',
     introQuote: '"카아악— 퉤! 아 바닥 좀 더러워지면 어때서 유난이야?"',
     banterQuotes: [
       '"내가 낸 세금으로 청소부가 치우겠지~"',
@@ -177,7 +177,7 @@ export const VILLAINS = [
     reward: 40,
     weakness: 'speech',
     weaknessLabel: '🗣️ 약점: 언변(팩폭 일침)',
-    image: 'assets/images/sidewalk_blockers.jpg',
+    image: 'assets/images/sidewalk_blockers_sprite.png',
     introQuote: '"어머~ 자기야 이거 봐봐 ㅋㅋ (시속 1km로 길막 중)"',
     banterQuotes: [
       '"뒤에서 급하면 차도로 내려가든가~ 흥!"',
@@ -196,7 +196,7 @@ export const VILLAINS = [
     reward: 40,
     weakness: 'law',
     weaknessLabel: '⚖️ 약점: 법지식(신고)',
-    image: 'assets/images/parking_villain.jpg',
+    image: 'assets/images/parking_villain_sprite.png',
     wanted: {
       emoji: '🚙⚡',
       crime: '경차 두 대 들어갈 자리에 대각선 주차 시전',
@@ -220,7 +220,7 @@ export const VILLAINS = [
     reward: 45,
     weakness: 'law',
     weaknessLabel: '⚖️ 약점: 법지식(데시벨 채증)',
-    image: 'assets/images/noise_villain.jpg',
+    image: 'assets/images/noise_villain_sprite.png',
     wanted: {
       emoji: '🔨👣',
       crime: '새벽 2시 뒤꿈치 발망치 + 현관문 쾅 닫기',
@@ -292,7 +292,7 @@ export const VILLAINS = [
     reward: 50,
     weakness: 'guts',
     weaknessLabel: '🪞 약점: 깡다구(거울치료)',
-    image: 'assets/images/gym_villain.jpg',
+    image: 'assets/images/gym_villain_sprite.png',
     wanted: {
       emoji: '🏋️‍♂️💥',
       crime: '40kg 덤벨 자유낙하 & 벤치프레스 20분 인스타 점거',

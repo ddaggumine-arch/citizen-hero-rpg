@@ -5,7 +5,9 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V27.3
+## 현재 최신 버전: V27.4
+- **V27.4**:
+  - **일반 잡몹 50종 100% 투명 PNG 웹툰 스프라이트 완비 (`assets/images/mob_*.png`, `*_sprite.png`, `data/gameData.js`, `data/mobs40.js`)**: 5개 구역 시트(3×3 × 5 = 45종) 투명 PNG(`504px` 발끝 정렬) 추출 + 기존 5종 합쳐 일반 잡몹 50종 전원 1:1 투명 PNG 스프라이트 적용 완료 (`PNG_OK: 50 / MISSING: 0`, `?v=50`)
 - **V27.3**:
   - **전투 일러스트 프레임 내 나/적 직관적 레벨 배지 (`index.html`, `style.css`, `app.js`)**: 전투·논리카운터 화면 좌상단 `🛡️ 나 Lv.X`, 우상단 `💢 적 Lv.Y` (레벨차별 빨강/주황/초록 색상 구분) 상시 표시
   - **서울 5대 구역 실시간 난이도 배지 (`getZoneDifficultyInfo`, `openActivityModal`, `openDistrictsModal`)**: 순찰·탐문 및 서울 5대 구역 치안 창에서 내 레벨 대비 `🌿 쉬움 / ⚔️ 적정 / 🔥 어려움 / 💀 매우 어려움` 배지 표시 (`?v=49`)

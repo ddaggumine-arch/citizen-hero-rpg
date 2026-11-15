@@ -5,6 +5,7 @@ export const EXTRA_MOBS_40 = [
   // ===== 1구역: 마포구 · 원룸촌 (Lv.1~10) =====
   {
     id: 'mob_m1', district: 'mapo', zone: 'alley', emoji: '📦',
+    image: 'assets/images/mob_m1.png',
     name: '공동현관 택배 절도범', location: '마포 원룸촌 1층',
     maxHp: 75, atk: 12, reward: 32,
     weakness: 'law', weaknessLabel: '⚖️ 약점: 법지식(절도죄 CCTV)',
@@ -14,6 +15,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_m2', district: 'mapo', zone: 'alley', emoji: '🧺',
+    image: 'assets/images/mob_m2.png',
     name: '공용세탁기 3시간 방치러', location: '옥탑방 공용 세탁실',
     maxHp: 72, atk: 11, reward: 30,
     weakness: 'guts', weaknessLabel: '🦁 약점: 깡다구(바구니 철거)',
@@ -23,6 +25,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_m3', district: 'mapo', zone: 'alley', emoji: '📱',
+    image: 'assets/images/mob_m3.png',
     name: '당근거래 직전 잠수충', location: '홍대입구 3번 출구 앞',
     maxHp: 78, atk: 12, reward: 34,
     weakness: 'speech', weaknessLabel: '🗣️ 약점: 언변(매너온도 저격)',
@@ -32,6 +35,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_m4', district: 'mapo', zone: 'alley', emoji: '♻️',
+    image: 'assets/images/mob_m4.png',
     name: '음식물·플라스틱 짬뽕 투기범', location: '원룸촌 분리수거장',
     maxHp: 80, atk: 13, reward: 35,
     weakness: 'law', weaknessLabel: '⚖️ 약점: 법지식(과태료 100만)',
@@ -41,6 +45,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_m5', district: 'mapo', zone: 'alley', emoji: '🛵',
+    image: 'assets/images/mob_m5.png',
     name: '인도 질주 무법 배달라이더', location: '연남동 좁은 보도블록',
     maxHp: 84, atk: 14, reward: 38,
     weakness: 'law', weaknessLabel: '⚖️ 약점: 법지식(도로교통법)',
@@ -50,6 +55,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_m6', district: 'mapo', zone: 'alley', emoji: '🐕',
+    image: 'assets/images/mob_m6.png',
     name: '배변봉투 미소지 견주', location: '경의선 숲길 산책로',
     maxHp: 74, atk: 12, reward: 32,
     weakness: 'guts', weaknessLabel: '🦁 약점: 깡다구(현장 체포)',
@@ -59,6 +65,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_m7', district: 'mapo', zone: 'alley', emoji: '🎤',
+    image: 'assets/images/mob_m7.png',
     name: '새벽 3시 창문 열창 노상방가남', location: '서교동 빌라촌 골목',
     maxHp: 82, atk: 13, reward: 36,
     weakness: 'speech', weaknessLabel: '🗣️ 약점: 언변(음정 팩트폭격)',
@@ -68,6 +75,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_m8', district: 'mapo', zone: 'alley', emoji: '🏪',
+    image: 'assets/images/mob_m8.png',
     name: '편의점 파라솔 술판 난동꾼', location: '합정역 뒷골목 편의점',
     maxHp: 86, atk: 14, reward: 40,
     weakness: 'guts', weaknessLabel: '🦁 약점: 깡다구(112 호출)',
@@ -79,6 +87,7 @@ export const EXTRA_MOBS_40 = [
   // ===== 2구역: 성수동 · 핫플/2호선 (Lv.11~20) =====
   {
     id: 'mob_s1', district: 'seongsu', zone: 'transit', emoji: '📸',
+    image: 'assets/images/mob_s1.png',
     name: '통로 점령 릴스 댄스 민폐남', location: '성수역 3번 출구 계단',
     maxHp: 110, atk: 16, reward: 48,
     weakness: 'guts', weaknessLabel: '🦁 약점: 깡다구(카메라 앵글 난입)',
@@ -88,6 +97,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_s2', district: 'seongsu', zone: 'transit', emoji: '🥯',
+    image: 'assets/images/mob_s2.png',
     name: '베이글 웨이팅 대신 줄서기 브로커', location: '성수 연무장길 핫플',
     maxHp: 115, atk: 17, reward: 52,
     weakness: 'speech', weaknessLabel: '🗣️ 약점: 언변(대기줄 여론전)',
@@ -97,6 +107,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_s3', district: 'seongsu', zone: 'transit', emoji: '🚇',
+    image: 'assets/images/mob_s3.png',
     name: '지하철 내림 우선 무시 탑승러', location: '2호선 성수역 승강장',
     maxHp: 112, atk: 17, reward: 50,
     weakness: 'guts', weaknessLabel: '🦁 약점: 깡다구(어깨빵 방어)',
@@ -106,6 +117,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_s4', district: 'seongsu', zone: 'transit', emoji: '🥤',
+    image: 'assets/images/mob_s4.png',
     name: '리필 없는 카페 반입음료 진상', location: '성수동 루프탑 카페',
     maxHp: 108, atk: 16, reward: 48,
     weakness: 'speech', weaknessLabel: '🗣️ 약점: 언변(영업방해 팩트)',
@@ -115,6 +127,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_s5', district: 'seongsu', zone: 'transit', emoji: '🛴',
+    image: 'assets/images/mob_s5.png',
     name: '2인 탑승 노헬멧 킥보드 커플', location: '서울숲 진입로',
     maxHp: 118, atk: 18, reward: 55,
     weakness: 'law', weaknessLabel: '⚖️ 약점: 법지식(범칙금 2연타)',
@@ -124,6 +137,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_s6', district: 'seongsu', zone: 'transit', emoji: '🎧',
+    image: 'assets/images/mob_s6.png',
     name: '블루투스 누수 풀볼륨 통화남', location: '2호선 건대입구~성수 구간',
     maxHp: 114, atk: 17, reward: 50,
     weakness: 'speech', weaknessLabel: '🗣️ 약점: 언변(공개 TMI 역공)',
@@ -133,6 +147,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_s7', district: 'seongsu', zone: 'transit', emoji: '🛍️',
+    image: 'assets/images/mob_s7.png',
     name: '팝업스토어 굿즈 사재기 되팔렘', location: '성수 팝업스토어 거리',
     maxHp: 122, atk: 18, reward: 58,
     weakness: 'law', weaknessLabel: '⚖️ 약점: 법지식(미신고 리셀)',
@@ -144,6 +159,7 @@ export const EXTRA_MOBS_40 = [
   // ===== 3구역: 종로구 · 도심/오피스 (Lv.21~30) =====
   {
     id: 'mob_j1', district: 'jongno', zone: 'transit', emoji: '👔',
+    image: 'assets/images/mob_j1.png',
     name: '금요일 6시 기습 회식 강요 상사', location: '종각역 오피스 타운',
     maxHp: 148, atk: 21, reward: 68,
     weakness: 'law', weaknessLabel: '⚖️ 약점: 법지식(근로기준법)',
@@ -153,6 +169,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_j2', district: 'jongno', zone: 'alley', emoji: '🚗',
+    image: 'assets/images/mob_j2.png',
     name: '횡단보도 보행자 위협 우회전 칼치기', location: '광화문 사거리',
     maxHp: 155, atk: 22, reward: 72,
     weakness: 'law', weaknessLabel: '⚖️ 약점: 법지식(보행자 보호의무)',
@@ -162,6 +179,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_j3', district: 'jongno', zone: 'alley', emoji: '🔮',
+    image: 'assets/images/mob_j3.png',
     name: '"도가 있습니까" 길막 강제 포교단', location: '종로3가 지하도',
     maxHp: 145, atk: 20, reward: 66,
     weakness: 'speech', weaknessLabel: '🗣️ 약점: 언변(논리 역설법)',
@@ -171,6 +189,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_j4', district: 'jongno', zone: 'transit', emoji: '🍱',
+    image: 'assets/images/mob_j4.png',
     name: '구내식당 반찬 싹쓸이 양심실종러', location: '을지로 빌딩 지하 식당',
     maxHp: 142, atk: 20, reward: 64,
     weakness: 'guts', weaknessLabel: '🦁 약점: 깡다구(눈총 압박)',
@@ -180,6 +199,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_j5', district: 'jongno', zone: 'alley', emoji: '💳',
+    image: 'assets/images/mob_j5.png',
     name: '무인매장 양심 제로 미결제범', location: '인사동 무인 아이스크림점',
     maxHp: 150, atk: 21, reward: 70,
     weakness: 'law', weaknessLabel: '⚖️ 약점: 법지식(AI CCTV 전송)',
@@ -189,6 +209,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_j6', district: 'jongno', zone: 'transit', emoji: '🗣️',
+    image: 'assets/images/mob_j6.png',
     name: '영화관 실시간 스포일러 해설러', location: '종로 멀티플렉스 상영관',
     maxHp: 152, atk: 22, reward: 72,
     weakness: 'guts', weaknessLabel: '🦁 약점: 깡다구(직원 호출)',
@@ -198,6 +219,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_j7', district: 'jongno', zone: 'alley', emoji: '☂️',
+    image: 'assets/images/mob_j7.png',
     name: '비 오는 날 우산 수평 겨누기 빌런', location: '시청역 출근길 인파',
     maxHp: 146, atk: 21, reward: 68,
     weakness: 'guts', weaknessLabel: '🦁 약점: 깡다구(우산 각도 교정)',
@@ -207,6 +229,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_j8', district: 'jongno', zone: 'transit', emoji: '📢',
+    image: 'assets/images/mob_j8.png',
     name: '출근길 확성기 불법 가두영업단', location: '을지로입구 사거리',
     maxHp: 158, atk: 23, reward: 75,
     weakness: 'law', weaknessLabel: '⚖️ 약점: 법지식(소음규제법)',
@@ -218,6 +241,7 @@ export const EXTRA_MOBS_40 = [
   // ===== 4구역: 강남구 · 유흥/번화가 (Lv.31~40) =====
   {
     id: 'mob_g1', district: 'gangnam', zone: 'alley', emoji: '🏎️',
+    image: 'assets/images/mob_g1.png',
     name: '새벽 도산대로 슈퍼카 팝콘 배기음족', location: '청담동 도산대로',
     maxHp: 195, atk: 26, reward: 92,
     weakness: 'law', weaknessLabel: '⚖️ 약점: 법지식(불법 개조 단속)',
@@ -227,6 +251,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_g2', district: 'gangnam', zone: 'alley', emoji: '🕶️',
+    image: 'assets/images/mob_g2.png',
     name: '발렛비 5배 바가지 갑질 매니저', location: '압구정 로데오거리',
     maxHp: 188, atk: 25, reward: 88,
     weakness: 'speech', weaknessLabel: '🗣️ 약점: 언변(소비자원 신고)',
@@ -236,6 +261,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_g3', district: 'gangnam', zone: 'transit', emoji: '🥂',
+    image: 'assets/images/mob_g3.png',
     name: '라운지바 테이블 쪼개기 사기 브로커', location: '강남역 먹자골목',
     maxHp: 192, atk: 26, reward: 90,
     weakness: 'speech', weaknessLabel: '🗣️ 약점: 언변(계약 사기 폭로)',
@@ -245,6 +271,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_g4', district: 'gangnam', zone: 'alley', emoji: '👜',
+    image: 'assets/images/mob_g4.png',
     name: '짝퉁 명품 진품 둔갑 리셀 사기꾼', location: '신사동 가로수길',
     maxHp: 190, atk: 25, reward: 90,
     weakness: 'law', weaknessLabel: '⚖️ 약점: 법지식(상표법 위반)',
@@ -254,6 +281,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_g5', district: 'gangnam', zone: 'transit', emoji: '📱',
+    image: 'assets/images/mob_g5.png',
     name: '강남역 불법 대출·성인 전단지 살포범', location: '강남역 10번 출구 보도',
     maxHp: 184, atk: 24, reward: 85,
     weakness: 'law', weaknessLabel: '⚖️ 약점: 법지식(옥외광고물법)',
@@ -263,6 +291,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_g6', district: 'gangnam', zone: 'alley', emoji: '🏋️',
+    image: 'assets/images/mob_g6.png',
     name: '프리미엄 헬스장 원판 200kg 미정리 빌런', location: '역삼동 24시 피트니스',
     maxHp: 200, atk: 27, reward: 95,
     weakness: 'guts', weaknessLabel: '🦁 약점: 깡다구(자세 팩트체크)',
@@ -272,6 +301,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_g7', district: 'gangnam', zone: 'transit', emoji: '🚕',
+    image: 'assets/images/mob_g7.png',
     name: '심야 골라태우기 승차거부 모범택시', location: '강남역 밤 12시 승강장',
     maxHp: 186, atk: 25, reward: 88,
     weakness: 'law', weaknessLabel: '⚖️ 약점: 법지식(다산콜 120 신고)',
@@ -281,6 +311,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_g8', district: 'gangnam', zone: 'alley', emoji: '📈',
+    image: 'assets/images/mob_g8.png',
     name: '가짜 코인 리딩방 바람잡이 영업맨', location: '테헤란로 공유오피스 앞',
     maxHp: 196, atk: 26, reward: 94,
     weakness: 'speech', weaknessLabel: '🗣️ 약점: 언변(수익률 조작 검증)',
@@ -292,6 +323,7 @@ export const EXTRA_MOBS_40 = [
   // ===== 5구역: 여의도 · 블랙튜브 본거지 (Lv.41~50) =====
   {
     id: 'mob_y1', district: 'yeouido', zone: 'transit', emoji: '💻',
+    image: 'assets/images/mob_y1.png',
     name: '블랙튜브 여론조작 매크로 팀장', location: '여의도 블랙튜브 별관',
     maxHp: 245, atk: 31, reward: 120,
     weakness: 'law', weaknessLabel: '⚖️ 약점: 법지식(업무방해·명예훼손)',
@@ -301,6 +333,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_y2', district: 'yeouido', zone: 'alley', emoji: '📹',
+    image: 'assets/images/mob_y2.png',
     name: '자극적 주작 썸네일 악성 렉카 PD', location: '여의도 스튜디오 앞',
     maxHp: 250, atk: 32, reward: 125,
     weakness: 'speech', weaknessLabel: '🗣️ 약점: 언변(원본 영상 대조)',
@@ -310,6 +343,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_y3', district: 'yeouido', zone: 'alley', emoji: '🛡️',
+    image: 'assets/images/mob_y3.png',
     name: '블랙튜브 사설 경호 용역 대원', location: '블랙튜브 타워 정문',
     maxHp: 260, atk: 33, reward: 130,
     weakness: 'guts', weaknessLabel: '🦁 약점: 깡다구(정면 돌파)',
@@ -319,6 +353,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_y4', district: 'yeouido', zone: 'transit', emoji: '🎭',
+    image: 'assets/images/mob_y4.png',
     name: '딥페이크 가짜 제보 합성 기술자', location: '여의도역 지하 보안실',
     maxHp: 242, atk: 31, reward: 118,
     weakness: 'law', weaknessLabel: '⚖️ 약점: 법지식(디지털 포렌식)',
@@ -328,6 +363,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_y5', district: 'yeouido', zone: 'alley', emoji: '💼',
+    image: 'assets/images/mob_y5.png',
     name: '뒷돈 받은 블랙튜브 매수 브로커', location: '여의도 증권가 뒷골목',
     maxHp: 248, atk: 31, reward: 122,
     weakness: 'speech', weaknessLabel: '🗣️ 약점: 언변(뇌물 장부 추궁)',
@@ -337,6 +373,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_y6', district: 'yeouido', zone: 'transit', emoji: '🚁',
+    image: 'assets/images/mob_y6.png',
     name: '금지구역 도촬 드론 조종 빌런', location: '여의도 한강공원 상공',
     maxHp: 240, atk: 30, reward: 118,
     weakness: 'law', weaknessLabel: '⚖️ 약점: 법지식(항공안전법 위반)',
@@ -346,6 +383,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_y7', district: 'yeouido', zone: 'alley', emoji: '🧨',
+    image: 'assets/images/mob_y7.png',
     name: '실시간 별풍선 도네 폭주 유도범', location: '국회의사당 앞 공원',
     maxHp: 255, atk: 32, reward: 128,
     weakness: 'guts', weaknessLabel: '🦁 약점: 깡다구(생방 난입 참교육)',
@@ -355,6 +393,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_y8', district: 'yeouido', zone: 'transit', emoji: '📞',
+    image: 'assets/images/mob_y8.png',
     name: '악성 허위신고 112 마비 테러범', location: '여의도 공중전화 부스',
     maxHp: 246, atk: 31, reward: 122,
     weakness: 'law', weaknessLabel: '⚖️ 약점: 법지식(위계 공무집행방해)',
@@ -364,6 +403,7 @@ export const EXTRA_MOBS_40 = [
   },
   {
     id: 'mob_y9', district: 'yeouido', zone: 'alley', emoji: '🕶️',
+    image: 'assets/images/mob_y9.png',
     name: '닥터 카오스 친위대 정예 행동대장', location: '블랙튜브 본사 로비',
     maxHp: 270, atk: 34, reward: 140,
     weakness: 'guts', weaknessLabel: '🦁 약점: 깡다구(정면 승부)',
