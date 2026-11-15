@@ -5,7 +5,11 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V24.0
+## 현재 최신 버전: V24.1
+- **V24.1**:
+  - **2026 현대 한국인 웹툰풍 투명 PNG 적 스프라이트 9종 적용** (높이 `504px` 정규화로 주인공 `hero_idle.png`와 크기·발끝 정렬, `.enemy-sprite` 숨쉬기/그림자/`boss-scale` 적용, `?v=27`)
+  - **기존 이미지 미구현 적 6명 스프라이트 교체**: `shorts_terrorist`, `pen_clicker`, `boss_dr_chaos`, `night_biker`, `subway_legger`, `illegal_parker`
+  - **신규 2026 서울 빌런 3명 추가 (`data/gameData.js`)**: `line_cutter`(출근길 새치기 엘보우 빌런), `trash_dumper`(원룸촌 무단투기 양심 실종자), `cafe_hogger`(카페 4인석 콘센트 독점 빌런) → 총 적 **18명** 전원 이미지 보유(`MISSING=0`)
 - **V24.0**:
   - **난이도 선택 (`DIFFICULTIES`: 노멀/하드/헬)**: 타이틀 화면에서 즉시 선택, 적 체력/공격/보상/드랍률 차등 적용
   - **방어력(DEF) & 0.1% 유니크 파밍 장비 (`GEAR_LOOT_POOL`)**: 무기·방어구·악세서리 3슬롯, 일반/레어/에픽/0.1% 유니크 드랍, 예절폰 `[⚔️ 파밍 장비 창고]`에서 장착/해제/분해
@@ -13,7 +17,6 @@
   - **빌런 억지 논리 카운터 (`logic_counter`)**: 전투 중 18% 확률로 1방 설전 반격 (정답 시 40% 피해 + 멘붕 브레이크 & 기절)
   - **콩이 특기 전직 (`PET_JOBS`)**: Lv.3+ 달성 시 경비견(반사15%)/힐링견(HP+5)/탐지견(50% 채증+1) 선택
   - **서울 익명 커뮤니티 (`generateCommunityPosts`)** & **커스텀 아이콘 2탄 6종** (`room_mattress/soundproof/desk/doghouse`, `golden_whistle`, `fact_book`) (`?v=26`)
-- **V23.0**:
 - **V23.0**:
   - **📖 빌런 도감 & 📸 추억 앨범 (`openVillainCodexModal`, `openMemoryAlbumModal`)**: 예절폰에서 처치한 빌런(`villainWins`)과 유키·클로이·콩이 추억 일러스트 열람
   - **💬 연인·콩이 전투 지원 컷인 (`triggerPartnerCallout`)**: 유키 힐/클로이 치명타/콩이 발목 깨물기/합동 필살기 시 스프라이트 점프 + 말풍선
