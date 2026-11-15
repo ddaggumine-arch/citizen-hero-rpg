@@ -10,7 +10,9 @@ export const STORY_ACT_4 = [
     bossId: 'sb_19',
     scenes: [
       {
-        image: 'assets/images/officer_kim.jpg',
+        badge: '?? ??? ??? ???',
+        ascii: '   ?? [112 ??? ?? ?? ?]\n   ?? ???: "???, ?? ?????!"\n   ?????????????????????????',
+        sub: '???? ?? ??? ????',
         tag: '제19화 · 기(起)',
         title: '진상연합 4대 지부의 반격',
         quote: '"영웅님! 조심하셔야 합니다. 진상연합 간부들이 직접 홍대로 내려왔답니다!"',
@@ -48,7 +50,7 @@ export const STORY_ACT_4 = [
         ],
       },
       {
-        image: 'assets/images/yuki_normal.jpg',
+        image: 'assets/images/yuki_sprite.png',
         tag: '제19화 · 전(轉)',
         title: '뒤에서 들려온 든든한 목소리',
         quote: '"영웅님 혼자 싸우게 두지 않아요! 홍대 상인분들이 전부 증언해 주실 거래요!"',
@@ -84,7 +86,7 @@ export const STORY_ACT_4 = [
     bossId: 'sb_20',
     scenes: [
       {
-        image: 'assets/images/act_patrol.jpg',
+        image: 'assets/images/hero_idle.png',
         tag: '제20화 · 기(起)',
         title: '강남역 발레파킹장의 비명',
         quote: '"무릎 꿇어! 내 슈퍼카에 먼지 묻었잖아! 이 알바생이 눈이 삐었나!"',
@@ -113,7 +115,7 @@ export const STORY_ACT_4 = [
         ],
       },
       {
-        image: 'assets/images/chloe_normal.jpg',
+        image: 'assets/images/chloe_sprite.png',
         tag: '제20화 · 전(轉)',
         title: '클로이의 결정적 파파라치 샷',
         quote: '"OMG! 돈 뿌리며 갑질하는 꼴이라니! 4K 슬로우 모션으로 완벽히 찍었어!"',
@@ -157,7 +159,9 @@ export const STORY_ACT_4 = [
     bossId: 'sb_21',
     scenes: [
       {
-        image: 'assets/images/officer_kim.jpg',
+        badge: '?? ??? ??? ???',
+        ascii: '   ?? [112 ??? ?? ?? ?]\n   ?? ???: "???, ?? ?????!"\n   ?????????????????????????',
+        sub: '???? ?? ??? ????',
         tag: '제21화 · 기(起)',
         title: '사이버 여론 조작 경보',
         quote: '"영웅님! 큰일입니다! 방금 커뮤니티에 [시민영웅 폭행 조작 루머]가 도배되고 있어요!"',
@@ -305,7 +309,9 @@ export const STORY_ACT_4 = [
     bossId: 'sb_23',
     scenes: [
       {
-        image: 'assets/images/officer_kim.jpg',
+        badge: '?? ??? ??? ???',
+        ascii: '   ?? [112 ??? ?? ?? ?]\n   ?? ???: "???, ?? ?????!"\n   ?????????????????????????',
+        sub: '???? ?? ??? ????',
         tag: '제23화 · 기(起)',
         title: '심장을 얼어붙게 만든 전화',
         quote: '"영웅님!! 큰일 났습니다! 진상연합 잔당이 유키 씨와 클로이 씨를 노리고 있어요!"',
@@ -343,7 +349,7 @@ export const STORY_ACT_4 = [
         ],
       },
       {
-        image: 'assets/images/yuki_blush.jpg',
+        image: 'assets/images/yuki_sprite.png',
         tag: '제23화 · 전(轉)',
         title: '유키와 클로이의 믿음',
         quote: '"우린 괜찮아요! 영웅님이 꼭 와주실 줄 알았어요!!"',
@@ -416,7 +422,9 @@ export const STORY_ACT_4 = [
         choices: [{ text: '🌟 "노란 완장은 권력이 아니라 책임입니다!"', sub: '팔로워 +400 ▶', effect: { followers: 400 }, nextScene: 3 }],
       },
       {
-        image: 'assets/images/officer_kim.jpg',
+        badge: '?? ??? ??? ???',
+        ascii: '   ?? [112 ??? ?? ?? ?]\n   ?? ???: "???, ?? ?????!"\n   ?????????????????????????',
+        sub: '???? ?? ??? ????',
         tag: '제24화 · 전(轉)',
         title: '시민영웅 재단 & 배틀타워 설립 승인',
         quote: '"영웅님! 시민들의 후원으로 정식 [시민영웅 재단]과 훈련용 [배틀타워]가 승인됐습니다!"',

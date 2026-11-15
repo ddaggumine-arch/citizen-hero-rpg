@@ -10,7 +10,7 @@ export const STORY_ACT_3 = [
     bossId: 'sb_13',
     scenes: [
       {
-        image: 'assets/images/act_patrol.jpg',
+        image: 'assets/images/hero_idle.png',
         tag: '제13화 · 기(起)',
         title: '마포구 홍대 상권 진입',
         quote: '"영웅님, 최근 홍대 개인 카페들 사이에 악질 공갈범이 돌고 있답니다."',
@@ -48,7 +48,7 @@ export const STORY_ACT_3 = [
         ],
       },
       {
-        image: 'assets/images/yuki_normal.jpg',
+        image: 'assets/images/yuki_sprite.png',
         tag: '제13화 · 전(轉)',
         title: '옆 가게에서 달려온 맑은 눈동자',
         quote: '"저기... 이분 옆 카페에서도 어제 똑같이 그러셨어요! 제가 목격자예요!"',
@@ -84,7 +84,7 @@ export const STORY_ACT_3 = [
     bossId: 'sb_14',
     scenes: [
       {
-        image: 'assets/images/yuki_normal.jpg',
+        image: 'assets/images/yuki_sprite.png',
         tag: '제14화 · 기(起)',
         title: '유키의 작은 북카페',
         quote: '"어머, 어제 도와주셨던 영웅님! 마침 잘 오셨어요..."',
@@ -130,7 +130,7 @@ export const STORY_ACT_3 = [
         choices: [{ text: '😡 "역시 너희들 뒤에도 블랙튜브가 있었군!"', sub: '계속 ▶', nextScene: 4 }],
       },
       {
-        image: 'assets/images/yuki_blush.jpg',
+        image: 'assets/images/yuki_sprite.png',
         tag: '제14화 · 전(轉)',
         title: '따뜻한 응원',
         quote: '"영웅님... 다치시면 안 돼요! 조심하세요!"',
@@ -157,7 +157,7 @@ export const STORY_ACT_3 = [
     bossId: 'sb_15',
     scenes: [
       {
-        image: 'assets/images/yuki_blush.jpg',
+        image: 'assets/images/yuki_sprite.png',
         tag: '제15화 · 기(起)',
         title: '비 오는 날의 따뜻한 말차 라떼',
         quote: '"어제 정말 멋졌어요...! 감사의 표시로 제가 직접 내린 말차 라떼예요."',
@@ -211,7 +211,7 @@ export const STORY_ACT_3 = [
         choices: [{ text: '🚨 "이 인간, 블랙튜브 신상털이 팀 스파이였구나!"', sub: '계속 ▶', nextScene: 4 }],
       },
       {
-        image: 'assets/images/yuki_normal.jpg',
+        image: 'assets/images/yuki_sprite.png',
         tag: '제15화 · 전(轉)',
         title: '함께 싸우는 첫 걸음',
         quote: '"영웅님! 제가 경찰에 신고해 둘게요! 메모리 카드 꼭 지켜주세요!"',
@@ -238,7 +238,7 @@ export const STORY_ACT_3 = [
     bossId: 'sb_16',
     scenes: [
       {
-        image: 'assets/images/chloe_normal.jpg',
+        image: 'assets/images/chloe_sprite.png',
         tag: '제16화 · 기(起)',
         title: '성수동 붉은 벽돌거리의 외침',
         quote: '"Excuse me?! 여기 새벽부터 팬들이 줄 서 있던 곳인데 왜 새치기를 해요?!"',
@@ -267,7 +267,7 @@ export const STORY_ACT_3 = [
         ],
       },
       {
-        image: 'assets/images/chloe_normal.jpg',
+        image: 'assets/images/chloe_sprite.png',
         tag: '제16화 · 전(轉)',
         title: '뉴욕 포토그래퍼와의 티키타카',
         quote: '"Oh! 당신이 뉴스에 나온 그 노란 완장 히어로 맞죠?! 완전 반가워요!"',
@@ -311,7 +311,7 @@ export const STORY_ACT_3 = [
     bossId: 'sb_17',
     scenes: [
       {
-        image: 'assets/images/chloe_wink.jpg',
+        image: 'assets/images/chloe_sprite.png',
         tag: '제17화 · 기(起)',
         title: '찰칵! 마음에 담긴 한 컷',
         quote: '"Wow, 완전 영화 배우 같았어! 내 SNS 모델이랑 영어 과외도 해줄게~♥"',
@@ -356,7 +356,7 @@ export const STORY_ACT_3 = [
         ],
       },
       {
-        image: 'assets/images/chloe_normal.jpg',
+        image: 'assets/images/chloe_sprite.png',
         tag: '제17화 · 전(轉)',
         title: '클로이의 통쾌한 한 방',
         quote: '"Wait! 아저씨, 미국에선 이런 걸 [Scammer]라고 불러요! 치즈~ 찰칵!"',
@@ -392,7 +392,7 @@ export const STORY_ACT_3 = [
     bossId: 'sb_18',
     scenes: [
       {
-        image: 'assets/images/pet_walk.jpg',
+        image: 'assets/images/kongi_sprite.png',
         tag: '제18화 · 기(起)',
         title: '한강 외곽의 작은 울음소리',
         quote: '"낑... 멍! 멍!! (젖은 상자 앞에서 작지만 용감하게 짖는 소리)"',
@@ -430,7 +430,9 @@ export const STORY_ACT_3 = [
         choices: [{ text: '⚖️ "동물보호법 위반 유기·학대 현행범! 112 출동 완료됐습니다."', sub: '법률 +1 ▶', effect: { law: 1 }, nextScene: 3 }],
       },
       {
-        image: 'assets/images/officer_kim.jpg',
+        badge: '?? ??? ??? ???',
+        ascii: '   ?? [112 ??? ?? ?? ?]\n   ?? ???: "???, ?? ?????!"\n   ?????????????????????????',
+        sub: '???? ?? ??? ????',
         tag: '제18화 · 전(轉)',
         title: '4대 천왕의 경고장',
         quote: '"영웅님! 조심하셔야 합니다! 진상 연합 [4대 천왕]이 직접 움직이기 시작했어요!"',

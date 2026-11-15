@@ -873,6 +873,21 @@ body {
   z-index: 7;
 }
 
+/* V26.10 스토리 투명 PNG 스프라이트 통일 스테이지 */
+.illustration-frame.story-stage {
+  background: radial-gradient(circle at 50% 35%, #fff8eb 0%, #eadac0 65%, #d5be9b 100%);
+}
+
+.illustration-frame.story-stage #scene-image {
+  height: 90%;
+  width: auto;
+  max-width: 82%;
+  object-fit: contain;
+  margin: 0 auto;
+  filter: drop-shadow(0 6px 12px rgba(32, 22, 12, 0.32));
+  animation: heroBreathe 2.3s ease-in-out infinite;
+}
+
 @keyframes coupleFloat {
   0%, 100% { transform: translateX(-50%) translateY(0); }
   50% { transform: translateX(-50%) translateY(-4px); }

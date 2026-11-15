@@ -1498,7 +1498,7 @@ function render() {
   elSceneCard.classList.add('hidden');
   elSceneImage.classList.add('hidden');
   elSceneImage.className = '';
-  if (elFrame) elFrame.classList.remove('combat-stage', 'couple-stage');
+  if (elFrame) elFrame.classList.remove('combat-stage', 'couple-stage', 'story-stage');
   elHeroSprite.classList.add('hidden');
   elHeroSprite.classList.remove('with-yuki', 'couple-left');
   if (elYukiSprite) {
@@ -3515,9 +3515,13 @@ function render() {
     } else {
       elQuoteBubble.classList.add('hidden');
     }
+    elSceneImage.classList.remove('enemy-sprite', 'boss-scale');
     if (sc.image) {
       elSceneImage.src = sc.image;
       elSceneImage.classList.remove('hidden');
+      if (sc.image.endsWith('.png')) {
+        elFrame.classList.add('story-stage');
+      }
     } else {
       showSceneCard(sc.badge, sc.ascii, sc.sub);
     }

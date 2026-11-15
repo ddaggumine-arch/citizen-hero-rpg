@@ -10,7 +10,9 @@ export const STORY_ACT_1 = [
     bossId: 'sb_1',
     scenes: [
       {
-        image: 'assets/images/officer_kim.jpg',
+        badge: '?? ??? ??? ???',
+        ascii: '   ?? [112 ??? ?? ?? ?]\n   ?? ???: "???, ?? ?????!"\n   ?????????????????????????',
+        sub: '???? ?? ??? ????',
         tag: '제1화 · 기(起)',
         title: '노란 완장의 첫 아침',
         quote: '"영웅님, 방금 112에 원룸촌 민원이 세 건이나 또 들어왔습니다..."',
@@ -27,7 +29,7 @@ export const STORY_ACT_1 = [
         choices: [{ text: '👀 발걸음을 멈추고 남자를 매섭게 주시한다', sub: '계속 ▶', nextScene: 2 }],
       },
       {
-        image: 'assets/images/spitter_villain.jpg',
+        image: 'assets/images/sb_01.png',
         tag: '제1화 · 승(承)',
         title: '삼선 슬리퍼의 사나이',
         quote: '"어이구 시원하다~ 아침 가래는 길바닥에 풀어야 제맛이지!"',
@@ -78,7 +80,7 @@ export const STORY_ACT_1 = [
         choices: [{ text: '🕵️ "방금 블랙튜브라고 했나...? 일단 이놈부터 제압한다!"', sub: '결전 직전 ▶', nextScene: 5 }],
       },
       {
-        image: 'assets/images/spitter_villain.jpg',
+        image: 'assets/images/sb_01.png',
         tag: '제1화 · 결(結)',
         title: '가래침 스나이퍼와의 첫 결전!',
         quote: '"이 완장 놈이 죽을라고! 내가 원룸촌 터줏대감인 줄 몰라?!"',
@@ -97,7 +99,7 @@ export const STORY_ACT_1 = [
     bossId: 'sb_2',
     scenes: [
       {
-        image: 'assets/images/act_patrol.jpg',
+        image: 'assets/images/hero_idle.png',
         tag: '제2화 · 기(起)',
         title: '출근길 정체 구간 발생',
         quote: '"아 진짜... 지하철 2분 남았는데 앞이 꽉 막혔네!"',
@@ -105,7 +107,7 @@ export const STORY_ACT_1 = [
         choices: [{ text: '🏃 인파 사이를 비집고 앞쪽으로 가본다', sub: '계속 ▶', nextScene: 1 }],
       },
       {
-        image: 'assets/images/sidewalk_blockers.jpg',
+        image: 'assets/images/sb_02.png',
         tag: '제2화 · 승(承)',
         title: '시속 1km의 횡렬 보행',
         quote: '"어머 자기야~ 이 릴스 봤어? ㅋㅋㅋ 완전 웃기지~"',
@@ -148,7 +150,9 @@ export const STORY_ACT_1 = [
         ],
       },
       {
-        image: 'assets/images/officer_kim.jpg',
+        badge: '?? ??? ??? ???',
+        ascii: '   ?? [112 ??? ?? ?? ?]\n   ?? ???: "???, ?? ?????!"\n   ?????????????????????????',
+        sub: '???? ?? ??? ????',
         tag: '제2화 · 전(轉)',
         title: '김순경의 무전 첩보',
         quote: '"영웅님! 방금 제보 들어왔는데 저 커플... 그냥 일반인이 아닙니다!"',
@@ -165,7 +169,7 @@ export const STORY_ACT_1 = [
         choices: [{ text: '🔥 "카메라 끄기 전에 제대로 참교육해 주마!"', sub: '결전 직전 ▶', nextScene: 5 }],
       },
       {
-        image: 'assets/images/sidewalk_blockers.jpg',
+        image: 'assets/images/sb_02.png',
         tag: '제2화 · 결(結)',
         title: '인도 2인 바리케이드 듀오',
         quote: '"우리가 전세 낸 거 아니지만 비켜줄 의무도 없거든?! 찍어봐 어디!"',
@@ -184,7 +188,7 @@ export const STORY_ACT_1 = [
     bossId: 'sb_3',
     scenes: [
       {
-        image: 'assets/images/act_patrol.jpg',
+        image: 'assets/images/hero_idle.png',
         tag: '제3화 · 기(起)',
         title: '공영주차장의 비명',
         quote: '"아저씨! 여기 빈자리가 딱 하나 남았는데 차를 저렇게 대면 어떡해요!"',
@@ -192,7 +196,7 @@ export const STORY_ACT_1 = [
         choices: [{ text: '😠 운전석에서 내리는 차주에게 다가간다', sub: '계속 ▶', nextScene: 1 }],
       },
       {
-        image: 'assets/images/parking_villain.jpg',
+        image: 'assets/images/sb_03.png',
         tag: '제3화 · 승(承)',
         title: '황금빛 대각선 주차',
         quote: '"내 차 문콕 당하면 니가 수리비 300만 원 물어줄 거야?!"',
@@ -252,7 +256,7 @@ export const STORY_ACT_1 = [
         choices: [{ text: '🔥 "VIP? 오늘부로 견인차 태워 보내주지!"', sub: '결전 직전 ▶', nextScene: 5 }],
       },
       {
-        image: 'assets/images/parking_villain.jpg',
+        image: 'assets/images/sb_03.png',
         tag: '제3화 · 결(結)',
         title: '주차 2칸 빌런 참교육!',
         quote: '"감히 내 세단 앞에서... 오늘 인생 쓴맛 좀 봐라!"',
@@ -271,7 +275,7 @@ export const STORY_ACT_1 = [
     bossId: 'sb_4',
     scenes: [
       {
-        image: 'assets/images/act_patrol.jpg',
+        image: 'assets/images/hero_idle.png',
         tag: '제4화 · 기(起)',
         title: '해 질 녘 골목의 악취',
         quote: '"으윽... 요즘 이 골목 전봇대 밑에만 오면 냄새가 진동을 하네."',
@@ -279,7 +283,7 @@ export const STORY_ACT_1 = [
         choices: [{ text: '🔦 골목 모퉁이 그림자 뒤에 숨어 잠복한다', sub: '계속 ▶', nextScene: 1 }],
       },
       {
-        image: 'assets/images/trash_dumper_sprite.png',
+        image: 'assets/images/sb_04.png',
         tag: '제4화 · 승(承)',
         title: '검은 비닐봉지의 주인',
         quote: '"밤인데 누가 본다고 ㅋㅋ 남들도 다 전봇대 밑에 버리던데?"',
@@ -322,7 +326,9 @@ export const STORY_ACT_1 = [
         ],
       },
       {
-        image: 'assets/images/officer_kim.jpg',
+        badge: '?? ??? ??? ???',
+        ascii: '   ?? [112 ??? ?? ?? ?]\n   ?? ???: "???, ?? ?????!"\n   ?????????????????????????',
+        sub: '???? ?? ??? ????',
         tag: '제4화 · 전(轉)',
         title: '김순경의 추가 첩보',
         quote: '"영웅님! 방금 전봇대 CCTV 확인했는데, 저 빌런 혼자가 아닙니다!"',
@@ -339,7 +345,7 @@ export const STORY_ACT_1 = [
         choices: [{ text: '🔥 "어딜 도망가! 쓰레기는 쓰레기통에, 진상은 경찰서로!"', sub: '결전 직전 ▶', nextScene: 5 }],
       },
       {
-        image: 'assets/images/trash_dumper_sprite.png',
+        image: 'assets/images/sb_04.png',
         tag: '제4화 · 결(結)',
         title: '원룸촌 양심 수호전!',
         quote: '"아 몰라! 나 오늘 이 봉투 들고 튈 거야! 막아보든가!"',
@@ -375,7 +381,7 @@ export const STORY_ACT_1 = [
         choices: [{ text: '😤 "오늘은 내가 직접 올라가서 끝을 보겠습니다."', sub: '계속 ▶', nextScene: 2 }],
       },
       {
-        image: 'assets/images/noise_villain.jpg',
+        image: 'assets/images/sb_05.png',
         tag: '제5화 · 승(承)',
         title: '502호 현관문 대치',
         quote: '"아 뭐야?! 내 집에서 내가 뒤꿈치로 좀 걷겠다는데 왜 난리야! 예민충이네!"',
@@ -420,7 +426,7 @@ export const STORY_ACT_1 = [
         choices: [{ text: '🔥 채팅창 여론이 순식간에 뒤집혔다! 지금 밀어붙여!', sub: '결전 직전 ▶', nextScene: 5 }],
       },
       {
-        image: 'assets/images/noise_villain.jpg',
+        image: 'assets/images/sb_05.png',
         tag: '제5화 · 결(結)',
         title: '새벽 2시의 발망치 최종 담판!',
         quote: '"방송 망했잖아!! 너 때문에 도네 끊겼어!! 다 밟아버릴 거야!!"',
@@ -439,7 +445,9 @@ export const STORY_ACT_1 = [
     bossId: 'sb_6',
     scenes: [
       {
-        image: 'assets/images/officer_kim.jpg',
+        badge: '?? ??? ??? ???',
+        ascii: '   ?? [112 ??? ?? ?? ?]\n   ?? ???: "???, ?? ?????!"\n   ?????????????????????????',
+        sub: '???? ?? ??? ????',
         tag: '제6화 · 기(起)',
         title: '다시 찾아온 골목의 평화',
         quote: '"영웅님! 덕분에 우리 원룸촌 신고 건수가 절반 이하로 뚝 떨어졌습니다!"',
@@ -486,7 +494,9 @@ export const STORY_ACT_1 = [
         choices: [{ text: '📱 "혼자가 아니야... 서울 시민들이 내 눈과 귀가 되어주고 있어!"', sub: '계속 ▶', nextScene: 4 }],
       },
       {
-        image: 'assets/images/officer_kim.jpg',
+        badge: '?? ??? ??? ???',
+        ascii: '   ?? [112 ??? ?? ?? ?]\n   ?? ???: "???, ?? ?????!"\n   ?????????????????????????',
+        sub: '???? ?? ??? ????',
         tag: '제6화 · 결(結)',
         title: '동네를 넘어 서울 도심으로!',
         quote: '"영웅님, 이제부터는 진짜 전쟁입니다. 준비되셨습니까?"',

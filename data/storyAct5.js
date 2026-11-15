@@ -10,7 +10,9 @@ export const STORY_ACT_5 = [
     bossId: 'sb_25',
     scenes: [
       {
-        image: 'assets/images/officer_kim.jpg',
+        badge: '?? ??? ??? ???',
+        ascii: '   ?? [112 ??? ?? ?? ?]\n   ?? ???: "???, ?? ?????!"\n   ?????????????????????????',
+        sub: '???? ?? ??? ????',
         tag: '제25화 · 기(起)',
         title: '적진 한가운데로',
         quote: '"영웅님, 이 사원증을 쓰십시오. 오늘 밤 여의도 블랙튜브 본사로 잠입합니다."',
@@ -84,7 +86,7 @@ export const STORY_ACT_5 = [
     bossId: 'sb_26',
     scenes: [
       {
-        image: 'assets/images/act_patrol.jpg',
+        image: 'assets/images/hero_idle.png',
         tag: '제26화 · 기(起)',
         title: '지하 데이터센터 진입',
         quote: '"영웅님! 방금 서울 전광판에 이상한 영상이 송출되고 있습니다!!"',
@@ -122,7 +124,7 @@ export const STORY_ACT_5 = [
         ],
       },
       {
-        image: 'assets/images/chloe_wink.jpg',
+        image: 'assets/images/chloe_sprite.png',
         tag: '제26화 · 전(轉)',
         title: '클로이의 원격 역추적 지원',
         quote: '"Hey Hero! 내가 방금 성수동 스튜디오에서 네 실시간 알리바이 영상 다 뿌렸어!"',
@@ -203,7 +205,7 @@ export const STORY_ACT_5 = [
         ],
       },
       {
-        image: 'assets/images/yuki_normal.jpg',
+        image: 'assets/images/yuki_sprite.png',
         tag: '제27화 · 전(轉)',
         title: '시민들이 모아준 진짜 가치',
         quote: '"영웅님이 지킨 우리 가게, 우리 거리... 돈으로 살 수 없는 마음이잖아요!"',
@@ -277,7 +279,9 @@ export const STORY_ACT_5 = [
         choices: [{ text: '😲 "선배가 살아 있다고?! 당장 비켜라!!"', sub: '사이다 +20 ▶', effect: { sp: 20 }, nextScene: 3 }],
       },
       {
-        image: 'assets/images/officer_kim.jpg',
+        badge: '?? ??? ??? ???',
+        ascii: '   ?? [112 ??? ?? ?? ?]\n   ?? ???: "???, ?? ?????!"\n   ?????????????????????????',
+        sub: '???? ?? ??? ????',
         tag: '제28화 · 전(轉)',
         title: '김순경과 동료들의 총지원',
         quote: '"영웅님! 아래층 경찰 인력이 전부 합류했습니다! 앞문은 저희가 막을 테니 옥상으로 가세요!"',
@@ -351,7 +355,7 @@ export const STORY_ACT_5 = [
         choices: [{ text: '😢 "죄송합니다 선배... 지금 제가 선배의 어둠을 직접 깨드리겠습니다!"', sub: '계속 ▶', nextScene: 3 }],
       },
       {
-        image: 'assets/images/yuki_blush.jpg',
+        image: 'assets/images/yuki_sprite.png',
         tag: '제29화 · 전(轉)',
         title: '혼자가 아닌 2대 시민영웅',
         quote: '"선배님 봐요! 영웅님 곁엔 유키도, 클로이도, 콩이도, 그리고 수만 명의 시민들이 있어요!"',
@@ -425,7 +429,7 @@ export const STORY_ACT_5 = [
         choices: [{ text: '😡 "아무리 작은 배려라도, 서로 지키는 사람들이 훨씬 많아!!"', sub: '계속 ▶', nextScene: 3 }],
       },
       {
-        image: 'assets/images/yuki_blush.jpg',
+        image: 'assets/images/yuki_sprite.png',
         tag: '제30화 · 전(轉)',
         title: '모두의 마음이 모인 순간',
         quote: '"영웅님! 김순경님, 유키, 클로이, 콩이, 그리고 1대 선배님까지 모두 여기 있어요!"',
