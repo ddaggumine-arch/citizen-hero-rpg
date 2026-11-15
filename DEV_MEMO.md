@@ -5,7 +5,10 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V26.8
+## 현재 최신 버전: V26.9
+- **V26.9**:
+  - **빌런 도감 B안 + 인카운트 전용 해금 (`app.js`)**: `startBattle` 시 `state.villainEncounters`를 기록하여, 일반/거점 빌런과 **스토리 전용 보스 30종(`STORY_BOSSES`)** 모두 실제로 인카운트(전투 조우)한 대상만 `📖 빌런 도감`에 공개(미조우는 스포일러 없이 남은 인원 수만 표시, 기존 `villainWins` 세이브 호환)
+  - **상단 HUD 미니 스탯·도덕P 클릭 상세 안내 (`index.html`, `style.css`, `app.js`)**: `🗣️ 언변 · 🦁 깡다구 · ⚖️ 법지식 · 🏅 도덕P` 바에 `?` 힌트와 클릭 이벤트를 추가, 터치 시 `openMiniStatsHelpModal()`에서 현재 수치 기반 데미지/효과/사이다 필살기 연동/올리는 법 상세 설명 (`?v=42`)
 - **V26.8**:
   - **제5막 (25~30화) 10배 풀볼륨 완결 (`data/storyAct5.js`)**: 전 5막(30화 × 6씬 = **총 180씬**) 웹툰형 풀볼륨 스토리 완성! 렉카 국장(`sb_25`)·딥페이크 마스터(`sb_26`)·그림자 회장(`sb_27`)·보안실장(`sb_28`)·**타락한 1대 선배 세뇌체(`sb_29`)**·**닥터 카오스 완전 각성(`sb_30`)** 최종 결전까지 100% 연동 (`?v=41`)
 - **V26.7**:
