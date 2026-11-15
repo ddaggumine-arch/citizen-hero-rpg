@@ -7,7 +7,8 @@
 
 ## 현재 최신 버전: V26.10
 - **V26.10**:
-  - **스토리 1~30화 100% 웹툰 투명 PNG 스프라이트 화풍 통일 (`storyAct1~5.js`, `style.css`, `app.js`)**: 스토리 씬에 섞여 있던 구버전 `.jpg` 일러스트/빌런 이미지를 전량 제거하고 `sb_01.png`~`sb_30.png`, `hero_*.png`, `yuki_sprite.png`, `chloe_sprite.png`, `kongi_sprite.png` + 김순경 무전 카드로 통일. `.illustration-frame.story-stage` 전용 무대 배경/중앙 정렬/숨쉬기 모션 적용 (`?v=43`)
+  - **스토리 1~30화 100% 웹툰 투명 PNG 스프라이트 화풍 통일 (`storyAct1~5.js`, `style.css`, `app.js`)**: 스토리 씬·프롤로그(`prologue_cold_hit`)에 섞여 있던 구버전 `.jpg` 일러스트/빌런 이미지를 전량 제거하고 `sb_01.png`~`sb_30.png`, `hero_*.png`, `yuki_sprite.png`, `chloe_sprite.png`, `kongi_sprite.png` + 김순경 무전 카드로 통일. `.illustration-frame.story-stage` 전용 무대 배경/중앙 정렬/숨쉬기 모션 적용
+  - **제4의 벽(메타) 대사 정리 & ES 모듈 캐시 버스팅 (`storyBosses.js`, `storyAct2.js`, `storyChapters.js`, `index.html`)**: 6화 보스(`sb_6`) 패배 대사 및 12화 선택지 대사 내 `"2막"` 메타 표현을 작중 대사로 수정, `style.css`/`app.js`/`storyChapters.js`/`storyAct1~5.js`/`storyBosses.js` `?v=45` 캐시 버스팅 적용
 - **V26.9**:
   - **빌런 도감 B안 + 인카운트 전용 해금 (`app.js`)**: `startBattle` 시 `state.villainEncounters`를 기록하여, 일반/거점 빌런과 **스토리 전용 보스 30종(`STORY_BOSSES`)** 모두 실제로 인카운트(전투 조우)한 대상만 `📖 빌런 도감`에 공개(미조우는 스포일러 없이 남은 인원 수만 표시, 기존 `villainWins` 세이브 호환)
   - **상단 HUD 미니 스탯·도덕P 클릭 상세 안내 (`index.html`, `style.css`, `app.js`)**: `🗣️ 언변 · 🦁 깡다구 · ⚖️ 법지식 · 🏅 도덕P` 바에 `?` 힌트와 클릭 이벤트를 추가, 터치 시 `openMiniStatsHelpModal()`에서 현재 수치 기반 데미지/효과/사이다 필살기 연동/올리는 법 상세 설명 (`?v=42`)
