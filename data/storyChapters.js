@@ -1,116 +1,14 @@
-// V26.6 메인 스토리 30파트(30화) 대장정 — 5막 × 6화 구성 (제1~3막 10배 풀볼륨 분리)
+// V26.7 메인 스토리 30파트(30화) 대장정 — 5막 × 6화 구성 (제1~4막 10배 풀볼륨 분리)
 import { STORY_ACT_1 } from './storyAct1.js';
 import { STORY_ACT_2 } from './storyAct2.js';
 import { STORY_ACT_3 } from './storyAct3.js';
+import { STORY_ACT_4 } from './storyAct4.js';
 
 export const STORY_CHAPTERS = [
   ...STORY_ACT_1,
   ...STORY_ACT_2,
   ...STORY_ACT_3,
-
-  // ===== 제4막: 진상 연합 4대 천왕 결전편 (19~24화) =====
-  {
-    id: 'ch19',
-    mission: { key: 'wins', target: 11, label: '⚔️ 빌런 총 11회 이상 승리' },
-    chapterNum: 19,
-    title: '홍대 골목의 검은 연기',
-    bossId: 'sb_19',
-    scenes: [
-      {
-        image: 'assets/images/street_smoker.jpg',
-        tag: '제19화 · 4대 천왕 ①',
-        title: '보행 훈제 길빵 대장',
-        quote: '"길거리에서 내가 피우는데 무슨 상관인데? 꼬우면 피해 가 ㅋㅋ"',
-        text: '진상 연합 4대 천왕의 첫 번째 간부 [길빵 대장]! 홍대 거리의 맑은 공기를 되찾기 위해 정면 돌파합니다!',
-        choices: [{ text: '⚔️ [보스전] 길빵 대장 참교육!', sub: '보스전 ▶', startBoss: true }],
-      },
-    ],
-  },
-  {
-    id: 'ch20',
-    mission: { key: 'wins', target: 13, label: '⚔️ 빌런 총 13회 이상 승리' },
-    chapterNum: 20,
-    title: '2호선의 140도',
-    bossId: 'sb_20',
-    scenes: [
-      {
-        image: 'assets/images/subway_manspreader.jpg',
-        tag: '제20화 · 4대 천왕 ②',
-        title: '지하철 2호선 쩍벌 대마왕',
-        quote: '"내 다리가 길어서 어쩔 수 없다는데? 꼬우면 서서 가!"',
-        text: '출근길 지옥철에서 양옆 두 칸을 140도로 점령한 두 번째 천왕 [쩍벌 대마왕]을 꺾으세요!',
-        choices: [{ text: '⚔️ [보스전] 쩍벌 대마왕 참교육!', sub: '보스전 ▶', startBoss: true }],
-      },
-    ],
-  },
-  {
-    id: 'ch21',
-    mission: null,
-    chapterNum: 21,
-    title: '다리 꼬기 & 차고 해금 작전',
-    bossId: 'sb_21',
-    scenes: [
-      {
-        image: 'assets/images/subway_legger_sprite.png',
-        tag: '제21화 · 제4막',
-        title: '통로를 막은 쩍벌 후예',
-        quote: '"구두에 흙 묻었잖아! 물어낼 거야?!"',
-        text: '지하철 통로까지 다리를 뻗고 앉은 빌런을 제압하면, 더 넓은 기동력을 위해 [🚗 차량 구매 & 코스튬 쇼룸]이 해금됩니다!',
-        choices: [{ text: '⚔️ 다리꼬기 빌런 제압!', sub: '전투 ▶ (클리어 시 🚗 차고 & 코스튬 해금)', startBoss: true }],
-      },
-    ],
-  },
-  {
-    id: 'ch22',
-    mission: { key: 'wins', target: 15, label: '⚔️ 빌런 총 15회 이상 승리' },
-    chapterNum: 22,
-    title: '어둠 속의 반딧불이',
-    bossId: 'sb_22',
-    scenes: [
-      {
-        image: 'assets/images/cinema_boss.jpg',
-        tag: '제22화 · 4대 천왕 ③',
-        title: '영화관 발차기 & 반딧불이',
-        quote: '"어머~ 카톡 한 번 본 게 뭐 대수라고 유난이야?!"',
-        text: '클라이맥스 장면마다 밝기 100% 폰 화면을 켜고 앞좌석을 차대는 세 번째 천왕을 암전 속으로 돌려보냅시다!',
-        choices: [{ text: '⚔️ [보스전] 영화관 빌런 참교육!', sub: '보스전 ▶', startBoss: true }],
-      },
-    ],
-  },
-  {
-    id: 'ch23',
-    mission: { key: 'wins', target: 17, label: '⚔️ 빌런 총 17회 이상 승리' },
-    chapterNum: 23,
-    title: '성수동의 검은 드래곤',
-    bossId: 'sb_23',
-    scenes: [
-      {
-        image: 'assets/images/cafe_boss.jpg',
-        tag: '제23화 · 4대 천왕 ④',
-        title: '카페 실내 흡연 드래곤',
-        quote: '"창문 5cm 열어놨잖아? 단골인데 한 대도 못 피워?!"',
-        text: '마침내 4대 천왕의 마지막 보스 [카페 실내 흡연 드래곤]과 성수동에서 격돌합니다!',
-        choices: [{ text: '⚔️ [최종 보스전] 실내 흡연 드래곤 참교육!', sub: '보스전 ▶', startBoss: true }],
-      },
-    ],
-  },
-  {
-    id: 'ch24',
-    mission: null,
-    chapterNum: 24,
-    title: '🚨 히로인 구출 & 합동 방어전!',
-    bossId: 'sb_24',
-    scenes: [
-      {
-        image: 'assets/images/illegal_parker_sprite.png',
-        tag: '제24화 · 4막 피날레',
-        title: '스쿨존 앞 보복 난동!',
-        quote: '"네가 우리 보스들을 건드렸겠다?! 이 거리 다 막아버릴 거야!"',
-        text: '4대 천왕을 잃고 앙심을 품은 진상 연합 잔당이 유키와 클로이가 있는 거리 입구를 차로 막고 협박합니다! 반드시 지켜내고 [🏛️ 시민영웅 재단 & 배틀타워]를 여세요!',
-        choices: [{ text: '⚔️ "내 소중한 사람들에게 손대지 마!!"', sub: '전투 ▶ (클리어 시 🏛️ 재단 & 타워 해금)', startBoss: true }],
-      },
-    ],
-  },
+  ...STORY_ACT_4,
 
   // ===== 제5막: 블랙 튜브 MCN & 닥터 카오스 최종 결전편 (25~30화) =====
   {
