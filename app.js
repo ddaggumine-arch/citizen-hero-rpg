@@ -177,6 +177,54 @@ function createNewGameState() {
     districts: { mapo: 0, seongsu: 0, gangnam: 0, jongno: 0, yeouido: 0 },
     nightmareFloor: 0,
     bestNightmareFloor: 0,
+    breakingNews: null,
+    breakingFirstDone: false,
+  };
+}
+
+let _typewriterTimer = null;
+let _typewriterFull = '';
+function setLogText(text, useTypewriter = false) {
+  if (_typewriterTimer) {
+    clearInterval(_typewriterTimer);
+    _typewriterTimer = null;
+  }
+  const str = String(text || '');
+  _typewriterFull = str;
+  if (!useTypewriter || str.length <= 10) {
+    elBattleLog.textContent = str;
+    return;
+  }
+  let idx = 0;
+  elBattleLog.textContent = '';
+  elBattleLog.onclick = () => {
+    if (_typewriterTimer) {
+      clearInterval(_typewriterTimer);
+      _typewriterTimer = null;
+      elBattleLog.textContent = _typewriterFull;
+    }
+  };
+  _typewriterTimer = setInterval(() => {
+    idx += 2;
+    elBattleLog.textContent = str.slice(0, idx);
+    if (idx >= str.length) {
+      clearInterval(_typewriterTimer);
+      _typewriterTimer = null;
+    }
+  }, 16);
+}
+
+function rollBreakingNews() {
+  const dist = SEOUL_DISTRICTS[Math.floor(Math.random() * SEOUL_DISTRICTS.length)];
+  const pool = (dist.enemies || []).filter((id) => VILLAINS.some((v) => v.id === id));
+  const enemyId = pool.length ? pool[Math.floor(Math.random() * pool.length)] : 'shorts_terrorist';
+  const enemy = getEnemyById(enemyId);
+  state.breakingNews = {
+    districtId: dist.id,
+    districtName: dist.name,
+    enemyId: enemy.id,
+    enemyName: enemy.name,
+    bonusPts: 35,
   };
 }
 
@@ -551,6 +599,12 @@ function advanceTime() {
       const gPick = GUERRILLA_VILLAINS[Math.floor(Math.random() * GUERRILLA_VILLAINS.length)];
       state.guerrilla = { villainId: gPick.id, expiresDay: state.day + 1 };
       showToast(`🚨 지명수배 출몰: ${gPick.name}!`, 'break');
+    }
+
+    // V26.1: 실시간 서울 112 긴급 속보 갱신
+    if (!state.breakingNews && Math.random() < 0.55) {
+      rollBreakingNews();
+      showToast(`🔴 [112 긴급 속보] ${state.breakingNews.districtName}에 ${state.breakingNews.enemyName} 출몰!`, 'break');
     }
 
     // V16.0: 연인 방치 페널티 (2일+ 소홀 시 호감도 -6, 50 미만 시 이별)
@@ -1090,6 +1144,23 @@ function handleEnemyDefeated(enemy) {
     if (dInfo) showToast(`🕊️ [${dInfo.name}] 치안 100% 평화구역 달성!! (${dInfo.buffDesc})`, 'break');
   }
 
+  // V26.1 실시간 112 긴급 속보 해결 보너스
+  if (state.breakingNews && state.breakingNews.enemyId === enemy.id) {
+    const bn = state.breakingNews;
+    state.points += bn.bonusPts;
+    state.districts[bn.districtId] = Math.min(100, (state.districts[bn.districtId] || 0) + 15);
+    state.followers = (state.followers || 120) + 180;
+    state.breakingFirstDone = true;
+    state.breakingNews = null;
+    state.liveFeed = {
+      badge: '🔴 서울 긴급 속보',
+      likes: '❤️ 3.4만',
+      title: `노란 완장 시민영웅, ${bn.districtName} '${bn.enemyName}' 10초 만에 제압!`,
+      comment: `💬 시민 베댓: "112보다 빠른 노란 완장 폼 미쳤다 ㅋㅋ (+${bn.bonusPts}P · 치안+15%)"`,
+    };
+    showToast(`📰 긴급 속보 해결! +${bn.bonusPts} P · ${bn.districtName} 치안 +15%!`, 'good');
+  }
+
   // V26.0 심야 마계 보스 러시 승리
   if ((state.nightmareFloor || 0) > 0) {
     const nmCleared = state.nightmareFloor;
@@ -1538,29 +1609,86 @@ function render() {
     return;
   }
 
-  // 2. 프롤로그 1
+  // 2. 프롤로그 1 — V26.1 콜드 오픈 (시작 1초 만에 현장 난입!)
   if (state.phase === 'prologue_1') {
-    elLocation.textContent = '프롤로그 · 토요일 오전';
-    elSceneTag.textContent = '스토리';
-    elSceneTag.className = 'scene-tag event';
-    elSceneTitle.textContent = '참을 만큼 참았다...';
+    elLocation.textContent = '긴급 상황 · 토요일 오전 8:00';
+    elSceneTag.textContent = '현장 난입!';
+    elSceneTag.className = 'scene-tag boss';
+    elSceneTitle.textContent = '🚨 편의점 앞, 할머니를 밀친 빌런!';
     elWeaknessPill.classList.add('hidden');
     elEnemyHpWrap.classList.add('hidden');
-    elQuoteBubble.textContent = '"쿵! 쿵! 쿵! (새벽 2시부터 시작된 윗집 502호의 발망치)"';
+    elQuoteBubble.textContent = '"아 할매요~ 느려터져서 못 기다리겠네! 비켜요!" (쇼츠 풀볼륨 🔊)';
     elQuoteBubble.classList.remove('hidden');
-    showSceneCard(
-      'PROLOGUE · 오전 8:00',
-      '   🏢 [ 윗집 502호 ]   \n     🔨  쿵!  쿵!  쿵!  \n   ━━━━━━━━━━━━━━━━━━  \n   🛏️ 😵 (수면 3시간째...)\n   "이대로 당하고 살 순 없어!"',
-      '휴대폰에 파출소 김순경의 긴급 톡이 도착했다'
+    elSceneImage.src = 'assets/images/shorts_terrorist.jpg';
+    elSceneImage.classList.remove('hidden');
+    elSceneCard.classList.add('hidden');
+    setLogText(
+      '주말 아침, 24시 편의점 계산대 앞.\n' +
+      '동네 할머니를 어깨로 밀치고 새치기하며 휴대폰 쇼츠를 풀볼륨으로 틀어댄 빌런이 비웃고 있습니다.\n' +
+      '손목에 묶인 노란 완장이 뜨겁게 달아오릅니다. 지금 바로 참교육하시겠습니까?',
+      true
     );
-    elBattleLog.textContent =
-      '윗집 층간소음 때문에 잠을 설친 아침. 마침 파출소 김순경에게서도 "서울에 진상 연합이 퍼지고 있다"는 톡이 왔습니다.\n' +
-      '더 이상 참지 않기로 결심한 당신은 거리를 정화하러 나섭니다!';
 
+    elChoicesPanel.className = 'choices-panel';
+    [
+      {
+        text: '💥 "어르신한테 뭐 하는 짓입니까?!" (즉시 참교육!)',
+        sub: '사이다 일침 · 광인+5 · 배짱+1',
+        run: () => { state.chaotic += 5; state.stats.guts += 1; },
+      },
+      {
+        text: '📸 "방금 밀친 거 다 찍혔습니다. 사과하세요!"',
+        sub: '완벽 채증 · 모범+5 · 법률+1',
+        run: () => { state.lawful += 5; state.stats.law += 1; state.pendingReports += 1; },
+      },
+    ].forEach((c) => {
+      const b = document.createElement('button');
+      b.className = 'choice-btn row-btn story-main-btn';
+      b.innerHTML = `<span>${c.text}</span><span class="choice-sub">${c.sub}</span>`;
+      b.addEventListener('click', () => {
+        sfx.hit(true);
+        vibrate(45);
+        showToast('💥 1방 참교육 적중!! 빌런 멘탈 붕괴!', 'break');
+        c.run();
+        state.followers = (state.followers || 120) + 1080;
+        state.points += 30;
+        state.liveFeed = {
+          badge: '🔥 실시간 12만뷰',
+          likes: '❤️ 4.8만',
+          title: '편의점 앞 노란 완장 청년, 5초 만에 진상 참교육 ㄷㄷ',
+          comment: '💬 베댓: "와 포스 지렸다... 누구냐 저 영웅?!"',
+        };
+        state.phase = 'prologue_cold_hit';
+        render();
+      });
+      elChoicesPanel.appendChild(b);
+    });
+    return;
+  }
+
+  // 2.2. 콜드 오픈 직후 — 바이럴 폭발 & 실종된 1대 시민영웅 미스터리
+  if (state.phase === 'prologue_cold_hit') {
+    elLocation.textContent = '서울 속보 · 파출소 김순경 합류';
+    elSceneTag.textContent = '미스터리';
+    elSceneTag.className = 'scene-tag event';
+    elSceneTitle.textContent = '🕵️ "그 노란 완장... 설마?!"';
+    elWeaknessPill.classList.add('hidden');
+    elEnemyHpWrap.classList.add('hidden');
+    elQuoteBubble.textContent = '"잠깐! 그 완장은 3년 전 실종된 [1대 시민영웅]의 것인데?!"';
+    elQuoteBubble.classList.remove('hidden');
+    elSceneImage.src = 'assets/images/officer_kim.jpg';
+    elSceneImage.classList.remove('hidden');
+    elSceneCard.classList.add('hidden');
+    setLogText(
+      '빌런이 쩔쩔매며 도망가고, 시민들이 찍은 영상이 순식간에 SNS 팔로워 1,200명 돌파!\n' +
+      '그때 달려온 김순경이 당신의 노란 완장을 보고 굳어버립니다.\n' +
+      '"3년 전, 비밀 조직 [블랙튜브 MCN]을 쫓다 사라진 전설의 선배... 최근 서울에 빌런이 폭증한 것도 그 놈들 짓입니다!"',
+      true
+    );
     elChoicesPanel.className = 'choices-panel';
     const btnNext = document.createElement('button');
     btnNext.className = 'choice-btn row-btn';
-    btnNext.innerHTML = '<span>🚶 현관문을 열기 전, 3년 전 기억이 스친다...</span><span class="choice-sub">과거 회상 ▶</span>';
+    btnNext.innerHTML = '<span>🟡 선배가 완장을 남긴 3년 전 그날을 떠올린다...</span><span class="choice-sub">과거 회상 ▶</span>';
     btnNext.addEventListener('click', () => {
       sfx.click();
       state.phase = 'prologue_past';
@@ -1580,15 +1708,15 @@ function render() {
     elEnemyHpWrap.classList.add('hidden');
     elQuoteBubble.textContent = '"아무도 안 나서면 결국 선량한 사람만 다쳐. 자, 이 완장 받아라."';
     elQuoteBubble.classList.remove('hidden');
-    showSceneCard(
-      '3 YEARS AGO · 빗속의 버스정류장',
-      '  ☔ [3년 전, 최종 면접 날]  \n  🚬 흡연·새치기 빌런 때문에 면접 탈락\n  🟡 그때 나타나 빌런을 제압한 전설의 선배!\n  ─────────────────────────\n  "법과 사이다, 네 신념을 골라봐!"',
-      '주인공이 시민영웅의 길을 걷게 된 진짜 이유'
-    );
-    elBattleLog.textContent =
+    elSceneImage.src = 'assets/images/hero_idle.png';
+    elSceneImage.classList.remove('hidden');
+    elSceneCard.classList.add('hidden');
+    setLogText(
       '3년 전 폭우 속, 무개념 빌런 때문에 인생 면접을 망치고 주저앉아 있던 당신에게\n' +
-      '노란 완장을 건네주며 일어설 용기를 준 [전설의 1대 시민영웅].\n' +
-      '최근 서울에 빌런이 이상할 만큼 급증한 이유를 파헤치기 위해, 당신은 오늘 완장을 꽉 쥡니다!';
+      '노란 완장을 건네주고 사라진 [전설의 1대 시민영웅].\n' +
+      '선배의 실종 비밀과 서울을 오염시킨 흑막을 파헤치기 위해, 당신의 신념을 정하세요!',
+      true
+    );
 
     elChoicesPanel.className = 'choices-panel';
     const pastChoices = [
@@ -1780,6 +1908,23 @@ function render() {
     elBattleLog.textContent = state.log || '서울 시내 지도입니다. 미션을 달성해 스토리를 해금하고 자유행동으로 이동하세요!';
 
     elChoicesPanel.className = 'choices-panel grid-2';
+
+    // V26.1 실시간 서울 112 긴급 속보 배너 (1일차 첫 진입 시 100% 자동 출몰)
+    if (!state.breakingNews && state.day === 1 && !state.breakingFirstDone) {
+      rollBreakingNews();
+    }
+    if (state.breakingNews) {
+      const bn = state.breakingNews;
+      const bnBtn = document.createElement('button');
+      bnBtn.className = 'choice-btn row-btn breaking-banner';
+      bnBtn.style.gridColumn = 'span 2';
+      bnBtn.innerHTML = `<span>🔴 [112 긴급 속보] ${bn.districtName} · ${bn.enemyName} 난동!</span><span class="choice-sub">즉시 출동 시 +${bn.bonusPts}P · 구역치안+15% ▶</span>`;
+      bnBtn.addEventListener('click', () => {
+        sfx.powerup();
+        startBattle(bn.enemyId);
+      });
+      elChoicesPanel.appendChild(bnBtn);
+    }
 
     if (state.guerrilla) {
       const gv = getEnemyById(state.guerrilla.villainId);
@@ -3325,7 +3470,7 @@ function render() {
     } else {
       showSceneCard(sc.badge, sc.ascii, sc.sub);
     }
-    elBattleLog.textContent = sc.text;
+    setLogText(sc.text, true);
     elChoicesPanel.className = 'choices-panel';
 
     sc.choices.forEach((choice) => {
