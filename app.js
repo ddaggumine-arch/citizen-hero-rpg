@@ -1395,6 +1395,7 @@ function startBattle(enemyId, isRandomEncounter = false) {
   state.isFirstTurn = true;
   state.bossPhase2 = false;
   state.usedEquipThisBattle = [];
+  state.tagSkillUsedThisBattle = false;
   state.streamMission = STREAM_MISSIONS[Math.floor(Math.random() * STREAM_MISSIONS.length)];
   state.goldenMission = Math.random() < 0.22;
   state.quote = enemy.introQuote || enemy.banterQuotes?.[0] || '"뭐야 넌?!"';
@@ -2061,6 +2062,12 @@ function render() {
     elLiveFeedComment.textContent = state.liveFeed.comment;
   } else {
     elLiveFeed.classList.add('hidden');
+  }
+
+  const elStoryCont = document.getElementById('story-container');
+  if (elStoryCont) {
+    elStoryCont.classList.toggle('is-combat', state.phase === 'combat');
+    if (state.phase === 'combat') elStoryCont.scrollTop = 0;
   }
 
   const timeLabel = TIME_SLOTS[state.timeIndex] || TIME_SLOTS[0];
@@ -4648,43 +4655,64 @@ function render() {
 
     if (elCombatBadges) {
       elCombatBadges.innerHTML = '';
-      const badges = [];
-      if (state.enemyBroken) badges.push({ cls: 'is-break', txt: '💥 멘붕 브레이크 (피해 1.5배!)' });
-      if (state.enemyStunned) badges.push({ cls: 'is-stun', txt: '💫 기절 (행동불능)' });
-      if ((state.enemyApologyTurns || 0) > 0) badges.push({ cls: 'is-stun', txt: `📝 반성문 (${state.enemyApologyTurns}턴·공격-40%)` });
-      if (state.lovers?.includes('yuki') && !state.sulky?.yuki) badges.push({ cls: 'is-pet', txt: '💚 유키 매턴 HP+6' });
-      if (state.lovers?.includes('chloe') && !state.sulky?.chloe) badges.push({ cls: 'is-combo', txt: '📸 클로이 치명+18%' });
-      if ((state.skillChain?.length || 0) > 0) badges.push({ cls: 'is-combo', txt: `⚡ 체인 ${state.skillChain.length}/3` });
-      badges.push({ cls: '', txt: getWeatherObj().label });
-      badges.push({ cls: 'is-pet', txt: `🏆 ${getHeroRankInfo().grade}` });
-      badges.push({ cls: '', txt: getDiffObj().name.split(' ')[0] + ' ' + getDiffObj().name.split(' ')[1] });
-      const eqB = getEquippedBonuses();
-      if (eqB.def > 0) badges.push({ cls: 'is-pet', txt: `🛡️ 방어+${eqB.def}` });
-      if ((state.allies?.length || 0) > 0) badges.push({ cls: 'is-pet', txt: `🤝 영웅단 ${state.allies.length}명` });
-      if ((state.weakCombo || 0) > 0) badges.push({ cls: 'is-combo', txt: `⚡ 약점콤보 ${state.weakCombo}/2` });
+      const activeBadges = [];
+      const passiveBadges = [];
+      if (state.enemyBroken) activeBadges.push({ cls: 'is-break', txt: '💥 멘붕 1.5배!' });
+      if (state.enemyStunned) activeBadges.push({ cls: 'is-stun', txt: '💫 기절' });
+      if ((state.enemyApologyTurns || 0) > 0) activeBadges.push({ cls: 'is-stun', txt: `📝 반성문(${state.enemyApologyTurns}턴)` });
       if ((state.feverTurns || 0) > 0) {
-        badges.push({ cls: 'is-break', txt: `🔥 FEVER 타임 (${state.feverTurns}턴·필살기 반값!)` });
+        activeBadges.push({ cls: 'is-break', txt: `🔥 FEVER(${state.feverTurns}턴·반값!)` });
       } else {
-        badges.push({ cls: 'is-combo', txt: `⚡ 피버 ${state.feverGauge || 0}%` });
+        activeBadges.push({ cls: 'is-combo', txt: `⚡ 피버 ${state.feverGauge || 0}%` });
       }
       if (state.enemyModifier) {
         const modObj = ENEMY_MODIFIERS.find((m) => m.id === state.enemyModifier);
-        if (modObj) badges.push({ cls: 'is-break', txt: `기질: ${modObj.label}` });
+        if (modObj) activeBadges.push({ cls: 'is-break', txt: `기질:${modObj.label}` });
       }
-      if (state.pet?.adopted) badges.push({ cls: 'is-pet', txt: `🐶 콩이 Lv.${state.pet.level} 지원` });
-      if (state.timeIndex >= 2) badges.push({ cls: '', txt: '🌙 야간 보너스 +25%' });
       if (state.streamMission) {
-      badges.push({
-        cls: state.goldenMission ? 'is-combo' : 'is-combo',
-        txt: state.goldenMission ? `🌟 [황금 별풍선 +150P·강화석+2] ${state.streamMission.label}` : state.streamMission.label,
-      });
-    }
-      badges.forEach((b) => {
+        activeBadges.push({
+          cls: 'is-combo',
+          txt: state.goldenMission ? `🌟 [황금 +150P·강화석+2] ${state.streamMission.label}` : state.streamMission.label,
+        });
+      }
+
+      if (state.lovers?.includes('yuki') && !state.sulky?.yuki) passiveBadges.push({ cls: 'is-pet', txt: '💚 유키 HP+6' });
+      if (state.lovers?.includes('chloe') && !state.sulky?.chloe) passiveBadges.push({ cls: 'is-combo', txt: '📸 클로이 치명+18%' });
+      if ((state.skillChain?.length || 0) > 0) passiveBadges.push({ cls: 'is-combo', txt: `⚡ 체인 ${state.skillChain.length}/3` });
+      passiveBadges.push({ cls: '', txt: getWeatherObj().label });
+      passiveBadges.push({ cls: 'is-pet', txt: `🏆 ${getHeroRankInfo().grade}` });
+      passiveBadges.push({ cls: '', txt: getDiffObj().name.split(' ')[0] + ' ' + getDiffObj().name.split(' ')[1] });
+      const eqB = getEquippedBonuses();
+      if (eqB.def > 0) passiveBadges.push({ cls: 'is-pet', txt: `🛡️ 방어+${eqB.def}` });
+      if ((state.allies?.length || 0) > 0) passiveBadges.push({ cls: 'is-pet', txt: `🤝 영웅단 ${state.allies.length}명` });
+      if ((state.weakCombo || 0) > 0) passiveBadges.push({ cls: 'is-combo', txt: `⚡ 약점콤보 ${state.weakCombo}/2` });
+      if (state.pet?.adopted) passiveBadges.push({ cls: 'is-pet', txt: `🐶 콩이 Lv.${state.pet.level}` });
+      if (state.timeIndex >= 2) passiveBadges.push({ cls: '', txt: '🌙 야간+25%' });
+
+      activeBadges.forEach((b) => {
         const sp = document.createElement('span');
         sp.className = `combat-badge ${b.cls}`;
         sp.textContent = b.txt;
         elCombatBadges.appendChild(sp);
       });
+      if (passiveBadges.length > 0) {
+        const tog = document.createElement('span');
+        tog.className = 'combat-badge is-toggle';
+        tog.textContent = state.showPassiveBadges ? `✨ 패시브 접기 ▴` : `✨ 패시브 ${passiveBadges.length}개 ▾`;
+        tog.addEventListener('click', () => {
+          state.showPassiveBadges = !state.showPassiveBadges;
+          render();
+        });
+        elCombatBadges.appendChild(tog);
+        if (state.showPassiveBadges) {
+          passiveBadges.forEach((b) => {
+            const sp = document.createElement('span');
+            sp.className = `combat-badge ${b.cls}`;
+            sp.textContent = b.txt;
+            elCombatBadges.appendChild(sp);
+          });
+        }
+      }
     }
 
     showEnemyVisual(enemy);
@@ -4826,8 +4854,9 @@ function render() {
     tagBtn.className = 'choice-btn';
     const tagCost = state.costume === 'couple' ? 35 : 50;
     const tagMeta = getTagSkillMeta();
-    tagBtn.disabled = state.sp < tagCost;
-    tagBtn.innerHTML = `<span>${tagMeta.title}</span><span class="choice-sub sp">${state.sp >= tagCost ? `사이다 ${tagCost} · ${tagMeta.effectSummary}` : `사이다 부족 (${state.sp}/${tagCost})`}</span>`;
+    const tagUsed = !!state.tagSkillUsedThisBattle;
+    tagBtn.disabled = tagUsed || state.sp < tagCost;
+    tagBtn.innerHTML = `<span>${tagMeta.title}</span><span class="choice-sub sp">${tagUsed ? '전투당 1회 사용 완료' : (state.sp >= tagCost ? `사이다 ${tagCost} · ${tagMeta.effectSummary}` : `사이다 부족 (${state.sp}/${tagCost})`)}</span>`;
     tagBtn.addEventListener('click', () => performTagSkill());
     elChoicesPanel.appendChild(tagBtn);
     return;
@@ -6248,10 +6277,9 @@ function getTagSkillMeta() {
   if (hasYuki && hasChloe && hasPet) {
     return {
       title: '🌟 풀파티 궁극기 (유키·클로이·콩이)',
-      effectSummary: '1.65배 극딜+기절+회복30%+SP20!',
+      effectSummary: '1.65배 극딜+기절+SP15+적약화(1회)',
       mult: 1.65,
-      healPct: 0.30,
-      spRefund: 20,
+      spRefund: 15,
       enemyWeakenTurns: 2,
       quote: '"다 같이 힘을 합치자! / Let\'s finish this!! / 멍멍!!"',
       logPrefix: '🌟 [유키·클로이·콩이 풀파티 궁극기!!]',
@@ -6261,10 +6289,9 @@ function getTagSkillMeta() {
   if (hasYuki && hasChloe) {
     return {
       title: '💖 더블 합동 필살기 (유키·클로이)',
-      effectSummary: '1.4배 극딜+기절+회복25%+SP15!',
+      effectSummary: '1.4배 극딜+기절+SP12(1회)',
       mult: 1.40,
-      healPct: 0.25,
-      spRefund: 15,
+      spRefund: 12,
       quote: '"다이스키! / Let\'s crush this villain together!"',
       logPrefix: '💖 [유키 & 클로이 더블 합동 필살기!!]',
       hasYuki, hasChloe, hasPet,
@@ -6273,9 +6300,9 @@ function getTagSkillMeta() {
   if (hasYuki && hasPet) {
     return {
       title: '🐾 합동 필살기 (유키·콩이)',
-      effectSummary: '1.35배 극딜+기절+회복20%+적약화!',
+      effectSummary: '1.35배 극딜+기절+SP10+적약화(1회)',
       mult: 1.35,
-      healPct: 0.20,
+      spRefund: 10,
       enemyWeakenTurns: 2,
       quote: '"유키랑 콩이가 지켜줄게요! 멍!"',
       logPrefix: '🐾 [유키 & 콩이 합동 필살기!!]',
@@ -6285,7 +6312,7 @@ function getTagSkillMeta() {
   if (hasChloe && hasPet) {
     return {
       title: '🐾 합동 필살기 (클로이·콩이)',
-      effectSummary: '1.5배 치명극딜+기절+적약화+P↑!',
+      effectSummary: '1.5배 치명극딜+기절+적약화+P↑(1회)',
       mult: 1.50,
       bonusPts: 20,
       bonusFollowers: 150,
@@ -6298,9 +6325,9 @@ function getTagSkillMeta() {
   if (hasYuki) {
     return {
       title: '💚 합동 필살기 (유키)',
-      effectSummary: '극딜+기절+인내심 20% 회복!',
-      mult: 1.0,
-      healPct: 0.20,
+      effectSummary: '1.15배 극딜+기절+SP10(1회)',
+      mult: 1.15,
+      spRefund: 10,
       quote: '"다이스키! 우리 같이 혼내주자!"',
       logPrefix: '💚 [유키 합동 필살기!!]',
       hasYuki, hasChloe, hasPet,
@@ -6341,7 +6368,8 @@ function getTagSkillMeta() {
 
 function performTagSkill() {
   const tagCost = state.costume === 'couple' ? 35 : 50;
-  if (state.sp < tagCost) return;
+  if (state.tagSkillUsedThisBattle || state.sp < tagCost) return;
+  state.tagSkillUsedThisBattle = true;
   const enemy = getEnemyById(state.currentEnemyId);
   const meta = getTagSkillMeta();
   state.sp = clamp(state.sp - tagCost, 0, state.maxSp);

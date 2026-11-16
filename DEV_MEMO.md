@@ -5,7 +5,11 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V29.0
+## 현재 최신 버전: V29.1
+- **V29.1**:
+  - **스크롤 없는 한 화면 전투 UI & 패시브 배지 접기 (`style.css`, `app.js`)**: 전투 진입/턴마다 `.story-container` `scrollTop = 0` 자동 정렬 + `.story-container.is-combat` 모바일 컴팩트 간격/프레임 높이(`138~158px`) 적용 + 상시 패시브 배지를 `✨ 패시브 N개 ▾` 토글 칩으로 압축해 1~2줄 유지 + 밤/심야 테마 HUD 스탯 숫자 가독성 수정
+  - **합동 필살기 밸런스 개편 (`getTagSkillMeta`, `performTagSkill`)**: 합동 필살기 HP 회복 제거(회복 아이템 가치 유지) 및 **전투당 1회 사용 제한(`tagSkillUsedThisBattle`)** 적용 (`?v=62`)
+- **V29.0**:
 - **V29.0**:
   - **4대 기본 스킬 각성/초월 진화 (`getSkillEvolution`, `performAttack`)**: 스탯 25+/50+ 달성 시 `팩트폭력/거울치료/법전들이밀기/사이다 필살기`가 `[각성]` → `[초월]` 스킬로 진화(피해·치명·주사위·흡혈·회복 강화)
   - **히어로 암시장 전설 상자(1,500P) & 장비 특수 각인 6종(800P) (`GEAR_ENCHANTS`, `openGearModal`)**: 에픽72%/유니크28% 상자 뽑기 + 흡혈/초치명/탄산코어/철벽/황금빛/영웅각인 부여 가능
