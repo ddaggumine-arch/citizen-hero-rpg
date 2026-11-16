@@ -40,6 +40,15 @@ export const RARITY_INFO = {
   unique: { label: '🟨 유니크 ★4 (S)', short: '★4 유니크', tier: 4, color: '#b45309', salvageP: 250 },
 };
 
+export const GEAR_ENCHANTS = [
+  { id: 'vamp', label: '🩸 흡혈', desc: '공격 피해 5% 인내심 회복', lifesteal: 0.05 },
+  { id: 'crit', label: '⚡ 초치명', desc: '치명타 확률 +10%', crit: 0.10 },
+  { id: 'cider', label: '🫧 탄산코어', desc: '매 턴 사이다 +5 회복', spRegen: 5 },
+  { id: 'iron', label: '🛡️ 철벽', desc: '방어력 +8', def: 8 },
+  { id: 'gold', label: '💎 황금빛', desc: '전투 도덕P +25%', rewardMult: 0.25 },
+  { id: 'hero', label: '🌟 영웅각인', desc: '공격 +12 · EXP +25%', atk: 12, expMult: 0.25 },
+];
+
 export const GEAR_LOOT_POOL = [
   // 무기/도구 (weapon)
   { id: 'w_whistle_c', name: '교통 호루라기', slot: 'weapon', rarity: 'common', atk: 4, def: 0, crit: 0.03, icon: 'golden_whistle', desc: '공격 +4 · 치명 +3%' },

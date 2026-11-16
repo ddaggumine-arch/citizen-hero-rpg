@@ -8,7 +8,7 @@ import { CARS, GEAR_UPGRADES, ACHIEVEMENTS } from './data/lifestyle.js';
 import { STREAM_MISSIONS, ROOM_UPGRADES, GUERRILLA_VILLAINS, STOCKS, HEROINE_GIFTS } from './data/v16Systems.js';
 import { COURT_CASES, COSTUMES, CAPSULE_POOL, PET_WALK_EVENTS } from './data/v17Systems.js';
 import { CLUES, SOME_CRISIS_EVENTS, RIVAL_EVENTS, REFORMED_ALLIES, GETTING_TO_KNOW_EVENTS, STORY_INTERLUDES, WEEKEND_EVENTS } from './data/v19Story.js?v=51';
-import { DIFFICULTIES, RARITY_INFO, GEAR_LOOT_POOL, PET_JOBS, LOGIC_COUNTERS, generateCommunityPosts } from './data/v24Systems.js?v=56';
+import { DIFFICULTIES, RARITY_INFO, GEAR_LOOT_POOL, GEAR_ENCHANTS, PET_JOBS, LOGIC_COUNTERS, generateCommunityPosts } from './data/v24Systems.js?v=61';
 import { KISS_SCENES, LOVER_ACTIONS } from './data/v25Romance.js';
 import { UNLOCK_MILESTONES, isFeatureUnlocked, SEOUL_DISTRICTS, getDistrictIdForEnemy, getClearedDistrictCount } from './data/v26World.js?v=48';
 import { STORY_BOSSES } from './data/storyBosses.js?v=45';
@@ -199,6 +199,12 @@ function createNewGameState() {
     freePlayMode: false,
     extendedGoldenTime: false,
     pendingMorningSummary: null,
+    gearEnchants: {},
+    invadedDistrict: null,
+    goldenMission: null,
+    partnerBond: 1,
+    partnerWinTicks: 0,
+    lastPicnicDay: 0,
   };
 }
 
@@ -659,6 +665,18 @@ function handleNewDayRollover() {
   // V26.1: 실시간 서울 112 긴급 속보 갱신
   if (!state.breakingNews && Math.random() < 0.55) {
     rollBreakingNews();
+  }
+
+  // V29.0: 평화구역 빌런 역습 디펜스
+  if (clearedDist >= 1 && !state.invadedDistrict && Math.random() < 0.30) {
+    const clearedList = SEOUL_DISTRICTS.filter((d) => (state.districts?.[d.id] || 0) >= 100);
+    if (clearedList.length > 0) {
+      const targetD = clearedList[Math.floor(Math.random() * clearedList.length)];
+      const pool = (targetD.villains || []).filter((id) => VILLAINS.some((v) => v.id === id));
+      const eId = pool.length ? pool[Math.floor(Math.random() * pool.length)] : 'shorts_terrorist';
+      state.invadedDistrict = { id: targetD.id, name: targetD.name, enemyId: eId };
+      showToast(`🚨 [구역 역습!!] 블랙튜브 잔당이 ${targetD.name}에 침입했습니다!`, 'break');
+    }
   }
 
   // V16.0: 연인 방치 페널티 (2일+ 소홀 시 호감도 -6, 50 미만 시 이별)
@@ -1143,7 +1161,7 @@ function getDiffObj() {
 
 function getEquippedBonuses() {
   const eq = state.equipped || {};
-  const res = { atk: 0, def: 0, crit: 0, spRegen: 0, reflect: 0 };
+  const res = { atk: 0, def: 0, crit: 0, spRegen: 0, reflect: 0, lifesteal: 0, rewardMult: 0, expMult: 0 };
   ['weapon', 'armor', 'acc'].forEach((sl) => {
     const id = eq[sl];
     if (!id) return;
@@ -1154,6 +1172,17 @@ function getEquippedBonuses() {
     res.crit += g.crit || 0;
     res.spRegen += g.spRegen || 0;
     res.reflect += g.reflect || 0;
+    const encId = state.gearEnchants?.[id];
+    const enc = encId ? GEAR_ENCHANTS.find((e) => e.id === encId) : null;
+    if (enc) {
+      res.atk += enc.atk || 0;
+      res.def += enc.def || 0;
+      res.crit += enc.crit || 0;
+      res.spRegen += enc.spRegen || 0;
+      res.lifesteal += enc.lifesteal || 0;
+      res.rewardMult += enc.rewardMult || 0;
+      res.expMult += enc.expMult || 0;
+    }
   });
   const d = state.districts || {};
   if ((d.gangnam || 0) >= 100) res.atk += 4;
@@ -1299,16 +1328,17 @@ function startBattle(enemyId, isRandomEncounter = false) {
   const modAtkMult = mod ? mod.atkMult : 1;
   const modRewardMult = mod ? mod.rewardMult : 1;
 
-  // V27.2 주인공 현재 화력 연동 HP 보정: 잡몹도 최소 3~5턴 공방을 주고받는 쫀득한 전투!
+  // V27.2/V29.0 주인공 현재 화력·최대체력 연동 보정: 고스펙이어도 긴장감 있는 공방!
   const avgStat = ((state.stats?.speech || 2) + (state.stats?.guts || 2) + (state.stats?.law || 2)) / 3;
   const eqAtk = getEquippedBonuses().atk || 0;
   const estHeroHit = Math.round((22 + avgStat * 4.2 + (state.bonusDmg || 0) + eqAtk) * 1.28);
-  const targetTurns = isBossEnemy ? 6.5 : 4.2;
+  const targetTurns = isBossEnemy ? 7.5 : 5.0;
   const coScaledHp = Math.round(estHeroHit * targetTurns * (enemyLv > heroLv ? 1 + (enemyLv - heroLv) * 0.04 : 1) * modHpMult);
 
   const rawFormulaHp = Math.round(baseEnemy.maxHp * lvScale * bossHpBoost * modHpMult);
   const baseScaledHp = Math.max(rawFormulaHp, coScaledHp);
-  const baseScaledAtk = Math.round(baseEnemy.atk * atkScale * bossAtkBoost * modAtkMult);
+  const minThreatAtk = Math.round((state.maxHp || 100) * (isBossEnemy ? 0.14 : 0.10));
+  const baseScaledAtk = Math.max(Math.round(baseEnemy.atk * atkScale * bossAtkBoost * modAtkMult), minThreatAtk);
   const rawMaxHp = nmFloor > 0
     ? baseScaledHp + nmFloor * 52
     : (floor > 0 ? baseScaledHp + floor * 28 : baseScaledHp);
@@ -1366,6 +1396,7 @@ function startBattle(enemyId, isRandomEncounter = false) {
   state.bossPhase2 = false;
   state.usedEquipThisBattle = [];
   state.streamMission = STREAM_MISSIONS[Math.floor(Math.random() * STREAM_MISSIONS.length)];
+  state.goldenMission = Math.random() < 0.22;
   state.quote = enemy.introQuote || enemy.banterQuotes?.[0] || '"뭐야 넌?!"';
   state.log = `[${enemy.location}]에서 [${enemy.name}]과(와) 마주쳤습니다!${extraLog}`;
   saveGame();
@@ -1529,11 +1560,12 @@ function enemyCounterTurn(enemy, isGuarding = false) {
 function handleEnemyDefeated(enemy) {
   state.quote = enemy.defeatQuote;
   const diff = getDiffObj();
-  const baseReward = Math.round(enemy.reward * diff.rewardMult * (1 + (state.rewardMultBonus || 0)));
+  const eqBon = getEquippedBonuses();
+  const baseReward = Math.round(enemy.reward * diff.rewardMult * (1 + (state.rewardMultBonus || 0) + (eqBon.rewardMult || 0)));
   const nightBonus = state.timeIndex >= 2 ? Math.round(baseReward * 0.25) : 0;
   const dustBonus = (state.weather || 'sunny') === 'dust' ? 10 : 0;
   state.points += baseReward + nightBonus + dustBonus;
-  const expGain = Math.round((24 + (enemy.reward || 30) * 0.65) * ((isBossId(enemy.id) || enemy.storyOnly) ? 1.6 : 1));
+  const expGain = Math.round((24 + (enemy.reward || 30) * 0.65) * ((isBossId(enemy.id) || enemy.storyOnly) ? 1.6 : 1) * (1 + (eqBon.expMult || 0)));
   gainHeroExp(expGain);
   state.pendingReports += 1;
   if (state.pet?.adopted && state.pet.job === 'detective' && Math.random() < 0.5) {
@@ -1562,6 +1594,22 @@ function handleEnemyDefeated(enemy) {
     state.guerrilla = null;
     state.points += 40;
     showToast('🚨 지명수배 빌런 검거 완료! 현상금 +40 P!', 'good');
+  }
+  if (state.invadedDistrict && state.invadedDistrict.enemyId === enemy.id) {
+    const dName = state.invadedDistrict.name;
+    state.invadedDistrict = null;
+    state.points += 150;
+    state.scrap = (state.scrap || 0) + 3;
+    rollGearDrop(true, Math.max(enemyLv, 20));
+    showToast(`🛡️ [${dName} 디펜스 성공!!] +150 P · 강화석 +3 · 보너스 장비!`, 'break');
+  }
+  if (state.lovers?.includes('yuki') && state.lovers?.includes('chloe') && state.pet?.adopted) {
+    state.partnerWinTicks = (state.partnerWinTicks || 0) + 1;
+    if (state.partnerWinTicks >= 5) {
+      state.partnerWinTicks = 0;
+      state.partnerBond = (state.partnerBond || 1) + 1;
+      showToast(`💖 [파티 유대 Lv.${state.partnerBond} 달성!] 유키·클로이·콩이 호흡이 더욱 강해졌습니다!`, 'good');
+    }
   }
   if (!state.dailyStats) state.dailyStats = { wins: 0, loveGain: 0 };
   state.dailyStats.wins += 1;
@@ -1716,8 +1764,40 @@ function checkStreamMission(actionId) {
   state.points += p;
   state.followers = (state.followers || 120) + f;
   state.log += `\n📺 [시청자 미션 성공!] 도네이션 +${p} P · 팔로워 +${f}!`;
-  showToast(`📺 도네이션 +${p} P · 팔로워 +${f}!`, 'good');
+  if (state.goldenMission) {
+    state.goldenMission = false;
+    state.points += 150;
+    state.scrap = (state.scrap || 0) + 2;
+    state.log += `\n🌟 [동접 10만 황금 별풍선 잭팟!!] +150 P · 강화석 +2개 즉석 지급!`;
+    showToast(`🌟 황금 별풍선 잭팟!! +150 P · 강화석 +2!`, 'break');
+  } else {
+    showToast(`📺 도네이션 +${p} P · 팔로워 +${f}!`, 'good');
+  }
   state.streamMission = STREAM_MISSIONS[Math.floor(Math.random() * STREAM_MISSIONS.length)];
+  state.goldenMission = Math.random() < 0.15;
+}
+
+function getSkillEvolution(type) {
+  const s = state.stats || { speech: 2, guts: 2, law: 2 };
+  const avg = ((s.speech || 2) + (s.guts || 2) + (s.law || 2)) / 3;
+  if (type === 'speech') {
+    if ((s.speech || 0) >= 50) return { title: '🌟 [초월] 진실 팩트오버드라이브', dmgMult: 1.35, critBonus: 0.20, tier: 3 };
+    if ((s.speech || 0) >= 25) return { title: '⚡ [각성] 초음속 팩트폭격', dmgMult: 1.15, critBonus: 0.10, tier: 2 };
+    return { title: '🗣️ 팩트폭력', dmgMult: 1.0, critBonus: 0, tier: 1 };
+  }
+  if (type === 'guts') {
+    if ((s.guts || 0) >= 50) return { title: '🌟 [초월] 강철 멘탈 역관광', dmgMult: 1.30, spExtra: 13, vampPct: 0.06, tier: 3 };
+    if ((s.guts || 0) >= 25) return { title: '🔥 [각성] 불굴의 거울치료', dmgMult: 1.15, spExtra: 5, vampPct: 0, tier: 2 };
+    return { title: '🪞 거울치료', dmgMult: 1.0, spExtra: 0, vampPct: 0, tier: 1 };
+  }
+  if (type === 'law') {
+    if ((s.law || 0) >= 50) return { title: '🌟 [초월] 헌법재판소 만장일치', dmgMult: 1.30, diceExtra: 4, tier: 3 };
+    if ((s.law || 0) >= 25) return { title: '⚖️ [각성] 대법원 최종 선고', dmgMult: 1.15, diceExtra: 2, tier: 2 };
+    return { title: '⚖️ 법전 들이밀기', dmgMult: 1.0, diceExtra: 0, tier: 1 };
+  }
+  if (avg >= 50) return { title: '🌟 [초월] 제로슈거 핵사이다', dmgMult: 1.45, healPct: 0.10, tier: 3 };
+  if (avg >= 25) return { title: '🫧 [각성] 메가 탄산 필살기', dmgMult: 1.25, healPct: 0, tier: 2 };
+  return { title: '🫧 사이다 필살기', dmgMult: 1.0, healPct: 0, tier: 1 };
 }
 
 function performAttack(type) {
@@ -1744,57 +1824,65 @@ function performAttack(type) {
 
   const isFever = (state.feverTurns || 0) > 0;
   const spCost = isFever ? 20 : 40;
+  const evo = getSkillEvolution(type);
   if (type === 'speech') {
     const base = 18 + state.stats.speech * 4 + state.bonusDmg + allyFirstBonus + sodaBonus;
     const isWeak = isFever || enemy.weakness === 'speech';
     hitWeakness = isWeak;
-    const critRoll = isFever || Math.random() < (0.15 + state.critBonus + chloeCrit);
+    const critRoll = isFever || Math.random() < (0.15 + state.critBonus + chloeCrit + (evo.critBonus || 0));
     if (critRoll && chloeCrit > 0) triggerPartnerCallout('chloe', 'Nice Shot! 📸');
-    dmg = Math.round(base * (isWeak ? 1.45 : 1) * (critRoll ? 1.5 : 1));
+    dmg = Math.round(base * (evo.dmgMult || 1) * (isWeak ? 1.45 : 1) * (critRoll ? 1.5 : 1));
     isCrit = isWeak || critRoll;
     state.sp = clamp(state.sp + 10, 0, state.maxSp);
     state.lawful += 5;
-    state.log = `🗣️ 논리정연한 팩트폭력! (적 멘탈 -${dmg}${isWeak ? ' · 약점 적중!' : ''}${critRoll ? ' · 치명타!' : ''})`;
+    state.log = `${evo.title}! (적 멘탈 -${dmg}${isWeak ? ' · 약점 적중!' : ''}${critRoll ? ' · 치명타!' : ''})`;
   } else if (type === 'guts') {
     const base = 16 + state.stats.guts * 4 + state.bonusDmg + allyFirstBonus;
     const isWeak = isFever || enemy.weakness === 'guts';
     hitWeakness = isWeak;
     const critRoll = isFever || Math.random() < chloeCrit;
-    dmg = Math.round(base * (isWeak ? 1.45 : 1) * (critRoll ? 1.5 : 1));
+    dmg = Math.round(base * (evo.dmgMult || 1) * (isWeak ? 1.45 : 1) * (critRoll ? 1.5 : 1));
     isCrit = isWeak || critRoll;
-    const spGain = 15 + state.gutsSpBonus;
+    const spGain = 15 + state.gutsSpBonus + (evo.spExtra || 0);
     state.sp = clamp(state.sp + spGain, 0, state.maxSp);
+    if (evo.vampPct) state.hp = clamp(state.hp + Math.round(state.maxHp * evo.vampPct), 1, state.maxHp);
     state.chaotic += 10;
-    state.log = `🪞 뻔뻔한 거울치료 시전! (적 멘탈 -${dmg}, 사이다 +${spGain}, 광인 +10)`;
+    state.log = `${evo.title} 시전! (적 멘탈 -${dmg}, 사이다 +${spGain}, 광인 +10)`;
   } else if (type === 'law') {
     sfx.dice();
     const roll = Math.floor(Math.random() * 20) + 1;
     const repBonus = rep.mode === 'lawful' ? 2 : 0;
     const costumeLawBonus = state.costume === 'police' ? 3 : 0;
-    const total = roll + state.stats.law + state.diceBonus + repBonus + costumeLawBonus;
+    const total = roll + state.stats.law + state.diceBonus + repBonus + costumeLawBonus + (evo.diceExtra || 0);
     const isWeak = isFever || enemy.weakness === 'law';
     hitWeakness = isWeak;
     state.lawful += 10;
     if (total >= 12 || isFever) {
-      dmg = Math.round((24 + state.stats.law * 5 + state.bonusDmg + allyFirstBonus) * (isWeak ? 1.4 : 1));
+      dmg = Math.round((24 + state.stats.law * 5 + state.bonusDmg + allyFirstBonus) * (evo.dmgMult || 1) * (isWeak ? 1.4 : 1));
       isCrit = true;
       state.enemyStunned = true;
       const gotApology = Math.random() < 0.5;
       if (gotApology) state.enemyApologyTurns = 2;
-      state.log = `⚖️ [주사위 ${roll} + 보정 = ${total}] 법 조항 들이밀기 대성공! (멘탈 -${dmg} & 기절${gotApology ? ' · 📝반성문 2턴!' : '!'})`;
+      state.log = `${evo.title} [주사위 ${roll}+보정=${total}] 대성공! (멘탈 -${dmg} & 기절${gotApology ? ' · 📝반성문 2턴!' : '!'})`;
     } else {
       dmg = 10 + state.bonusDmg + allyFirstBonus;
-      state.log = `⚖️ [주사위 ${roll} + 보정 = ${total}] 법 조항이 가물가물... (적 멘탈 -${dmg})`;
+      state.log = `${evo.title} [주사위 ${roll}+보정=${total}] 법 조항이 가물가물... (적 멘탈 -${dmg})`;
     }
   } else if (type === 'special') {
     if (state.sp < spCost) return;
     state.sp -= spCost;
-    dmg = 45 + state.spDmgBonus + state.bonusDmg + (state.stats.speech + state.stats.guts + state.stats.law) * 2;
+    dmg = Math.round((45 + state.spDmgBonus + state.bonusDmg + (state.stats.speech + state.stats.guts + state.stats.law) * 2) * (evo.dmgMult || 1));
     isCrit = true;
     hitWeakness = true;
     state.enemyStunned = true;
     state.lawful += 8;
-    state.log = `🫧 [사이다 필살기] 112·보건소 신고 + 공개 참교육!! (멘탈 -${dmg} & 기절!)`;
+    if (evo.healPct) state.hp = clamp(state.hp + Math.round(state.maxHp * evo.healPct), 1, state.maxHp);
+    state.log = `${evo.title}! 112·보건소 신고 + 공개 참교육!! (멘탈 -${dmg} & 기절!)`;
+  }
+  if ((eqBonus.lifesteal || 0) > 0 && dmg > 0) {
+    const ls = Math.max(2, Math.round(dmg * eqBonus.lifesteal));
+    state.hp = clamp(state.hp + ls, 1, state.maxHp);
+    state.log += `\n🩸 [흡혈 각인] 인내심 +${ls} 회복!`;
   }
 
   if (state.enemyBroken) {
@@ -2453,6 +2541,19 @@ function render() {
     if (!state.breakingNews && state.day === 1 && !state.breakingFirstDone) {
       rollBreakingNews();
     }
+    if (state.invadedDistrict) {
+      const inv = state.invadedDistrict;
+      const invBtn = document.createElement('button');
+      invBtn.className = 'choice-btn row-btn breaking-banner';
+      invBtn.style.gridColumn = 'span 2';
+      invBtn.innerHTML = `<span>🛡️ [구역 역습 디펜스!!] ${inv.name} 블랙튜브 잔당 침입!</span><span class="choice-sub">격퇴 시 +150P · 강화석 +3 · 확정 장비! ▶</span>`;
+      invBtn.addEventListener('click', () => {
+        sfx.powerup();
+        startBattle(inv.enemyId, true);
+      });
+      elChoicesPanel.appendChild(invBtn);
+    }
+
     if (state.breakingNews) {
       const bn = state.breakingNews;
       const bnBtn = document.createElement('button');
@@ -3268,6 +3369,26 @@ function render() {
       });
     }
 
+    if (state.lovers?.includes('yuki') && state.lovers?.includes('chloe') && state.pet?.adopted) {
+      const picBtn = document.createElement('button');
+      picBtn.className = 'choice-btn row-btn story-main-btn';
+      picBtn.style.gridColumn = 'span 2';
+      const doneToday = state.lastPicnicDay === state.day;
+      picBtn.innerHTML = doneToday
+        ? `<span>🧺 한강 트리플 피크닉 (유키·클로이·콩이 · 유대 Lv.${state.partnerBond || 1})</span><span class="choice-sub">오늘 다녀옴 (내일 가능)</span>`
+        : `<span>🧺 한강 트리플 피크닉! (유키·클로이·콩이 · 80P)</span><span class="choice-sub">파티 유대 Lv.${state.partnerBond || 1} · 체력MAX · 전스탯+1 · 양쪽 호감+5!</span>`;
+      picBtn.disabled = doneToday || state.points < 80;
+      picBtn.addEventListener('click', () => {
+        if (doneToday || state.points < 80) return;
+        sfx.powerup();
+        state.points -= 80;
+        state.lastPicnicDay = state.day;
+        state.phase = 'triple_picnic';
+        render();
+      });
+      elChoicesPanel.appendChild(picBtn);
+    }
+
     const giftBtn = document.createElement('button');
     giftBtn.className = 'choice-btn row-btn';
     giftBtn.style.gridColumn = 'span 2';
@@ -3592,6 +3713,67 @@ function render() {
     mapBtn.innerHTML = '<span>🗺️ 서울 지도로 돌아가기</span><span class="choice-sub">완료</span>';
     mapBtn.addEventListener('click', () => { sfx.click(); state.phase = 'map'; render(); });
     elChoicesPanel.appendChild(mapBtn);
+    return;
+  }
+
+  // 4-R0. V16.0 히로인 취향 선물 가게
+  if (state.phase === 'triple_picnic') {
+    elLocation.textContent = `DAY ${state.day} · 여의도 한강공원 피크닉`;
+    elSceneTag.textContent = '특별 이벤트';
+    elSceneTag.className = 'scene-tag event';
+    elSceneTitle.textContent = '🧺 유키·클로이·콩이 한강 트리플 피크닉!';
+    elWeaknessPill.classList.add('hidden');
+    elEnemyHpWrap.classList.add('hidden');
+    elQuoteBubble.textContent = '"오늘은 다 같이 아무 걱정 없이 쉬자! / Yay!! Picnic time! / 멍!"';
+    elQuoteBubble.classList.remove('hidden');
+    elSceneImage.src = 'assets/images/triple_picnic.jpg';
+    elSceneImage.classList.remove('hidden');
+    elBattleLog.textContent = '벚꽃 흩날리는 한강 잔디밭에 돗자리를 펴고 유키, 클로이, 콩이와 함께 행복한 피크닉을 즐깁니다!';
+    elChoicesPanel.className = 'choices-panel';
+    [
+      {
+        text: '🍙 유키의 수제 주먹밥 + 클로이의 폴라로이드 촬영!',
+        sub: '파티 유대 +1 · 양쪽 호감 +6 · 인내심 MAX',
+        run: () => {
+          state.partnerBond = (state.partnerBond || 1) + 1;
+          state.love.yuki = clamp((state.love.yuki || 0) + 6, 0, 100);
+          state.love.chloe = clamp((state.love.chloe || 0) + 6, 0, 100);
+          state.hp = state.maxHp;
+          state.sp = state.maxSp;
+          state.log = `🧺 [트리플 피크닉 대성공!] 완벽한 추억이 쌓였습니다! (파티 유대 Lv.${state.partnerBond} · 양쪽 호감 +6 · HP/SP MAX!)`;
+        },
+      },
+      {
+        text: '🐶 콩이랑 원반 던지기 & 셋이서 체력 단련!',
+        sub: '전스탯 +1 · 최대HP +12 · 양쪽 호감 +4',
+        run: () => {
+          state.stats.speech += 1;
+          state.stats.guts += 1;
+          state.stats.law += 1;
+          state.maxHp += 12;
+          state.hp = state.maxHp;
+          state.love.yuki = clamp((state.love.yuki || 0) + 4, 0, 100);
+          state.love.chloe = clamp((state.love.chloe || 0) + 4, 0, 100);
+          state.log = '🐶 [피크닉 특훈 완료!] 콩이와 뛰어놀며 전스탯 +1 · 최대 인내심 +12 상승!';
+        },
+      },
+    ].forEach((ch) => {
+      const b = document.createElement('button');
+      b.className = 'choice-btn row-btn';
+      b.innerHTML = `<span>${ch.text}</span><span class="choice-sub">${ch.sub}</span>`;
+      b.addEventListener('click', () => {
+        sfx.victory();
+        if (!state.lastContactDay) state.lastContactDay = { yuki: state.day, chloe: state.day };
+        state.lastContactDay.yuki = state.day;
+        state.lastContactDay.chloe = state.day;
+        ch.run();
+        advanceTime();
+        state.phase = 'romance';
+        saveGame();
+        render();
+      });
+      elChoicesPanel.appendChild(b);
+    });
     return;
   }
 
@@ -4491,7 +4673,12 @@ function render() {
       }
       if (state.pet?.adopted) badges.push({ cls: 'is-pet', txt: `🐶 콩이 Lv.${state.pet.level} 지원` });
       if (state.timeIndex >= 2) badges.push({ cls: '', txt: '🌙 야간 보너스 +25%' });
-      if (state.streamMission) badges.push({ cls: 'is-combo', txt: state.streamMission.label });
+      if (state.streamMission) {
+      badges.push({
+        cls: state.goldenMission ? 'is-combo' : 'is-combo',
+        txt: state.goldenMission ? `🌟 [황금 별풍선 +150P·강화석+2] ${state.streamMission.label}` : state.streamMission.label,
+      });
+    }
       badges.forEach((b) => {
         const sp = document.createElement('span');
         sp.className = `combat-badge ${b.cls}`;
@@ -4567,25 +4754,25 @@ function render() {
 
     const skills = [
       {
-        title: '🗣️ 팩트폭력',
+        title: getSkillEvolution('speech').title,
         sub: enemy.weakness === 'speech' ? '약점 1.45배!' : `언변 ${state.stats.speech} 기반`,
         subClass: enemy.weakness === 'speech' ? 'weak' : '',
         action: () => performAttack('speech'),
       },
       {
-        title: '🪞 거울치료',
+        title: getSkillEvolution('guts').title,
         sub: enemy.weakness === 'guts' ? '약점 + 광인↑' : '사이다+15 · 광인↑',
         subClass: enemy.weakness === 'guts' ? 'weak' : '',
         action: () => performAttack('guts'),
       },
       {
-        title: '⚖️ 법전 들이밀기',
+        title: getSkillEvolution('law').title,
         sub: `🎲 12+ 기절 (+${lawBonus}) · 모범↑`,
         subClass: enemy.weakness === 'law' ? 'weak' : '',
         action: () => performAttack('law'),
       },
       {
-        title: '🫧 사이다 필살기',
+        title: getSkillEvolution('special').title,
         sub: state.sp >= ((state.feverTurns || 0) > 0 ? 20 : 40)
           ? `사이다 ${(state.feverTurns || 0) > 0 ? '20(피버 반값!)' : '40'} · 확정기절!`
           : `사이다 부족 (${state.sp}/${(state.feverTurns || 0) > 0 ? 20 : 40})`,
@@ -5787,6 +5974,31 @@ function openGearModal(filterRarity = currentGearFilter) {
   guideBar.textContent = '등급: ⬜일반 ★1(C) < 🟦레어 ★2(B) < 🟪에픽 ★3(A) < 🟨유니크 ★4(S)';
   elEndingsList.appendChild(guideBar);
 
+  const gachaBtn = document.createElement('button');
+  gachaBtn.className = 'gear-quick-btn';
+  gachaBtn.style.cssText = 'width:100%;margin-bottom:8px;padding:9px 8px;background:linear-gradient(90deg,#7e22ce 0%,#b45309 100%);';
+  gachaBtn.textContent = '🎁 암시장 전설 장비 상자 뽑기 (1,500P · 에픽72%/유니크28%)';
+  gachaBtn.disabled = state.points < 1500;
+  gachaBtn.addEventListener('click', () => {
+    if (state.points < 1500) return;
+    sfx.victory();
+    state.points -= 1500;
+    const rar = Math.random() < 0.28 ? 'unique' : 'epic';
+    const lv = Math.max(15, state.level || 1);
+    let pool = GEAR_LOOT_POOL.filter((x) => x.rarity === rar && (x.minDropLv || 1) <= lv);
+    if (pool.length === 0) pool = GEAR_LOOT_POOL.filter((x) => x.rarity === rar);
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    if (pick) {
+      state.gearBag.push(pick.id);
+      const rLab = RARITY_INFO[rar]?.label || rar;
+      showToast(`🎁 [암시장 대박!!] ${rLab} ${pick.name} 획득!`, rar === 'unique' ? 'break' : 'good');
+    }
+    saveGame();
+    openGearModal(currentGearFilter);
+    render();
+  });
+  elEndingsList.appendChild(gachaBtn);
+
   if (state.gearBag.length === 0) {
     const emptyP = document.createElement('p');
     emptyP.style.cssText = 'text-align:center;color:#695544;padding:16px 0;';
@@ -5923,6 +6135,9 @@ function openGearModal(filterRarity = currentGearFilter) {
       const needScrap = 1 + Math.floor(plus / 2);
       const needPts = 30 + plus * 20;
       const gainScrap = scrapMap[g.rarity] || 1;
+      const encId = state.gearEnchants?.[g.id];
+      const encObj = encId ? GEAR_ENCHANTS.find((e) => e.id === encId) : null;
+      const encBadge = encObj ? ` <span style="font-size:0.68rem;background:#fef3c7;color:#92400e;border:1px solid #f59e0b;padding:1px 5px;border-radius:99px;">${encObj.label}</span>` : '';
       const card = document.createElement('div');
       card.className = 'inv-item gear-card-v2';
       card.style.borderColor = rInfo.color;
@@ -5930,8 +6145,8 @@ function openGearModal(filterRarity = currentGearFilter) {
         <div class="gear-card-top">
           ${itemImgHtml(g.icon, 'item-thumb')}
           <div class="inv-info">
-            <h4 style="color:${rInfo.color};">[${rInfo.label}] ${g.name}${plus > 0 ? ` +${plus}` : ''} ${isEq ? '✅장착중' : ''}${cmpBadge}</h4>
-            <p>${slotNames[g.slot]} · ${g.desc}${plus > 0 ? ` (강화: 공+${plus * 3}, 방+${plus * 2})` : ''}</p>
+            <h4 style="color:${rInfo.color};">[${rInfo.label}] ${g.name}${plus > 0 ? ` +${plus}` : ''} ${isEq ? '✅장착중' : ''}${encBadge}${cmpBadge}</h4>
+            <p>${slotNames[g.slot]} · ${g.desc}${plus > 0 ? ` (강화: 공+${plus * 3}, 방+${plus * 2})` : ''}${encObj ? ` · ${encObj.desc}` : ''}</p>
           </div>
         </div>
       `;
@@ -5979,8 +6194,26 @@ function openGearModal(filterRarity = currentGearFilter) {
         openGearModal(currentGearFilter);
         render();
       });
+      const encBtn = document.createElement('button');
+      encBtn.className = 'use-btn';
+      encBtn.style.background = '#7e22ce';
+      encBtn.textContent = encObj ? '재각인(800)' : '✨각인(800)';
+      encBtn.disabled = state.points < 800;
+      encBtn.addEventListener('click', () => {
+        if (state.points < 800) return;
+        sfx.powerup();
+        state.points -= 800;
+        if (!state.gearEnchants) state.gearEnchants = {};
+        const pickEnc = GEAR_ENCHANTS[Math.floor(Math.random() * GEAR_ENCHANTS.length)];
+        state.gearEnchants[g.id] = pickEnc.id;
+        showToast(`✨ [${g.name}]에 ${pickEnc.label} (${pickEnc.desc}) 각인 성공!`, 'break');
+        saveGame();
+        openGearModal(currentGearFilter);
+        render();
+      });
       actionsRow.appendChild(eqBtn);
       actionsRow.appendChild(upBtn);
+      actionsRow.appendChild(encBtn);
       actionsRow.appendChild(salBtn);
       card.appendChild(actionsRow);
       elEndingsList.appendChild(card);

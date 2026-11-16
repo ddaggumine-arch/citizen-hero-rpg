@@ -1933,8 +1933,8 @@ body[data-time="midnight"] .illustration-frame {
 }
 .gear-card-actions {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
   width: 100%;
 }
 .gear-card-actions .use-btn {
