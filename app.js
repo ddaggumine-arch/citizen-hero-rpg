@@ -195,8 +195,14 @@ function createNewGameState() {
     breakingNews: null,
     breakingFirstDone: false,
     dailyFortune: 'gold',
+    storyCleared: false,
+    freePlayMode: false,
+    extendedGoldenTime: false,
+    pendingMorningSummary: null,
   };
 }
+
+const GOLDEN_TIME_DAYS = 120;
 
 const DAILY_FORTUNES = [
   { id: 'gold', icon: '🌟', short: '황금의 날(보상1.5배)', desc: '오늘 전투 승리 포인트 +50%!' },
@@ -428,6 +434,19 @@ const elSaveModal = document.getElementById('save-modal');
 const elSaveSlotsList = document.getElementById('save-slots-list');
 const btnCloseSave = document.getElementById('close-save');
 const btnOpenSlots = document.getElementById('btn-open-slots');
+const elDdayPill = document.getElementById('dday-pill');
+const elMorningModal = document.getElementById('morning-modal');
+const elMorningTitle = document.getElementById('morning-title');
+const elMorningSummaryBody = document.getElementById('morning-summary-body');
+const btnMorningOk = document.getElementById('btn-morning-ok');
+if (btnMorningOk) {
+  btnMorningOk.addEventListener('click', () => {
+    sfx.click();
+    state.pendingMorningSummary = null;
+    if (elMorningModal) elMorningModal.classList.add('hidden');
+    saveGame();
+  });
+}
 const elEndingsModal = document.getElementById('endings-modal');
 const elEndingsModalTitle = document.getElementById('endings-modal-title');
 const elEndingsList = document.getElementById('endings-list');
@@ -594,87 +613,117 @@ function pickNonRepeatingIdx(len, usedArr) {
   return picked;
 }
 
+function handleNewDayRollover() {
+  state.timeIndex = 0;
+  state.day += 1;
+  if (state.day % 7 === 0) state.pendingWeekend = true;
+  const wPick = WEATHERS[Math.floor(Math.random() * WEATHERS.length)];
+  state.weather = wPick.id;
+  const fPick = DAILY_FORTUNES[Math.floor(Math.random() * DAILY_FORTUNES.length)];
+  state.dailyFortune = fPick.id;
+  const ds = state.dailyStats || { wins: 0, loveGain: 0 };
+
+  // V16.0: 자취방 인테리어 패시브 회복
+  if (state.roomUpgrades?.includes('mattress')) {
+    state.hp = clamp(state.hp + 15, 1, state.maxHp);
+  }
+  if (state.roomUpgrades?.includes('soundproof')) {
+    state.sp = clamp(state.sp + 12, 0, state.maxSp);
+  }
+
+  // V26.0: 평화구역 정화 일일 시민 후원금
+  const clearedDist = getClearedDistrictCount(state);
+  const distBonus = clearedDist > 0 ? clearedDist * 25 : 0;
+  if (distBonus > 0) {
+    state.points += distBonus;
+  }
+
+  // V16.0: 서울 테마 주식 시세 변동
+  if (!state.stockPrices) state.stockPrices = { cider_pharma: 30, manner_ent: 45, hanriver_ev: 60 };
+  STOCKS.forEach((st) => {
+    const cur = state.stockPrices[st.id] || st.basePrice;
+    const delta = Math.round((Math.random() * 0.5 - 0.23) * cur);
+    state.stockPrices[st.id] = clamp(cur + delta, st.min, st.max);
+  });
+
+  // V16.0: 게릴라 지명수배 빌런 만료/출현
+  if (state.guerrilla && state.day > state.guerrilla.expiresDay) {
+    state.guerrilla = null;
+    state.chaosLevel = clamp((state.chaosLevel ?? 25) + 15, 0, 100);
+    showToast('🚨 지명수배 빌런 방치로 서울 민폐도 +15% 폭등!', 'break');
+  } else if (!state.guerrilla && state.day % 3 === 0) {
+    const gPick = pickLevelAppropriateVillain(GUERRILLA_VILLAINS, state.level || 1);
+    state.guerrilla = { villainId: gPick.id, expiresDay: state.day + 1 };
+    showToast(`🚨 지명수배 출몰: ${gPick.name}!`, 'break');
+  }
+
+  // V26.1: 실시간 서울 112 긴급 속보 갱신
+  if (!state.breakingNews && Math.random() < 0.55) {
+    rollBreakingNews();
+  }
+
+  // V16.0: 연인 방치 페널티 (2일+ 소홀 시 호감도 -6, 50 미만 시 이별)
+  if (state.lovers && state.lovers.length > 0) {
+    if (!state.lastContactDay) state.lastContactDay = { yuki: state.day, chloe: state.day };
+    [...state.lovers].forEach((lk) => {
+      const gap = state.day - (state.lastContactDay[lk] || state.day);
+      if (gap >= 2) {
+        state.love[lk] = clamp((state.love[lk] || 0) - 6, 0, 100);
+        const nm = lk === 'yuki' ? '유키' : '클로이';
+        if (!state.dateMessages) state.dateMessages = [];
+        state.dateMessages.unshift({
+          sender: lk === 'yuki' ? '🇯🇵 유키' : '🇺🇸 클로이',
+          title: `DAY ${state.day} · 💔 서운함 경고`,
+          body: `"요즘 ${gap}일째 너무 소홀한 거 아니에요...? (호감도 -6 → ${state.love[lk]}/100)"`,
+        });
+        state.unreadMessages += 1;
+        if (state.love[lk] < 50) {
+          state.lovers = state.lovers.filter((x) => x !== lk);
+          showToast(`💔 ${nm}와(과) 소홀해져 이별했습니다...`, 'break');
+        } else {
+          showToast(`💔 ${nm}에게 소홀해 호감도 -6!`, 'break');
+        }
+      }
+    });
+  }
+
+  // V28.0: D-120 골든타임 체크 (클리어 전 제한, 1회 150P 시민 청원 +30일 연장)
+  const maxDay = GOLDEN_TIME_DAYS + (state.extendedGoldenTime ? 30 : 0);
+  if (!state.storyCleared && !state.freePlayMode && state.day > maxDay) {
+    if (!state.extendedGoldenTime && state.points >= 150) {
+      state.extendedGoldenTime = true;
+      state.points -= 150;
+      showToast('📜 [긴급 시민 청원 발동!] 150P로 서울 골든타임 +30일 연장!!', 'break');
+    } else {
+      const timeEnd = evaluateEnding(state, true);
+      state.achievedEndingId = timeEnd.id;
+      unlockEnding(timeEnd.id);
+      state.phase = 'victory';
+      state.log = `⏳ [D-${maxDay} 골든타임 만료...]\n기한 내에 닥터 카오스의 본거지를 막지 못했습니다...\n\n${timeEnd.story}`;
+      state.dailyStats = { wins: 0, loveGain: 0 };
+      return;
+    }
+  }
+
+  const finalMaxDay = GOLDEN_TIME_DAYS + (state.extendedGoldenTime ? 30 : 0);
+  state.pendingMorningSummary = {
+    day: state.day,
+    weatherLabel: wPick.label,
+    fortuneIcon: fPick.icon,
+    fortuneShort: fPick.short,
+    prevWins: ds.wins || 0,
+    prevLoveGain: ds.loveGain || 0,
+    distBonus,
+    breakingText: state.breakingNews ? `${state.breakingNews.districtName} '${state.breakingNews.enemyName}'` : null,
+    remainingDays: (state.storyCleared || state.freePlayMode) ? null : Math.max(0, finalMaxDay - state.day + 1),
+  };
+  state.dailyStats = { wins: 0, loveGain: 0 };
+}
+
 function advanceTime() {
   state.timeIndex += 1;
   if (state.timeIndex >= TIME_SLOTS.length) {
-    state.timeIndex = 0;
-    state.day += 1;
-    if (state.day % 7 === 0) state.pendingWeekend = true;
-    const wPick = WEATHERS[Math.floor(Math.random() * WEATHERS.length)];
-    state.weather = wPick.id;
-    const fPick = DAILY_FORTUNES[Math.floor(Math.random() * DAILY_FORTUNES.length)];
-    state.dailyFortune = fPick.id;
-    showToast(`🌤️ DAY ${state.day} 서울: ${wPick.label} · ${fPick.icon} ${fPick.short}`, 'good');
-    const ds = state.dailyStats || { wins: 0, loveGain: 0 };
-
-    // V16.0: 자취방 인테리어 패시브 회복
-    if (state.roomUpgrades?.includes('mattress')) {
-      state.hp = clamp(state.hp + 15, 1, state.maxHp);
-    }
-    if (state.roomUpgrades?.includes('soundproof')) {
-      state.sp = clamp(state.sp + 12, 0, state.maxSp);
-    }
-
-    // V26.0: 평화구역 정화 일일 시민 후원금
-    const clearedDist = getClearedDistrictCount(state);
-    if (clearedDist > 0) {
-      const distBonus = clearedDist * 25;
-      state.points += distBonus;
-      showToast(`🕊️ 평화구역 ${clearedDist}곳 시민 후원금 +${distBonus} P!`, 'good');
-    }
-
-    // V16.0: 서울 테마 주식 시세 변동
-    if (!state.stockPrices) state.stockPrices = { cider_pharma: 30, manner_ent: 45, hanriver_ev: 60 };
-    STOCKS.forEach((st) => {
-      const cur = state.stockPrices[st.id] || st.basePrice;
-      const delta = Math.round((Math.random() * 0.5 - 0.23) * cur);
-      state.stockPrices[st.id] = clamp(cur + delta, st.min, st.max);
-    });
-
-    // V16.0: 게릴라 지명수배 빌런 만료/출현
-    if (state.guerrilla && state.day > state.guerrilla.expiresDay) {
-      state.guerrilla = null;
-      state.chaosLevel = clamp((state.chaosLevel ?? 25) + 15, 0, 100);
-      showToast('🚨 지명수배 빌런 방치로 서울 민폐도 +15% 폭등!', 'break');
-    } else if (!state.guerrilla && state.day % 3 === 0) {
-      const gPick = pickLevelAppropriateVillain(GUERRILLA_VILLAINS, state.level || 1);
-      state.guerrilla = { villainId: gPick.id, expiresDay: state.day + 1 };
-      showToast(`🚨 지명수배 출몰: ${gPick.name}!`, 'break');
-    }
-
-    // V26.1: 실시간 서울 112 긴급 속보 갱신
-    if (!state.breakingNews && Math.random() < 0.55) {
-      rollBreakingNews();
-      showToast(`🔴 [112 긴급 속보] ${state.breakingNews.districtName}에 ${state.breakingNews.enemyName} 출몰!`, 'break');
-    }
-
-    // V16.0: 연인 방치 페널티 (2일+ 소홀 시 호감도 -6, 50 미만 시 이별)
-    if (state.lovers && state.lovers.length > 0) {
-      if (!state.lastContactDay) state.lastContactDay = { yuki: state.day, chloe: state.day };
-      [...state.lovers].forEach((lk) => {
-        const gap = state.day - (state.lastContactDay[lk] || state.day);
-        if (gap >= 2) {
-          state.love[lk] = clamp((state.love[lk] || 0) - 6, 0, 100);
-          const nm = lk === 'yuki' ? '유키' : '클로이';
-          if (!state.dateMessages) state.dateMessages = [];
-          state.dateMessages.unshift({
-            sender: lk === 'yuki' ? '🇯🇵 유키' : '🇺🇸 클로이',
-            title: `DAY ${state.day} · 💔 서운함 경고`,
-            body: `"요즘 ${gap}일째 너무 소홀한 거 아니에요...? (호감도 -6 → ${state.love[lk]}/100)"`,
-          });
-          state.unreadMessages += 1;
-          if (state.love[lk] < 50) {
-            state.lovers = state.lovers.filter((x) => x !== lk);
-            showToast(`💔 ${nm}와(과) 소홀해져 이별했습니다...`, 'break');
-          } else {
-            showToast(`💔 ${nm}에게 소홀해 호감도 -6!`, 'break');
-          }
-        }
-      });
-    }
-
-    showToast(`🌙 하루 결산 · 참교육 ${ds.wins}회 · 호감 +${ds.loveGain} (DAY ${state.day} 시작!)`, 'good');
-    state.dailyStats = { wins: 0, loveGain: 0 };
+    handleNewDayRollover();
   }
   state.chaosLevel = clamp((state.chaosLevel ?? 25) + 4, 0, 100);
   if (state.chaosLevel <= 30) {
@@ -1583,11 +1632,14 @@ function handleEnemyDefeated(enemy) {
       startBattle(HIDDEN_BOSS.id);
       return;
     }
+    state.storyCleared = true;
+    state.freePlayMode = true;
     const ending = evaluateEnding(state, false);
     state.achievedEndingId = ending.id;
     unlockEnding(ending.id);
     state.phase = 'victory';
     state.log = ending.story;
+    showToast('♾️ 스토리 클리어! 시간 제한 없는 무한 자유모드가 해금되었습니다!', 'good');
     saveGame();
     render();
     return;
@@ -1906,6 +1958,46 @@ function render() {
   }
 
   const timeLabel = TIME_SLOTS[state.timeIndex] || TIME_SLOTS[0];
+  const timeThemes = ['morning', 'afternoon', 'night', 'midnight'];
+  document.body.dataset.time = state.phase === 'title' ? 'morning' : (timeThemes[state.timeIndex] || 'morning');
+
+  if (elDdayPill) {
+    if (state.phase === 'title') {
+      elDdayPill.classList.add('hidden');
+    } else if (state.storyCleared || state.freePlayMode) {
+      elDdayPill.classList.remove('hidden', 'warn', 'danger');
+      elDdayPill.classList.add('free');
+      elDdayPill.textContent = '♾️ 자유모드';
+    } else {
+      const maxDay = GOLDEN_TIME_DAYS + (state.extendedGoldenTime ? 30 : 0);
+      const rem = Math.max(0, maxDay - state.day + 1);
+      elDdayPill.classList.remove('hidden', 'free', 'warn', 'danger');
+      if (rem <= 10) elDdayPill.classList.add('danger');
+      else if (rem <= 30) elDdayPill.classList.add('warn');
+      elDdayPill.textContent = `⏳ D-${rem}`;
+    }
+  }
+
+  if (elMorningModal) {
+    const ms = state.pendingMorningSummary;
+    if (ms && !['title', 'gameover', 'victory'].includes(state.phase)) {
+      if (elMorningTitle) elMorningTitle.textContent = `🌅 DAY ${ms.day} — 새로운 아침이 되었습니다!`;
+      if (elMorningSummaryBody) {
+        const lines = [
+          `🌤️ 오늘 날씨: ${ms.weatherLabel}`,
+          `${ms.fortuneIcon} 오늘의 운세: ${ms.fortuneShort}`,
+          `📊 어제 결산: 참교육 ${ms.prevWins}회 · 호감 +${ms.prevLoveGain}${ms.distBonus > 0 ? ` · 평화구역 후원 +${ms.distBonus}P` : ''}`,
+        ];
+        if (ms.breakingText) lines.push(`🔴 112 긴급 속보: ${ms.breakingText} 출몰 중!`);
+        lines.push(ms.remainingDays !== null ? `⏳ 서울 골든타임: 결전까지 D-${ms.remainingDays}` : '♾️ 포스트게임 무한 자유모드 진행 중');
+        elMorningSummaryBody.textContent = lines.join('\n');
+      }
+      elMorningModal.classList.remove('hidden');
+    } else {
+      elMorningModal.classList.add('hidden');
+    }
+  }
+
   updateBgmForPhase();
 
   // 1. 타이틀 화면
@@ -4916,6 +5008,21 @@ function render() {
   }
   elBattleLog.textContent = state.log;
 
+  if (state.phase === 'victory' && (state.storyCleared || state.freePlayMode)) {
+    const btnFree = document.createElement('button');
+    btnFree.className = 'choice-btn row-btn story-main-btn';
+    btnFree.innerHTML = '<span>♾️ 무한 자유모드 계속하기</span><span class="choice-sub">시간 제한 해제 · 배틀타워·마계·올컬렉션</span>';
+    btnFree.addEventListener('click', () => {
+      sfx.powerup();
+      state.freePlayMode = true;
+      state.phase = 'map';
+      state.log = '♾️ 서울 영웅 무한 자유모드 돌입! 이제 기한 제한 없이 서울을 지켜나가세요!';
+      saveGame();
+      render();
+    });
+    elChoicesPanel.appendChild(btnFree);
+  }
+
   const btnTitle = document.createElement('button');
   btnTitle.className = 'choice-btn row-btn';
   btnTitle.innerHTML = '<span>🏠 타이틀 화면으로 돌아가기</span><span class="choice-sub">메인</span>';
@@ -5975,8 +6082,7 @@ function executeActivity(act, cat) {
     sfx.powerup();
     state.hp = state.maxHp;
     state.sp = clamp(state.sp + 20, 0, state.maxSp);
-    state.timeIndex = 0;
-    state.day += 1;
+    handleNewDayRollover();
     state.log = act.msg;
     saveGame();
     render();

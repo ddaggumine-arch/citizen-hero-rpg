@@ -5,7 +5,12 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V27.8
+## 현재 최신 버전: V28.0
+- **V28.0**:
+  - **시간대별 4색 비주얼 테마 (`style.css`, `app.js`)**: `🌅 오전`(스카이 블루) · `☀️ 오후`(골드·노을 오렌지) · `🌙 밤`(딥 네이비 야경) · `🦉 심야`(미드나잇 퍼플·네온) 4타임 전환 시 `body[data-time]`으로 배경·HUD·위치 배지·삽화 테두리 색상이 즉각 전환되도록 구현
+  - **새로운 아침 일출 전환 모달 (`index.html`, `style.css`, `app.js`, `assets/images/morning_sunrise.jpg`)**: 날짜 변경(야간 경과·취침) 시 한강·남산 서울 일출 웹툰 일러스트와 함께 오늘 날씨·운세·어제 결산·112 속보·D-Day를 한눈에 보여주는 아침 전환 팝업 추가
+  - **서울 골든타임 D-120 제한 + 엔딩 후 무한 자유모드 해금 (`GOLDEN_TIME_DAYS = 120`, `app.js`, `index.html`)**: 상단 HUD `⏳ D-XX` 카운트다운 표시, 만료 시 150P 시민 청원(+30일 연장 1회) 또는 타임오버 엔딩, 30화 클리어 시 `♾️ 자유모드`로 전환되어 시간 제한 없이 배틀타워·마계·수집 플레이 가능 (`?v=55`)
+- **V27.8**:
 - **V27.8**:
   - **클로이 선물 가게 스토리 해금 게이팅 (`app.js`)**: `gift_shop` 및 연애 허브 선물 버튼에서 제17화 클로이 합류 전에는 `🇺🇸 클로이` 선물 옵션과 호감도가 노출되지 않도록 `isFeatureUnlocked(state, k)` 필터링 적용
   - **112 긴급 속보 & 게릴라 지명수배 레벨 매칭 (`rollBreakingNews`, `guerrilla`, `startBattle`)**: 긴급 속보 구역과 게릴라 지명수배 빌런도 `heroLv + 4` 이내 구역에서 선정하고 전투 진입 시 `isRandomEncounter = true`로 내 레벨(`-1 ~ +1`)에 맞춰 출현하도록 개선 (`?v=54`)
