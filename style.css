@@ -1997,3 +1997,30 @@ body[data-time="midnight"] .illustration-frame {
   color: #6b7280 !important;
   font-weight: 700;
 }
+
+/* V31.2 기술 횟수(PP) 깔끔한 뱃지 & 정렬 */
+.skill-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+.pp-pill {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: #e2e8f0;
+  color: #334155;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.pp-pill.low {
+  background: #fef3c7;
+  color: #b45309;
+}
+.pp-pill.empty {
+  background: #fee2e2;
+  color: #b91c1c;
+}

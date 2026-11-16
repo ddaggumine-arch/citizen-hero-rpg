@@ -209,6 +209,7 @@ function createNewGameState() {
     bossGimmick: null,
     bossShield: 0,
     bossCountdown: 0,
+    skillPp: { speech: 12, guts: 10, law: 8, snap: 6 },
   };
 }
 
@@ -753,6 +754,7 @@ function handleNewDayRollover() {
 function advanceTime() {
   state.timeIndex += 1;
   if (state.timeIndex >= TIME_SLOTS.length) {
+    restoreSkillPp(2);
     handleNewDayRollover();
   }
   state.chaosLevel = clamp((state.chaosLevel ?? 25) + 4, 0, 100);
@@ -945,6 +947,35 @@ const ENEMY_MODIFIERS = [
   { id: 'golden', label: '💎 황금빛', hpMult: 1.12, atkMult: 0.90, rewardMult: 2.0, expMult: 1.6 },
   { id: 'swift', label: '⚡ 민첩한', hpMult: 1.08, atkMult: 1.18, rewardMult: 1.3, expMult: 1.25 },
 ];
+
+function getMaxSkillPp(type) {
+  const s = state.stats || { speech: 2, guts: 2, law: 2 };
+  if (type === 'speech') return 12 + ((s.speech || 0) >= 50 ? 6 : (s.speech || 0) >= 25 ? 3 : 0);
+  if (type === 'guts') return 10 + ((s.guts || 0) >= 50 ? 6 : (s.guts || 0) >= 25 ? 3 : 0);
+  if (type === 'law') return 8 + ((s.law || 0) >= 50 ? 4 : (s.law || 0) >= 25 ? 2 : 0);
+  if (type === 'snap') return 6 + ((s.law || 0) >= 50 ? 4 : (s.law || 0) >= 25 ? 2 : 0);
+  return 10;
+}
+
+function ensureSkillPp() {
+  if (!state.skillPp) {
+    state.skillPp = {
+      speech: getMaxSkillPp('speech'),
+      guts: getMaxSkillPp('guts'),
+      law: getMaxSkillPp('law'),
+      snap: getMaxSkillPp('snap'),
+    };
+  }
+  return state.skillPp;
+}
+
+function restoreSkillPp(amt = 'full') {
+  const pp = ensureSkillPp();
+  ['speech', 'guts', 'law', 'snap'].forEach((k) => {
+    const mx = getMaxSkillPp(k);
+    pp[k] = amt === 'full' ? mx : Math.min(mx, (pp[k] ?? mx) + amt);
+  });
+}
 
 function rollDailyQuests() {
   state.dailyQuests = {
@@ -1802,6 +1833,7 @@ function handleEnemyDefeated(enemy) {
   vibrate([50, 40, 50, 40, 150]);
 
   if ((state.towerFloor || 0) > 0) {
+    restoreSkillPp(2);
     const cleared = state.towerFloor;
     state.points += cleared * 12;
     if (cleared > (state.bestTowerFloor || 0)) state.bestTowerFloor = cleared;
@@ -1842,6 +1874,7 @@ function handleEnemyDefeated(enemy) {
 
   // V26.0 심야 마계 보스 러시 승리
   if ((state.nightmareFloor || 0) > 0) {
+    restoreSkillPp(2);
     const nmCleared = state.nightmareFloor;
     state.points += nmCleared * 25;
     if (nmCleared > (state.bestNightmareFloor || 0)) state.bestNightmareFloor = nmCleared;
@@ -2001,6 +2034,11 @@ function performAttack(type) {
 
   const isFever = (state.feverTurns || 0) > 0;
   const spCost = isFever ? 20 : 40;
+  const ppMap = ensureSkillPp();
+  if (['speech', 'guts', 'law'].includes(type)) {
+    if ((ppMap[type] ?? getMaxSkillPp(type)) <= 0) return;
+    ppMap[type] = Math.max(0, (ppMap[type] ?? getMaxSkillPp(type)) - 1);
+  }
   const evo = getSkillEvolution(type);
   const matchup = getMatchupInfo(enemy, type);
   if (type === 'speech') {
@@ -2147,7 +2185,8 @@ function useItem(itemId, invIndex) {
     if (item.useEffect.sp) state.sp = clamp(state.sp + Math.round(item.useEffect.sp * heatMult), 0, state.maxSp);
     if (item.useEffect.tempDmg) state.sodaBuffDmg = (state.sodaBuffDmg || 0) + Math.round(item.useEffect.tempDmg * heatMult);
     state.inventory.splice(invIndex, 1);
-    state.log = `[${item.name}]을(를) 사용했습니다!${heatMult > 1 ? ' 🔥(폭염 보너스 1.5배!)' : ''} 기운이 펄펄 솟아납니다!`;
+    restoreSkillPp(2);
+    state.log = `[${item.name}]을(를) 사용했습니다!${heatMult > 1 ? ' 🔥(폭염 보너스 1.5배!)' : ''} 기운이 펄펄 솟아납니다! (전 기술 PP +2)`;
     elInvModal.classList.add('hidden');
     saveGame();
     render();
@@ -5022,27 +5061,42 @@ function render() {
     const muSnap = getMatchupInfo(enemy, 'snap');
     const muTag = getMatchupInfo(enemy, 'tag');
 
+    const ppMap = ensureSkillPp();
+    const mkPpHtml = (k) => {
+      const cur = ppMap[k] ?? getMaxSkillPp(k);
+      const mx = getMaxSkillPp(k);
+      const cls = cur <= 0 ? ' empty' : (cur <= 2 ? ' low' : '');
+      return `<span class="pp-pill${cls}">${cur}/${mx}</span>`;
+    };
+
     const skills = [
       {
         title: getSkillEvolution('speech').title,
+        ppKey: 'speech',
         sub: muSpeech.tag || `언변 ${state.stats.speech} 기반`,
         subClass: muSpeech.cls,
+        disabled: (ppMap.speech ?? 1) <= 0,
         action: () => performAttack('speech'),
       },
       {
         title: getSkillEvolution('guts').title,
+        ppKey: 'guts',
         sub: muGuts.tag ? `${muGuts.tag} · 사이다↑` : '사이다+15 · 광인↑',
         subClass: muGuts.cls,
+        disabled: (ppMap.guts ?? 1) <= 0,
         action: () => performAttack('guts'),
       },
       {
         title: getSkillEvolution('law').title,
+        ppKey: 'law',
         sub: muLaw.tag ? `${muLaw.tag} · 🎲12+ 기절` : `🎲 12+ 기절 (+${lawBonus})`,
         subClass: muLaw.cls,
+        disabled: (ppMap.law ?? 1) <= 0,
         action: () => performAttack('law'),
       },
       {
         title: getSkillEvolution('special').title,
+        ppKey: null,
         sub: state.sp >= ((state.feverTurns || 0) > 0 ? 20 : 40)
           ? `사이다 ${(state.feverTurns || 0) > 0 ? '20(피버 반값!)' : '40'}${muSpec.tag ? ` · ${muSpec.tag}` : ' · 확정기절!'}`
           : `사이다 부족 (${state.sp}/${(state.feverTurns || 0) > 0 ? 20 : 40})`,
@@ -5056,7 +5110,10 @@ function render() {
       const btn = document.createElement('button');
       btn.className = 'choice-btn';
       btn.disabled = !!sk.disabled;
-      btn.innerHTML = `<span>${sk.title}</span><span class="choice-sub ${sk.subClass}">${sk.sub}</span>`;
+      const topHtml = sk.ppKey
+        ? `<span class="skill-top-row"><span>${sk.title}</span>${mkPpHtml(sk.ppKey)}</span>`
+        : `<span>${sk.title}</span>`;
+      btn.innerHTML = `${topHtml}<span class="choice-sub ${sk.subClass}">${sk.disabled && sk.ppKey ? '횟수 소진 (휴식/아이템 복구)' : sk.sub}</span>`;
       btn.addEventListener('click', sk.action);
       elChoicesPanel.appendChild(btn);
     });
@@ -5064,8 +5121,13 @@ function render() {
     // V14.0: 타이밍 채증 셔터 & 합동 필살기
     const snapBtn = document.createElement('button');
     snapBtn.className = 'choice-btn';
-    snapBtn.innerHTML = `<span>📸 채증 셔터</span><span class="choice-sub ${muSnap.cls}">${muSnap.tag ? `${muSnap.tag} · 채증+2` : '타이밍 1.8배 · 채증+2'}</span>`;
+    const snapPp = ppMap.snap ?? getMaxSkillPp('snap');
+    snapBtn.disabled = snapPp <= 0;
+    snapBtn.innerHTML = `<span class="skill-top-row"><span>📸 채증 셔터</span>${mkPpHtml('snap')}</span><span class="choice-sub ${muSnap.cls}">${snapPp <= 0 ? '횟수 소진 (휴식/아이템 복구)' : (muSnap.tag ? `${muSnap.tag} · 채증+2` : '타이밍 1.8배 · 채증+2')}</span>`;
     snapBtn.addEventListener('click', () => {
+      const curPp = ensureSkillPp();
+      if ((curPp.snap ?? 1) <= 0) return;
+      curPp.snap = Math.max(0, (curPp.snap ?? getMaxSkillPp('snap')) - 1);
       sfx.click();
       startTimingMinigame((isPerfect) => {
         const enemy = getEnemyById(state.currentEnemyId);
@@ -5104,6 +5166,26 @@ function render() {
     tagBtn.innerHTML = `<span>${tagMeta.title}</span><span class="choice-sub ${muTag.isUp ? 'weak' : 'sp'}">${tagUsed ? '전투당 1회 사용 완료' : (state.sp >= tagCost ? `사이다 ${tagCost}${muTag.tag ? ` · ${muTag.tag}` : ''} · ${tagMeta.effectSummary}` : `사이다 부족 (${state.sp}/${tagCost})`)}</span>`;
     tagBtn.addEventListener('click', () => performTagSkill());
     elChoicesPanel.appendChild(tagBtn);
+
+    const anyZeroPp = ['speech', 'guts', 'law', 'snap'].some((k) => (ppMap[k] ?? 1) <= 0);
+    if (anyZeroPp) {
+      const basicBtn = document.createElement('button');
+      basicBtn.className = 'choice-btn row-btn';
+      basicBtn.style.gridColumn = 'span 2';
+      basicBtn.innerHTML = '<span>📢 기본 호루라기 경고 (PP 무제한)</span><span class="choice-sub">약한 피해 + 사이다 +10 충전</span>';
+      basicBtn.addEventListener('click', () => {
+        playHeroAnim('attack');
+        sfx.hit(false);
+        const dmg = 12 + state.bonusDmg + Math.floor((state.level || 1) * 1.2);
+        state.enemyHp = clamp(state.enemyHp - dmg, 0, state.enemyMaxHp);
+        state.sp = clamp(state.sp + 10, 0, state.maxSp);
+        state.log = `📢 호루라기를 불며 경고했습니다! (멘탈 -${dmg} · 사이다 +10)`;
+        triggerEnemyHit(dmg, false);
+        if (state.enemyHp <= 0) handleEnemyDefeated(enemy);
+        else enemyCounterTurn(enemy, false);
+      });
+      elChoicesPanel.appendChild(basicBtn);
+    }
     return;
   }
 
@@ -6851,7 +6933,14 @@ function executeActivity(act, cat) {
     state.patrolCount = (state.patrolCount || 0) + 1;
     advanceDailyQuest('patrol', 1);
   }
-  if (act.sleep || cat?.id === 'heal') advanceDailyQuest('care', 1);
+  if (act.sleep || cat?.id === 'heal') {
+    advanceDailyQuest('care', 1);
+    if (cat?.id === 'heal' && !act.sleep) {
+      const ppGain = act.id === 'heal_sauna' ? 6 : 4;
+      restoreSkillPp(ppGain);
+      showToast(`✨ 휴식으로 전 기술 PP +${ppGain} 회복!`, 'good');
+    }
+  }
   if (cat && cat.id) state.mapLoc = cat.id;
   if (cat && cat.image) {
     state.lastCutscene = { image: cat.image, animClass: cat.animClass || '' };
@@ -6893,8 +6982,9 @@ function executeActivity(act, cat) {
     sfx.powerup();
     state.hp = state.maxHp;
     state.sp = clamp(state.sp + 20, 0, state.maxSp);
+    restoreSkillPp('full');
     handleNewDayRollover();
-    state.log = act.msg;
+    state.log = act.msg + ' (전 기술 PP 100% 완충!)';
     saveGame();
     render();
     return;
