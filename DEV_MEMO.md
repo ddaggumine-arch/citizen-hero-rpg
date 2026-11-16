@@ -5,7 +5,11 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V27.7
+## 현재 최신 버전: V27.8
+- **V27.8**:
+  - **클로이 선물 가게 스토리 해금 게이팅 (`app.js`)**: `gift_shop` 및 연애 허브 선물 버튼에서 제17화 클로이 합류 전에는 `🇺🇸 클로이` 선물 옵션과 호감도가 노출되지 않도록 `isFeatureUnlocked(state, k)` 필터링 적용
+  - **112 긴급 속보 & 게릴라 지명수배 레벨 매칭 (`rollBreakingNews`, `guerrilla`, `startBattle`)**: 긴급 속보 구역과 게릴라 지명수배 빌런도 `heroLv + 4` 이내 구역에서 선정하고 전투 진입 시 `isRandomEncounter = true`로 내 레벨(`-1 ~ +1`)에 맞춰 출현하도록 개선 (`?v=54`)
+- **V27.7**:
 - **V27.7**:
   - **랜덤 인카운터 레벨 매칭 & 방어력 경감 상한(55%) 밸런싱 (`pickLevelAppropriateVillain`, `startBattle`, `enemyCounterTurn`)**: 동네 순찰·기습 등 랜덤 인카운터 시 여의도(Lv.41~50) 등 고레벨 몹이 Lv.9 구간에 난입하지 않고 내 레벨(`-1 ~ +1`)에 맞춰 출현하도록 수정 + 비가드 시 방어력 경감 최대치를 55%(최소 관통 25%)로 조정해 적 공격이 체감되도록 개선 (`?v=53`)
 - **V27.6**:

@@ -247,7 +247,10 @@ function setLogText(text, useTypewriter = false) {
 }
 
 function rollBreakingNews() {
-  const dist = SEOUL_DISTRICTS[Math.floor(Math.random() * SEOUL_DISTRICTS.length)];
+  const heroLv = state.level || 1;
+  const availDists = SEOUL_DISTRICTS.filter((d) => (d.minLv || 1) <= heroLv + 4);
+  const distPool = availDists.length > 0 ? availDists : [SEOUL_DISTRICTS[0]];
+  const dist = distPool[Math.floor(Math.random() * distPool.length)];
   const pool = (dist.villains || []).filter((id) => VILLAINS.some((v) => v.id === id) || GUERRILLA_VILLAINS.some((v) => v.id === id));
   const enemyId = pool.length ? pool[Math.floor(Math.random() * pool.length)] : 'shorts_terrorist';
   const enemy = getEnemyById(enemyId);
@@ -634,7 +637,7 @@ function advanceTime() {
       state.chaosLevel = clamp((state.chaosLevel ?? 25) + 15, 0, 100);
       showToast('🚨 지명수배 빌런 방치로 서울 민폐도 +15% 폭등!', 'break');
     } else if (!state.guerrilla && state.day % 3 === 0) {
-      const gPick = GUERRILLA_VILLAINS[Math.floor(Math.random() * GUERRILLA_VILLAINS.length)];
+      const gPick = pickLevelAppropriateVillain(GUERRILLA_VILLAINS, state.level || 1);
       state.guerrilla = { villainId: gPick.id, expiresDay: state.day + 1 };
       showToast(`🚨 지명수배 출몰: ${gPick.name}!`, 'break');
     }
@@ -2348,7 +2351,7 @@ function render() {
       bnBtn.innerHTML = `<span>🔴 [112 긴급 속보] ${bn.districtName} · ${bn.enemyName} 난동!</span><span class="choice-sub">즉시 출동 시 +${bn.bonusPts}P · 구역치안+15% ▶</span>`;
       bnBtn.addEventListener('click', () => {
         sfx.powerup();
-        startBattle(bn.enemyId);
+        startBattle(bn.enemyId, true);
       });
       elChoicesPanel.appendChild(bnBtn);
     }
@@ -2362,7 +2365,7 @@ function render() {
       gBtn.innerHTML = `<span>🚨 [지명수배 D-${dLeft}] ${gv.name}</span><span class="choice-sub">현상금 +40P · 방치 시 민폐도+15%!</span>`;
       gBtn.addEventListener('click', () => {
         sfx.powerup();
-        startBattle(gv.id);
+        startBattle(gv.id, true);
       });
       elChoicesPanel.appendChild(gBtn);
     }
@@ -3158,7 +3161,9 @@ function render() {
     const giftBtn = document.createElement('button');
     giftBtn.className = 'choice-btn row-btn';
     giftBtn.style.gridColumn = 'span 2';
-    giftBtn.innerHTML = '<span>🎁 취향 맞춤 선물하기 (유키 · 클로이)</span><span class="choice-sub">연인 소홀함 방지 & 호감도 케어</span>';
+    giftBtn.innerHTML = chloeUnlocked
+      ? '<span>🎁 취향 맞춤 선물하기 (유키 · 클로이)</span><span class="choice-sub">연인 소홀함 방지 & 호감도 케어</span>'
+      : '<span>🎁 취향 맞춤 선물하기 (유키)</span><span class="choice-sub">소홀함 방지 & 호감도 케어</span>';
     giftBtn.addEventListener('click', () => {
       sfx.click();
       state.phase = 'gift_shop';
@@ -3489,16 +3494,20 @@ function render() {
     elWeaknessPill.classList.add('hidden');
     elEnemyHpWrap.classList.add('hidden');
     elQuoteBubble.classList.add('hidden');
+    const unlockedHeroines = ['yuki', 'chloe'].filter((k) => isFeatureUnlocked(state, k));
+    const chloeGiftUnlocked = unlockedHeroines.includes('chloe');
     showSceneCard(
       '🎁 GIFT SHOP',
-      ` 🇯🇵 유키 호감도: ${state.love?.yuki || 0}/100\n 🇺🇸 클로이 호감도: ${state.love?.chloe || 0}/100\n ─────────────────────────\n 선물을 주면 소홀함 페널티가 초기화됩니다!`,
+      ` 🇯🇵 유키 호감도: ${state.love?.yuki || 0}/100\n` +
+      (chloeGiftUnlocked ? ` 🇺🇸 클로이 호감도: ${state.love?.chloe || 0}/100\n` : ` 🇺🇸 클로이: 🔒 제17화 합류 후 해금\n`) +
+      ` ─────────────────────────\n 선물을 주면 소홀함 페널티가 초기화됩니다!`,
       '취향에 맞는 선물을 골라 마음을 전하세요!'
     );
     elBattleLog.textContent = state.log || '선물과 받을 히로인을 선택하세요!';
-    elChoicesPanel.className = 'choices-panel grid-2';
+    elChoicesPanel.className = chloeGiftUnlocked ? 'choices-panel grid-2' : 'choices-panel';
 
     HEROINE_GIFTS.forEach((gf) => {
-      ['yuki', 'chloe'].forEach((k) => {
+      unlockedHeroines.forEach((k) => {
         const nm = k === 'yuki' ? '🇯🇵유키' : '🇺🇸클로이';
         const gain = k === 'yuki' ? gf.yukiLove : gf.chloeLove;
         const btn = document.createElement('button');
