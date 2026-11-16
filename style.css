@@ -1876,3 +1876,69 @@ body[data-time="midnight"] .illustration-frame {
 .draft-tier-badge.a { background: #f3e8ff; color: #6b21a8; border: 1px solid #a855f7; }
 .draft-tier-badge.b { background: #dbeafe; color: #1e40af; border: 1px solid #60a5fa; }
 .draft-tier-badge.c { background: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db; }
+
+/* V28.3 장비 창고 2단 카드 & 등급별 탭 저장소 */
+.gear-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+.gear-tab {
+  flex: 1 1 auto;
+  min-width: 58px;
+  padding: 5px 6px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  border-radius: 8px;
+  border: 1px solid #d4c4a8;
+  background: #fdf8ee;
+  color: #5c4632;
+  cursor: pointer;
+  text-align: center;
+}
+.gear-tab.active {
+  background: #2d221b;
+  color: #fff;
+  border-color: #2d221b;
+}
+.gear-card-v2 {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+  padding: 10px !important;
+}
+.gear-card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.gear-card-top .inv-info {
+  flex: 1;
+  min-width: 0;
+}
+.gear-card-top .inv-info h4 {
+  font-size: 0.84rem;
+  line-height: 1.35;
+  word-break: keep-all;
+}
+.gear-card-top .inv-info p {
+  font-size: 0.74rem;
+  line-height: 1.4;
+  margin-top: 2px;
+  word-break: keep-all;
+}
+.gear-card-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  width: 100%;
+}
+.gear-card-actions .use-btn {
+  width: 100%;
+  margin: 0 !important;
+  padding: 6px 4px !important;
+  font-size: 0.74rem !important;
+  text-align: center;
+}

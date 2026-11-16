@@ -407,7 +407,6 @@ const btnToggleSound = document.getElementById('toggle-sound');
 const btnToggleBgm = document.getElementById('toggle-bgm');
 const btnToggleVibrate = document.getElementById('toggle-vibrate');
 const btnGoTitle = document.getElementById('btn-go-title');
-const btnWipeSave = document.getElementById('btn-wipe-save');
 const elActivityModal = document.getElementById('activity-modal');
 const elActivityModalTitle = document.getElementById('activity-modal-title');
 const elActivityList = document.getElementById('activity-list');
@@ -5384,16 +5383,6 @@ btnGoTitle.addEventListener('click', () => {
   render();
 });
 
-btnWipeSave.addEventListener('click', () => {
-  if (confirm('저장된 모든 데이터를 삭제하고 타이틀 화면으로 갈까요?')) {
-    localStorage.removeItem(SAVE_KEY);
-    elSettingsModal.classList.add('hidden');
-    state = createNewGameState();
-    state.phase = 'title';
-    render();
-  }
-});
-
 btnInventory.addEventListener('click', () => {
   sfx.click();
   elInvList.innerHTML = '';
@@ -5778,7 +5767,10 @@ function openMemoryAlbumModal() {
   elEndingsModal.classList.remove('hidden');
 }
 
-function openGearModal() {
+let currentGearFilter = 'all';
+
+function openGearModal(filterRarity = currentGearFilter) {
+  currentGearFilter = filterRarity || 'all';
   if (!state.gearBag) state.gearBag = [];
   if (!state.equipped) state.equipped = { weapon: null, armor: null, acc: null };
   if (!state.gearPlus) state.gearPlus = {};
@@ -5801,6 +5793,35 @@ function openGearModal() {
     emptyP.textContent = '아직 파밍한 장비가 없습니다. 빌런/보스를 처치해 레어~유니크 장비를 획득하세요!';
     elEndingsList.appendChild(emptyP);
   } else {
+    const counts = { all: 0, unique: 0, epic: 0, rare: 0, common: 0 };
+    state.gearBag.forEach((gid) => {
+      const item = GEAR_LOOT_POOL.find((x) => x.id === gid);
+      if (item) {
+        counts.all += 1;
+        if (counts[item.rarity] !== undefined) counts[item.rarity] += 1;
+      }
+    });
+
+    const tabsWrap = document.createElement('div');
+    tabsWrap.className = 'gear-tabs';
+    [
+      { id: 'all', label: `전체(${counts.all})` },
+      { id: 'unique', label: `🟨유니크(${counts.unique})` },
+      { id: 'epic', label: `🟪에픽(${counts.epic})` },
+      { id: 'rare', label: `🟦레어(${counts.rare})` },
+      { id: 'common', label: `⬜일반(${counts.common})` },
+    ].forEach((t) => {
+      const tb = document.createElement('button');
+      tb.className = `gear-tab${currentGearFilter === t.id ? ' active' : ''}`;
+      tb.textContent = t.label;
+      tb.addEventListener('click', () => {
+        sfx.click();
+        openGearModal(t.id);
+      });
+      tabsWrap.appendChild(tb);
+    });
+    elEndingsList.appendChild(tabsWrap);
+
     const quickWrap = document.createElement('div');
     quickWrap.className = 'gear-quick-actions';
     const autoEqBtn = document.createElement('button');
@@ -5822,7 +5843,7 @@ function openGearModal() {
       });
       showToast('⚡ 부위별 최강 장비로 자동 세팅 완료!', 'good');
       saveGame();
-      openGearModal();
+      openGearModal(currentGearFilter);
       render();
     });
     const bulkSalBtn = document.createElement('button');
@@ -5855,16 +5876,34 @@ function openGearModal() {
       state.scrap = (state.scrap || 0) + scrapGain;
       showToast(`🔨 ${cnt}개 일괄 분해! +${ptsGain}P · 강화석 +${scrapGain}개`, 'good');
       saveGame();
-      openGearModal();
+      openGearModal(currentGearFilter);
       render();
     });
     quickWrap.appendChild(autoEqBtn);
     quickWrap.appendChild(bulkSalBtn);
     elEndingsList.appendChild(quickWrap);
 
-    state.gearBag.forEach((gid, idx) => {
-      const g = GEAR_LOOT_POOL.find((x) => x.id === gid);
-      if (!g) return;
+    const indexed = state.gearBag
+      .map((gid, idx) => ({ gid, idx, g: GEAR_LOOT_POOL.find((x) => x.id === gid) }))
+      .filter((entry) => entry.g && (currentGearFilter === 'all' || entry.g.rarity === currentGearFilter))
+      .sort((a, b) => {
+        const eqA = state.equipped[a.g.slot] === a.g.id ? 1 : 0;
+        const eqB = state.equipped[b.g.slot] === b.g.id ? 1 : 0;
+        if (eqA !== eqB) return eqB - eqA;
+        const tA = RARITY_INFO[a.g.rarity]?.tier || 1;
+        const tB = RARITY_INFO[b.g.rarity]?.tier || 1;
+        if (tA !== tB) return tB - tA;
+        return (state.gearPlus[b.g.id] || 0) - (state.gearPlus[a.g.id] || 0);
+      });
+
+    if (indexed.length === 0) {
+      const noneP = document.createElement('p');
+      noneP.style.cssText = 'text-align:center;color:#695544;padding:16px 0;';
+      noneP.textContent = '해당 등급 보관함에 장비가 없습니다.';
+      elEndingsList.appendChild(noneP);
+    }
+
+    indexed.forEach(({ g, idx }) => {
       const rInfo = RARITY_INFO[g.rarity] || RARITY_INFO.common;
       const isEq = state.equipped[g.slot] === g.id;
       const plus = state.gearPlus[g.id] || 0;
@@ -5885,15 +5924,19 @@ function openGearModal() {
       const needPts = 30 + plus * 20;
       const gainScrap = scrapMap[g.rarity] || 1;
       const card = document.createElement('div');
-      card.className = 'inv-item';
+      card.className = 'inv-item gear-card-v2';
       card.style.borderColor = rInfo.color;
       card.innerHTML = `
-        ${itemImgHtml(g.icon, 'item-thumb')}
-        <div class="inv-info">
-          <h4 style="color:${rInfo.color};">[${rInfo.label}] ${g.name}${plus > 0 ? ` +${plus}` : ''} ${isEq ? '✅장착중' : ''}${cmpBadge}</h4>
-          <p>${slotNames[g.slot]} · ${g.desc}${plus > 0 ? ` (강화: 공+${plus * 3}, 방+${plus * 2})` : ''}</p>
+        <div class="gear-card-top">
+          ${itemImgHtml(g.icon, 'item-thumb')}
+          <div class="inv-info">
+            <h4 style="color:${rInfo.color};">[${rInfo.label}] ${g.name}${plus > 0 ? ` +${plus}` : ''} ${isEq ? '✅장착중' : ''}${cmpBadge}</h4>
+            <p>${slotNames[g.slot]} · ${g.desc}${plus > 0 ? ` (강화: 공+${plus * 3}, 방+${plus * 2})` : ''}</p>
+          </div>
         </div>
       `;
+      const actionsRow = document.createElement('div');
+      actionsRow.className = 'gear-card-actions';
       const eqBtn = document.createElement('button');
       eqBtn.className = 'use-btn';
       eqBtn.textContent = isEq ? '해제' : '장착';
@@ -5901,13 +5944,12 @@ function openGearModal() {
         sfx.click();
         state.equipped[g.slot] = isEq ? null : g.id;
         saveGame();
-        openGearModal();
+        openGearModal(currentGearFilter);
         render();
       });
       const upBtn = document.createElement('button');
       upBtn.className = 'use-btn';
       upBtn.style.background = '#d97706';
-      upBtn.style.marginLeft = '4px';
       upBtn.textContent = plus >= 10 ? 'MAX' : `강화(🔨${needScrap})`;
       upBtn.title = plus >= 10 ? '최대 강화' : `강화석 ${needScrap}개 + ${needPts}P 필요`;
       upBtn.disabled = plus >= 10 || scrapCount < needScrap || state.points < needPts;
@@ -5919,13 +5961,12 @@ function openGearModal() {
         state.gearPlus[g.id] = plus + 1;
         showToast(`🔨 [${g.name}] +${plus + 1} 강화 성공! (공+3·방+2)`, 'good');
         saveGame();
-        openGearModal();
+        openGearModal(currentGearFilter);
         render();
       });
       const salBtn = document.createElement('button');
       salBtn.className = 'use-btn';
       salBtn.style.background = '#9e2a2b';
-      salBtn.style.marginLeft = '4px';
       salBtn.textContent = `분해(+🔨${gainScrap})`;
       salBtn.disabled = isEq;
       salBtn.addEventListener('click', () => {
@@ -5935,12 +5976,13 @@ function openGearModal() {
         state.scrap = (state.scrap || 0) + gainScrap;
         showToast(`🔨 분해 완료! +${rInfo.salvageP}P · 강화석 +${gainScrap}개`, 'good');
         saveGame();
-        openGearModal();
+        openGearModal(currentGearFilter);
         render();
       });
-      card.appendChild(eqBtn);
-      card.appendChild(upBtn);
-      card.appendChild(salBtn);
+      actionsRow.appendChild(eqBtn);
+      actionsRow.appendChild(upBtn);
+      actionsRow.appendChild(salBtn);
+      card.appendChild(actionsRow);
       elEndingsList.appendChild(card);
     });
   }
@@ -6035,17 +6077,6 @@ function openSaveModal(allowSave) {
         }
       });
       btnGroup.appendChild(lBtn);
-
-      const dBtn = document.createElement('button');
-      dBtn.className = 'use-btn';
-      dBtn.style.background = '#9e2a2b';
-      dBtn.textContent = '삭제';
-      dBtn.addEventListener('click', () => {
-        sfx.click();
-        deleteSlot(idx);
-        openSaveModal(allowSave);
-      });
-      btnGroup.appendChild(dBtn);
     }
 
     card.appendChild(btnGroup);
