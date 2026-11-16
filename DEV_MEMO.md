@@ -5,7 +5,13 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V32.2
+## 현재 최신 버전: V32.3
+- **V32.3**:
+  - **정령 조우 A+B+C 통합 무대 연출 & `undefined`/박스 잘림 완전 수정 (`index.html`, `style.css`, `app.js`)**:
+    - **A안 무대 풀활용**: 텍스트 카드 대신 실제 서울 구역 배경 + 주인공(`hero-sprite`) + 오른쪽 야생 정령(`#wild-spirit-sprite`) 배치, 공명 흔들림 후 포획 시 정령이 주인공 옆자리로 날아오는 `.is-caught-fly` 연출
+    - **B안 홀로그램 GET 스탬프**: 포획 성공 시 무대 금빛 홀로그램 테두리(`.spirit-caught-holo`) + `✨ GET! 도감 No.XX 등록!` 스탬프(`.capture-stamp`)
+    - **C안 교감 주파수 타이밍 미니게임**: 맨손 교감/간식 선택 시 타이밍 바(`.spirit-timing-track`) 등장 (`🎯 PERFECT +25%`, `✨ GOOD +10%` 포획률 보너스)
+    - **버그 수정**: `SPIRIT_ELEMENTS.label` 참조 수정으로 `undefined` 제거 및 로그창 이미지 제거로 박스 잘림 해소 (`?v=74`)
 - **V32.2**:
   - **포켓몬식 확률 포획 + 구슬 흔들림·찰칵 + 도감 등록 카드 (`spirit_encounter`, `style.css`)**: 맨손 교감(`75/55/35/20%`) · 300P 간식 꼬시기(`+35%`) · 800P 황금 완장 봉인구(`100% 확정`) 3종 포획 수단 + 구슬 3회 흔들림(`.spirit-ball-orb`) 연출 + 성공 시 `[🆕 도감 등록! No.XX]` 요약 카드 출력(실패 시 위로 보상 `+15P · EXP+15`)
   - **정령 레벨제(`Lv.1~20`) + 동행 자동 EXP + 🍪 정령 사탕(150P) + 중복 각성(`★1~★5`) 연동 (`gainSpiritExp`, `getSpiritProgress`, `openSpiritModal`)**: 전투 승리 시 동행 정령 EXP 동반 획득, 도감 모달에서 150P 사탕 육성, 중복 포획 시 `★` 각성과 EXP+80 동시 적용

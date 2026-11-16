@@ -389,6 +389,8 @@ const elEnemyHpLabel = document.getElementById('enemy-hp-label');
 const elEnemyHpText = document.getElementById('enemy-hp-text');
 const elEnemyHpBar = document.getElementById('enemy-hp-bar');
 const elFrame = document.getElementById('illustration-frame');
+const elWildSpiritSprite = document.getElementById('wild-spirit-sprite');
+const elCaptureStamp = document.getElementById('capture-stamp');
 const elSceneImage = document.getElementById('scene-image');
 const elWantedPoster = document.getElementById('wanted-poster');
 const elWantedEmoji = document.getElementById('wanted-emoji');
@@ -2443,7 +2445,11 @@ function render() {
   elSceneImage.classList.add('hidden');
   elSceneImage.className = '';
   setStageBg(null);
-  if (elFrame) elFrame.classList.remove('combat-stage', 'couple-stage', 'story-stage');
+  if (elFrame) elFrame.classList.remove('combat-stage', 'couple-stage', 'story-stage', 'spirit-capture-stage', 'spirit-caught-holo');
+  if (elWildSpiritSprite) {
+    elWildSpiritSprite.className = 'wild-spirit-sprite hidden';
+  }
+  if (elCaptureStamp) elCaptureStamp.classList.add('hidden');
   elHeroSprite.classList.add('hidden');
   elHeroSprite.classList.remove('with-yuki', 'couple-left');
   if (elYukiSprite) {
@@ -2528,7 +2534,7 @@ function render() {
     state.phase = 'spirit_encounter';
   }
 
-  // 0.5 정령 조우 & 포켓몬식 포획 컷신 (V32.2)
+  // 0.5 정령 조우 & A+B+C 통합 포획 연출 (V32.3)
   if (state.phase === 'spirit_encounter') {
     const sp = SPIRITS_50.find((s) => s.id === state.pendingSpiritEncounter);
     if (!sp) {
@@ -2538,7 +2544,7 @@ function render() {
       render();
       return;
     }
-    const elInfo = SPIRIT_ELEMENTS[sp.element] || { name: sp.element, emoji: '✨', color: '#38bdf8' };
+    const elInfo = SPIRIT_ELEMENTS[sp.element] || { label: '✨ 정령', color: '#38bdf8' };
     const ownedCount = state.spirits?.[sp.id] || 0;
     const rarityBadge = { common: '일반', rare: '레어', epic: '에픽', unique: '유니크' }[sp.rarity] || sp.rarity;
     const baseRates = { common: 75, rare: 55, epic: 35, unique: 20 };
@@ -2546,14 +2552,46 @@ function render() {
     const snackRate = Math.min(95, baseRate + 35);
     const capRes = state.spiritCaptureResult;
 
-    elLocation.textContent = '✨ 정령 조우 · SPIRIT ENCOUNTER';
-    elSceneTag.textContent = `${elInfo.emoji} ${elInfo.name} · ${rarityBadge}`;
+    // A안: 실제 서울 구역 배경 + 왼쪽 주인공 + 오른쪽 야생 정령 무대 풀활용
+    const distId = state.activeDistrict || 'mapo';
+    setStageBg(`bg_${distId}.jpg`);
+    if (elFrame) {
+      elFrame.classList.add('combat-stage', 'spirit-capture-stage');
+      if (capRes?.status === 'caught') elFrame.classList.add('spirit-caught-holo');
+    }
+    elHeroSprite.classList.remove('hidden');
+    if (elHeroLvBadge) {
+      elHeroLvBadge.textContent = `🛡️ 나 Lv.${state.level || 1}`;
+      elHeroLvBadge.classList.remove('hidden');
+    }
+    if (elEnemyLvBadge) {
+      elEnemyLvBadge.textContent = `✨ 야생 ${rarityBadge}`;
+      elEnemyLvBadge.classList.remove('hidden');
+    }
+    if (elWildSpiritSprite) {
+      elWildSpiritSprite.src = `${sp.img}?v=74`;
+      elWildSpiritSprite.className = 'wild-spirit-sprite';
+      if (capRes?.status === 'resonating') elWildSpiritSprite.classList.add('is-resonating');
+      else if (capRes?.status === 'caught') elWildSpiritSprite.classList.add('is-caught-fly');
+      else if (capRes?.status === 'escaped') elWildSpiritSprite.classList.add('is-escaped');
+    }
+    if (elCaptureStamp) {
+      if (capRes?.status === 'caught') {
+        elCaptureStamp.textContent = capRes.isNew ? `✨ GET! 도감 No.${String(sp.num).padStart(2, '0')} 등록!` : `✨ GET! ★${capRes.awakeLv} 각성!`;
+        elCaptureStamp.classList.remove('hidden');
+      } else {
+        elCaptureStamp.classList.add('hidden');
+      }
+    }
+
+    elLocation.textContent = '✨ 야생 정령 조우 · SPIRIT ENCOUNTER';
+    elSceneTag.textContent = `${elInfo.label} · ${rarityBadge}`;
     elSceneTag.className = 'scene-tag event';
     elSceneTitle.textContent = capRes?.status === 'caught'
-      ? `💥 찰칵!! [${sp.name}] 포획 성공!!`
+      ? `💥 [${sp.name}] 포획 성공!!`
       : capRes?.status === 'escaped'
-        ? `💨 앗! [${sp.name}] 이(가) 달아났다...`
-        : `✨ 야생 [${sp.name}] 이(가) 나타났다!`;
+        ? `💨 [${sp.name}] 이(가) 달아났다...`
+        : `✨ 야생 [${sp.name}] 출현!`;
     elWeaknessPill.classList.add('hidden');
     elEnemyHpWrap.classList.add('hidden');
     elQuoteBubble.classList.remove('hidden');
@@ -2561,13 +2599,11 @@ function render() {
       ? `💬 나: "좋아, 넌 내 동료다! ${sp.greet}"`
       : `💬 주인공: "${sp.greet}"`;
 
-    showSceneCard(
-      `SPIRIT ENCOUNTER · No.${String(sp.num).padStart(2, '0')}`,
-      `✨ ${elInfo.emoji} [${sp.name}] (${rarityBadge})`,
-      `출몰 구역: ${sp.zoneHint || '서울 전역'}`
-    );
-
     const finishEncounter = (msg) => {
+      if (window._spiritTimingRaf) {
+        cancelAnimationFrame(window._spiritTimingRaf);
+        window._spiritTimingRaf = null;
+      }
       state.pendingSpiritEncounter = null;
       state.spiritCaptureResult = null;
       state.phase = 'map';
@@ -2576,38 +2612,106 @@ function render() {
       render();
     };
 
+    const runResonateCapture = (finalRate, expBonus = 0, label = '완장 공명') => {
+      state.spiritCaptureResult = { status: 'resonating', label };
+      render();
+      setTimeout(() => {
+        if (state.phase !== 'spirit_encounter') return;
+        const success = Math.random() * 100 < finalRate;
+        if (success) {
+          const res = grantSpirit(sp.id, false);
+          if (expBonus > 0) gainSpiritExp(sp.id, expBonus);
+          sfx.victory?.();
+          state.spiritCaptureResult = {
+            status: 'caught',
+            isNew: res.isNew,
+            awakeLv: res.count,
+            growthLv: getSpiritProgress(sp.id).lv,
+          };
+        } else {
+          state.points += 15;
+          gainHeroExp(15);
+          sfx.hit?.();
+          state.spiritCaptureResult = { status: 'escaped' };
+        }
+        saveGame();
+        render();
+      }, 950);
+    };
+
     elChoicesPanel.className = 'choices-panel';
     elChoicesPanel.innerHTML = '';
 
-    if (capRes?.status === 'shaking') {
+    // C안: 교감 주파수 타이밍 미니게임
+    if (capRes?.status === 'timing') {
       elBattleLog.innerHTML = `
-        <div class="spirit-ball-stage">
-          <div class="spirit-ball-orb"></div>
-          <div style="font-weight:800;font-size:14px;color:#fde047;">🟡 ${capRes.label} 던졌다!!</div>
-          <div style="font-size:12px;color:#e2e8f0;">흔들... 흔들... 흔들... 과연 잡힐까?!</div>
+        <div class="spirit-timing-wrap">
+          <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;">
+            <span>💫 ${capRes.label} — 중앙 황금존에 맞춰 교감!</span>
+            <span style="color:#fde047;">기본 ${capRes.baseRate}%</span>
+          </div>
+          <div class="spirit-timing-track">
+            <div class="spirit-timing-cursor" id="spirit-timing-cursor" style="left:50%"></div>
+          </div>
         </div>
       `;
+      let pos = 10;
+      let dir = 1;
+      const startTs = performance.now();
+      const step = (now) => {
+        if (state.phase !== 'spirit_encounter' || state.spiritCaptureResult?.status !== 'timing') return;
+        const dt = Math.min(40, now - (step.last || now));
+        step.last = now;
+        pos += dir * dt * 0.14;
+        if (pos >= 98) { pos = 98; dir = -1; }
+        else if (pos <= 2) { pos = 2; dir = 1; }
+        const curEl = document.getElementById('spirit-timing-cursor');
+        if (curEl) curEl.style.left = `${pos.toFixed(1)}%`;
+        window._spiritTimingRaf = requestAnimationFrame(step);
+      };
+      if (window._spiritTimingRaf) cancelAnimationFrame(window._spiritTimingRaf);
+      window._spiritTimingRaf = requestAnimationFrame(step);
+
+      const stopBtn = document.createElement('button');
+      stopBtn.className = 'choice-btn primary';
+      stopBtn.innerHTML = `<span class="choice-title">⚡ 지금 교감!! (타이밍 맞추기)</span><span class="choice-sub">🎯 중앙 골드존 +25% · ✨ 초록존 +10% 보너스!</span>`;
+      stopBtn.onclick = () => {
+        if (window._spiritTimingRaf) {
+          cancelAnimationFrame(window._spiritTimingRaf);
+          window._spiritTimingRaf = null;
+        }
+        let bonus = 0;
+        if (pos >= 39 && pos <= 61) {
+          bonus = 25;
+          showToast('🎯 PERFECT 교감!! 포획률 +25%!', 'break');
+        } else if (pos >= 22 && pos <= 78) {
+          bonus = 10;
+          showToast('✨ GOOD 교감! 포획률 +10%!', 'good');
+        } else {
+          showToast('💨 아슬아슬! 기본 확률로 교감 시도!', 'warn');
+        }
+        sfx.powerup?.();
+        runResonateCapture(Math.min(100, capRes.baseRate + bonus), capRes.expBonus, capRes.label);
+      };
+      elChoicesPanel.appendChild(stopBtn);
+      return;
+    }
+
+    if (capRes?.status === 'resonating') {
+      elBattleLog.textContent = `✨ [${capRes.label}] 빛이 야생 ${sp.name}을(를) 감싸며 공명하고 있습니다... 두근두근!!`;
       const waitBtn = document.createElement('button');
       waitBtn.className = 'choice-btn';
       waitBtn.disabled = true;
-      waitBtn.innerHTML = `<span class="choice-title">⏳ 포획 판정 중...</span><span class="choice-sub">예절 완장 구슬이 흔들리고 있습니다!</span>`;
+      waitBtn.innerHTML = `<span class="choice-title">⏳ 교감 공명 중...</span><span class="choice-sub">정령이 완장의 부름에 응답하고 있습니다!</span>`;
       elChoicesPanel.appendChild(waitBtn);
       return;
     }
 
     if (capRes?.status === 'caught') {
-      const regLabel = capRes.isNew ? `🆕 도감 신규 등록! No.${String(sp.num).padStart(2, '0')}` : `★${capRes.awakeLv} 각성 완료! (EXP 보너스)`;
-      elBattleLog.innerHTML = `
-        <div style="display:flex;gap:12px;align-items:center;padding:10px;border-radius:10px;background:rgba(15,23,42,0.72);border:2px solid #fde047;">
-          <img src="${sp.img}?v=72" alt="${sp.name}" style="width:76px;height:76px;object-fit:contain;border-radius:10px;background:rgba(255,255,255,0.95);padding:4px;flex-shrink:0;" />
-          <div style="font-size:12px;line-height:1.5;flex:1;">
-            <div style="display:inline-block;padding:2px 7px;border-radius:99px;background:#facc15;color:#1e293b;font-weight:800;font-size:11px;margin-bottom:3px;">${regLabel}</div>
-            <div style="font-weight:800;font-size:14px;color:${elInfo.color};">${elInfo.emoji} ${sp.name} <span style="font-size:11px;color:#e2e8f0;">[Lv.${capRes.growthLv}/20 · ★${capRes.awakeLv}]</span></div>
-            <div style="color:#e2e8f0;margin-top:2px;">기본 효과: 공격 +${sp.atk} · 사이다 +${sp.spRegen} · 치명 +${Math.round(sp.crit * 100)}%</div>
-            <div style="color:#fde047;font-weight:700;margin-top:3px;">★ 특수 기술: ${sp.perkDesc}</div>
-          </div>
-        </div>
-      `;
+      elBattleLog.textContent =
+        `🎉 [${sp.name}] Lv.${capRes.growthLv}/20 · ★${capRes.awakeLv} (${elInfo.label} · ${rarityBadge})\n` +
+        `⚔️ 공격 +${sp.atk} · 🫧 사이다 +${sp.spRegen} · 💥 치명 +${Math.round(sp.crit * 100)}%\n` +
+        `★ 특수 기술: ${sp.perkDesc}`;
       const btnNowEquip = document.createElement('button');
       btnNowEquip.className = 'choice-btn primary';
       btnNowEquip.innerHTML = `<span class="choice-title">✨ 지금 바로 동행하고 맵으로</span><span class="choice-sub">${sp.name}을(를) 전투 파트너로 장착하고 출발합니다!</span>`;
@@ -2628,80 +2732,52 @@ function render() {
     }
 
     if (capRes?.status === 'escaped') {
-      elBattleLog.innerHTML = `
-        <div style="padding:12px;border-radius:10px;background:rgba(15,23,42,0.65);border:1px solid #f87171;">
-          <div style="font-weight:800;font-size:14px;color:#fca5a5;">💨 앗! [${sp.name}] 이(가) 완장 빛을 튕겨내고 도망쳤다!</div>
-          <div style="font-size:12px;color:#e2e8f0;margin-top:4px;">아쉽지만 다음 순찰에서 다시 만날 수 있습니다. (위로 보상: 도덕P +15 · 영웅 EXP +15)</div>
-        </div>
-      `;
+      elBattleLog.textContent = `💨 아쉽다! [${sp.name}] 이(가) 완장 빛을 튕겨내고 서울 하늘로 사라졌습니다.\n(위로 보상: 도덕P +15 · 영웅 EXP +15)`;
       const btnBack = document.createElement('button');
       btnBack.className = 'choice-btn primary';
-      btnBack.innerHTML = `<span class="choice-title">🗺️ 맵으로 돌아가기</span><span class="choice-sub">다음 기회에 꼭 포획하자!</span>`;
+      btnBack.innerHTML = `<span class="choice-title">🗺️ 맵으로 돌아가기</span><span class="choice-sub">다음 순찰에서 다시 만나자!</span>`;
       btnBack.onclick = () => finishEncounter(`💨 ${sp.name} 포획 실패... (위로 보상 +15P · EXP +15)`);
       elChoicesPanel.appendChild(btnBack);
       return;
     }
 
-    elBattleLog.innerHTML = `
-      <div style="display:flex;gap:12px;align-items:center;padding:8px 10px;border-radius:10px;background:rgba(15,23,42,0.55);border:1px solid ${elInfo.color}66;">
-        <img src="${sp.img}?v=72" alt="${sp.name}" style="width:76px;height:76px;object-fit:contain;border-radius:10px;background:rgba(255,255,255,0.92);padding:4px;flex-shrink:0;" />
-        <div style="font-size:12px;line-height:1.5;flex:1;">
-          <div style="font-weight:800;font-size:14px;color:${elInfo.color};">${elInfo.emoji} ${sp.name} <span style="font-size:11px;opacity:0.85;">[${rarityBadge}]${ownedCount > 0 ? ` · 현재 ★${ownedCount} 보유` : ' · 미등록 야생 정령!'}</span></div>
-          <div style="color:#e2e8f0;margin-top:2px;">${sp.desc}</div>
-          <div style="color:#fde047;font-weight:700;margin-top:4px;">★ 특수 기술: ${sp.perkDesc || '전투 시 동행 지원'}</div>
-          <div style="color:#94a3b8;font-size:11px;margin-top:2px;">📍 출몰: ${sp.zoneHint || '서울 전역'} · 전투 동행 시 자동 레벨업!</div>
-        </div>
-      </div>
-    `;
+    // 초기 조우 화면: 잘림 없는 깔끔한 텍스트 요약 (이미지는 위 무대 풀활용!)
+    elBattleLog.textContent =
+      `[${elInfo.label} · ${rarityBadge}] ${sp.name}${ownedCount > 0 ? ` (★${ownedCount} 보유 중)` : ' (미등록 야생 정령!)'}\n` +
+      `⚔️ 공+${sp.atk} · 🫧 SP+${sp.spRegen} · 💥 치명+${Math.round(sp.crit * 100)}% | 📍 ${sp.zoneHint || '서울 전역'}\n` +
+      `★ 특수 기술: ${sp.perkDesc || '전투 시 동행 지원'}`;
 
-    const tryCapture = (rate, cost, label, expBonus = 0) => {
+    const startTimingCapture = (rate, cost, label, expBonus = 0) => {
       if (cost > 0 && state.points < cost) return;
       if (cost > 0) state.points -= cost;
       sfx.click?.();
-      state.spiritCaptureResult = { status: 'shaking', label };
+      state.spiritCaptureResult = { status: 'timing', baseRate: rate, label, expBonus };
       render();
-      setTimeout(() => {
-        if (state.phase !== 'spirit_encounter') return;
-        const success = Math.random() * 100 < rate;
-        if (success) {
-          const res = grantSpirit(sp.id, false);
-          if (expBonus > 0) gainSpiritExp(sp.id, expBonus);
-          sfx.victory?.();
-          state.spiritCaptureResult = {
-            status: 'caught',
-            isNew: res.isNew,
-            awakeLv: res.count,
-            growthLv: getSpiritProgress(sp.id).lv,
-          };
-        } else {
-          state.points += 15;
-          gainHeroExp(15);
-          sfx.hit?.();
-          state.spiritCaptureResult = { status: 'escaped' };
-        }
-        saveGame();
-        render();
-      }, 1150);
     };
 
     const btnFree = document.createElement('button');
     btnFree.className = 'choice-btn primary';
-    btnFree.innerHTML = `<span class="choice-title">✨ 맨손 교감 포획 (무료 · 성공률 ${baseRate}%)</span><span class="choice-sub">진심 어린 예절의 기운으로 교감을 시도합니다!</span>`;
-    btnFree.onclick = () => tryCapture(baseRate, 0, '예절 교감구를');
+    btnFree.innerHTML = `<span class="choice-title">✨ 맨손 교감 포획 (무료 · 기본 ${baseRate}% + 타이밍!)</span><span class="choice-sub">교감 주파수를 맞추면 최대 +25% 보너스!</span>`;
+    btnFree.onclick = () => startTimingCapture(baseRate, 0, '맨손 교감');
 
     const canSnack = state.points >= 300;
     const btnSnack = document.createElement('button');
     btnSnack.className = 'choice-btn';
     btnSnack.disabled = !canSnack;
-    btnSnack.innerHTML = `<span class="choice-title">🍡 정령 간식 꼬시기 (300P · 성공률 ${snackRate}%)</span><span class="choice-sub">${canSnack ? '포획률 +35% 대폭 상승! 성공 시 정령 EXP +60 보너스' : '도덕P가 부족합니다 (300P 필요)'}</span>`;
-    btnSnack.onclick = () => tryCapture(snackRate, 300, '달콤한 간식구를', 60);
+    btnSnack.innerHTML = `<span class="choice-title">🍡 정령 간식 꼬시기 (300P · 기본 ${snackRate}% + 타이밍!)</span><span class="choice-sub">${canSnack ? '간식으로 유인 + 성공 시 정령 EXP +60 보너스!' : '도덕P가 부족합니다 (300P 필요)'}</span>`;
+    btnSnack.onclick = () => startTimingCapture(snackRate, 300, '달콤한 간식 교감', 60);
 
     const canMaster = state.points >= 800;
     const btnMaster = document.createElement('button');
     btnMaster.className = 'choice-btn';
     btnMaster.disabled = !canMaster;
-    btnMaster.innerHTML = `<span class="choice-title">🟡 황금 완장 봉인구 (800P · 100% 확정 포획!)</span><span class="choice-sub">${canMaster ? '절대 놓치지 않는 100% 확정 포획 + 정령 EXP +80!' : '도덕P가 부족합니다 (800P 필요)'}</span>`;
-    btnMaster.onclick = () => tryCapture(100, 800, '황금 완장 봉인구를', 80);
+    btnMaster.innerHTML = `<span class="choice-title">🟡 황금 완장 봉인구 (800P · 100% 즉시 확정!)</span><span class="choice-sub">${canMaster ? '타이밍 없이 100% 확정 포획 + 정령 EXP +80!' : '도덕P가 부족합니다 (800P 필요)'}</span>`;
+    btnMaster.onclick = () => {
+      if (state.points < 800) return;
+      state.points -= 800;
+      sfx.click?.();
+      runResonateCapture(100, 80, '황금 완장 봉인구');
+    };
 
     const btnRelease = document.createElement('button');
     btnRelease.className = 'choice-btn';
