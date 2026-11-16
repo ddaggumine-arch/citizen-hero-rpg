@@ -1991,23 +1991,23 @@ function getSkillEvolution(type) {
   const s = state.stats || { speech: 2, guts: 2, law: 2 };
   const avg = ((s.speech || 2) + (s.guts || 2) + (s.law || 2)) / 3;
   if (type === 'speech') {
-    if ((s.speech || 0) >= 50) return { title: '🌟 [초월] 진실 팩트오버드라이브', dmgMult: 1.35, critBonus: 0.20, tier: 3 };
-    if ((s.speech || 0) >= 25) return { title: '⚡ [각성] 초음속 팩트폭격', dmgMult: 1.15, critBonus: 0.10, tier: 2 };
+    if ((s.speech || 0) >= 50) return { title: '🌟 초월·팩트', dmgMult: 1.35, critBonus: 0.20, tier: 3 };
+    if ((s.speech || 0) >= 25) return { title: '⚡ 각성·팩트', dmgMult: 1.15, critBonus: 0.10, tier: 2 };
     return { title: '🗣️ 팩트폭력', dmgMult: 1.0, critBonus: 0, tier: 1 };
   }
   if (type === 'guts') {
-    if ((s.guts || 0) >= 50) return { title: '🌟 [초월] 강철 멘탈 역관광', dmgMult: 1.30, spExtra: 13, vampPct: 0.06, tier: 3 };
-    if ((s.guts || 0) >= 25) return { title: '🔥 [각성] 불굴의 거울치료', dmgMult: 1.15, spExtra: 5, vampPct: 0, tier: 2 };
+    if ((s.guts || 0) >= 50) return { title: '🌟 초월·거울', dmgMult: 1.30, spExtra: 13, vampPct: 0.06, tier: 3 };
+    if ((s.guts || 0) >= 25) return { title: '🔥 각성·거울', dmgMult: 1.15, spExtra: 5, vampPct: 0, tier: 2 };
     return { title: '🪞 거울치료', dmgMult: 1.0, spExtra: 0, vampPct: 0, tier: 1 };
   }
   if (type === 'law') {
-    if ((s.law || 0) >= 50) return { title: '🌟 [초월] 헌법재판소 만장일치', dmgMult: 1.30, diceExtra: 4, tier: 3 };
-    if ((s.law || 0) >= 25) return { title: '⚖️ [각성] 대법원 최종 선고', dmgMult: 1.15, diceExtra: 2, tier: 2 };
-    return { title: '⚖️ 법전 들이밀기', dmgMult: 1.0, diceExtra: 0, tier: 1 };
+    if ((s.law || 0) >= 50) return { title: '🌟 초월·법전', dmgMult: 1.30, diceExtra: 4, tier: 3 };
+    if ((s.law || 0) >= 25) return { title: '⚖️ 각성·법전', dmgMult: 1.15, diceExtra: 2, tier: 2 };
+    return { title: '⚖️ 법전밀기', dmgMult: 1.0, diceExtra: 0, tier: 1 };
   }
-  if (avg >= 50) return { title: '🌟 [초월] 제로슈거 핵사이다', dmgMult: 1.45, healPct: 0.10, tier: 3 };
-  if (avg >= 25) return { title: '🫧 [각성] 메가 탄산 필살기', dmgMult: 1.25, healPct: 0, tier: 2 };
-  return { title: '🫧 사이다 필살기', dmgMult: 1.0, healPct: 0, tier: 1 };
+  if (avg >= 50) return { title: '🌟 초월·핵사이다', dmgMult: 1.45, healPct: 0.10, tier: 3 };
+  if (avg >= 25) return { title: '🫧 각성·사이다', dmgMult: 1.25, healPct: 0, tier: 2 };
+  return { title: '🫧 사이다 필살', dmgMult: 1.0, healPct: 0, tier: 1 };
 }
 
 function performAttack(type) {
@@ -2260,6 +2260,7 @@ function render() {
   }
 
   elChoicesPanel.innerHTML = '';
+  elChoicesPanel.classList.toggle('is-combat-grid', state.phase === 'combat');
   elWantedPoster.classList.add('hidden');
   elSceneCard.classList.add('hidden');
   elSceneImage.classList.add('hidden');
@@ -4984,10 +4985,9 @@ function render() {
       elChloeSprite.classList.toggle('with-yuki', hasYuki);
     }
     if (elKongiSprite) elKongiSprite.classList.toggle('hidden', !hasPet);
-    elQuoteBubble.textContent = state.quote;
-    elQuoteBubble.classList.remove('hidden');
-    elBattleLog.textContent = state.log;
-    elChoicesPanel.className = 'choices-panel grid-2';
+    elQuoteBubble.classList.add('hidden');
+    elBattleLog.textContent = (state.quote ? `💬 ${state.quote}\n` : '') + (state.log || '');
+    elChoicesPanel.className = 'choices-panel grid-2 is-combat-grid';
 
     // V26.2 막타 사이다 피니셔 (적 HP 25% 이하)
     if (state.enemyHp > 0 && state.enemyHp <= Math.ceil(state.enemyMaxHp * 0.25)) {
@@ -6167,6 +6167,19 @@ function openMiniStatsHelpModal() {
   spBanner.appendChild(resetBtn);
   elEndingsList.appendChild(spBanner);
 
+  const evoGuide = document.createElement('div');
+  evoGuide.className = 'inv-item';
+  evoGuide.style.background = 'rgba(126, 34, 206, 0.08)';
+  evoGuide.style.borderColor = '#a855f7';
+  const tierTxt = (v) => (v >= 50 ? '🌟초월(50+)' : (v >= 25 ? '⚡각성(25+)' : '기본'));
+  evoGuide.innerHTML = `
+    <div class="inv-info">
+      <h4>⚡ 스킬 진화: 각성(25+) & 🌟 초월(50+)</h4>
+      <p>언변·깡다구·법지식이 <b>25+</b>면 [각성], <b>50+</b>면 [초월]로 자동 진화해 피해·상성 배율·최대 PP가 대폭 오릅니다!<br/>현재: 언변 <b>${tierTxt(s.speech)}</b> · 깡다구 <b>${tierTxt(s.guts)}</b> · 법지식 <b>${tierTxt(s.law)}</b></p>
+    </div>
+  `;
+  elEndingsList.appendChild(evoGuide);
+
   const items = [
     {
       emoji: '🏅',
@@ -6629,8 +6642,8 @@ function getTagSkillMeta() {
 
   if (hasYuki && hasChloe && hasPet) {
     return {
-      title: '🌟 풀파티 궁극기 (유키·클로이·콩이)',
-      effectSummary: '1.65배 극딜+기절+SP15+적약화(1회)',
+      title: '🌟 풀파티 궁극기',
+      effectSummary: '유키·클로이·콩 1.65배+기절(1회)',
       mult: 1.65,
       spRefund: 15,
       enemyWeakenTurns: 2,

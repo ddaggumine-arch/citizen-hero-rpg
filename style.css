@@ -1955,30 +1955,47 @@ body[data-time="midnight"] .illustration-frame {
   text-align: center;
 }
 
-/* V29.1 한 화면 전투 UI 컴팩트화 & 패시브 토글 칩 */
+/* V29.1/V31.3 한 화면 무스크롤 전투 UI 컴팩트화 */
 .story-container.is-combat {
-  padding: 6px 10px 6px;
-  gap: 5px;
+  padding: 4px 10px 4px;
+  gap: 4px;
+  overflow-y: auto;
 }
 .story-container.is-combat .scene-header {
   margin-bottom: 0;
 }
 .story-container.is-combat .enemy-hp-wrap {
-  padding: 5px 8px;
-  gap: 4px;
+  padding: 4px 8px;
+  gap: 3px;
 }
 .story-container.is-combat .illustration-frame.combat-stage {
-  min-height: 152px;
-  max-height: 176px;
-}
-.story-container.is-combat .quote-bubble {
-  padding: 5px 9px;
-  font-size: 0.78rem;
+  min-height: 124px;
+  max-height: 138px;
 }
 .story-container.is-combat .battle-log {
-  padding: 6px 9px;
-  font-size: 0.78rem;
-  line-height: 1.4;
+  padding: 5px 8px;
+  font-size: 0.73rem;
+  line-height: 1.35;
+  max-height: 66px;
+  overflow-y: auto;
+}
+.choices-panel.is-combat-grid {
+  padding: 6px 8px !important;
+  gap: 5px !important;
+}
+.choices-panel.is-combat-grid .choice-btn {
+  padding: 6px 8px !important;
+  min-height: 0 !important;
+}
+.choices-panel.is-combat-grid .choice-btn > span:first-child {
+  font-size: 0.77rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.choices-panel.is-combat-grid .choice-sub {
+  font-size: 0.67rem;
+  margin-top: 1px;
 }
 .combat-badge.is-toggle {
   background: #e5e7eb;
