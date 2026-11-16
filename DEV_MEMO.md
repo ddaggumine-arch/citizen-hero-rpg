@@ -5,7 +5,10 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V31.0
+## 현재 최신 버전: V31.0.2
+- **V31.0.2**:
+  - **토스트 알림 비간섭 정리 (`style.css`, `app.js`)**: 토스트 위치를 최상단(`top: 4px`, 슬림형 1.5초, 최대 2개 제한)으로 이동해 인내심·사이다 바 및 하단 선택지 모두 가리지 않게 개선 + 전리품 고철/보급품 획득은 전투 로그로 통합 (`?v=67`)
+- **V31.0**:
 - **V31.0**:
   - **18종 전용 배경 일러스트 전격 적용 (`assets/images/bg_*.jpg`, `drive_yuki_1~3.jpg`, `drive_chloe_1~3.jpg`, `style.css`, `app.js`)**: 3×2 × 3시트에서 18컷 크롭 — 서울 5대 구역(`bg_mapo/seongsu/jongno/gangnam/yeouido`), 일반/최종 보스전(`bg_boss_normal/final`), 자취방(`bg_home`), 즉결재판소/타워(`bg_court`), 차고 차량 3종(`bg_car_1~3`), 유키·클로이 자동차 등급별 드라이브 데이트 6종(`drive_yuki_1~3`, `drive_chloe_1~3`) 100% 연동
   - **도덕P 인플레이션 밸런싱 & 5,000P 신화 영웅 패키지 (`app.js`)**: 전투 레벨 보너스 상한(`min(30, enemyLv)`), 일일퀘(`120P`)·황금별풍선(`80P`)·디펜스(`90P`) 보상 현실화, 주식 매도 수수료 10% 적용, 암시장 상자(`3,000P`)·장비 각인(`1,500P`) 상향 및 **`💎 신화 영웅 패키지(5,000P · 유니크 ★4 확정 + 강화석 5개)`** 추가 (`?v=65`)

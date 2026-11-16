@@ -600,11 +600,14 @@ function vibrate(pattern) {
 
 function showToast(msg, type = '') {
   if (!elToastContainer) return;
+  while (elToastContainer.children.length >= 2) {
+    elToastContainer.firstElementChild.remove();
+  }
   const pill = document.createElement('div');
   pill.className = `toast-pill${type ? ` ${type}` : ''}`;
   pill.textContent = msg;
   elToastContainer.appendChild(pill);
-  setTimeout(() => pill.remove(), 2400);
+  setTimeout(() => pill.remove(), 1500);
 }
 
 function pickNonRepeatingIdx(len, usedArr) {
@@ -1699,14 +1702,14 @@ function handleEnemyDefeated(enemy) {
   if (enemyLv >= 15 && Math.random() < (enemyLv >= 35 ? 0.65 : 0.40)) {
     const scrapGain = enemyLv >= 35 ? 3 : (enemyLv >= 25 ? 2 : 1);
     state.scrap = (state.scrap || 0) + scrapGain;
-    showToast(`🔩 [Lv.${enemyLv} 전리품] 영웅 고철 +${scrapGain} 획득!`, 'good');
+    state.log = (state.log ? state.log + '\n' : '') + `🔩 [Lv.${enemyLv} 전리품] 영웅 고철 +${scrapGain} 획득!`;
   }
   if (enemyLv >= 20 && Math.random() < (enemyLv >= 35 ? 0.35 : 0.20)) {
     if (!state.items) state.items = {};
     const dropKey = Math.random() < 0.5 ? 'cheongsimhwan' : 'cold_soda';
     const dropName = dropKey === 'cheongsimhwan' ? '황금 청심환' : '시원한 사이다';
     state.items[dropKey] = (state.items[dropKey] || 0) + 1;
-    showToast(`🥤 [Lv.${enemyLv} 보급품] ${dropName} +1 획득!`, 'good');
+    state.log = (state.log ? state.log + '\n' : '') + `🥤 [Lv.${enemyLv} 보급품] ${dropName} +1 획득!`;
   }
   state.winCount = (state.winCount || 0) + 1;
   advanceDailyQuest('win', 1);

@@ -1382,29 +1382,29 @@ body {
 /* ===== V15.0 토스트 알림 · 상태 배지 · 타격감 · 야경 모드 ===== */
 .toast-container {
   position: absolute;
-  bottom: 10px;
+  top: 4px;
   left: 50%;
   transform: translateX(-50%);
   width: 92%;
   max-width: 390px;
   display: flex;
-  flex-direction: column-reverse;
-  gap: 5px;
+  flex-direction: column;
+  gap: 3px;
   z-index: 90;
   pointer-events: none;
 }
 
 .toast-pill {
-  background: rgba(34, 28, 24, 0.92);
+  background: rgba(34, 28, 24, 0.90);
   color: #fff8ea;
   border: 1px solid #d99b26;
   border-radius: 8px;
-  padding: 6px 11px;
-  font-size: 0.76rem;
+  padding: 4px 10px;
+  font-size: 0.72rem;
   font-weight: 700;
   text-align: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
-  animation: toastSlideIn 0.22s ease-out;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.32);
+  animation: toastSlideIn 0.2s ease-out;
 }
 
 .toast-pill.break {
