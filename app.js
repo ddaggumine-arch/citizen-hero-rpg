@@ -9,7 +9,8 @@ import { STREAM_MISSIONS, ROOM_UPGRADES, GUERRILLA_VILLAINS, STOCKS, HEROINE_GIF
 import { COURT_CASES, COSTUMES, CAPSULE_POOL, PET_WALK_EVENTS } from './data/v17Systems.js?v=63';
 import { CLUES, SOME_CRISIS_EVENTS, RIVAL_EVENTS, REFORMED_ALLIES, GETTING_TO_KNOW_EVENTS, STORY_INTERLUDES, WEEKEND_EVENTS } from './data/v19Story.js?v=51';
 import { DIFFICULTIES, RARITY_INFO, GEAR_LOOT_POOL, GEAR_ENCHANTS, PET_JOBS, LOGIC_COUNTERS, generateCommunityPosts } from './data/v24Systems.js?v=61';
-import { KISS_SCENES, LOVER_ACTIONS } from './data/v25Romance.js';
+import { KISS_SCENES, LOVER_ACTIONS, KISS_SCENE_CHOICES } from './data/v25Romance.js?v=71';
+import { SPIRITS_50, SPIRIT_ELEMENTS } from './data/spirits50.js?v=71';
 import { UNLOCK_MILESTONES, isFeatureUnlocked, SEOUL_DISTRICTS, getDistrictIdForEnemy, getClearedDistrictCount } from './data/v26World.js?v=48';
 import { STORY_BOSSES } from './data/storyBosses.js?v=45';
 import { sfx } from './sound.js';
@@ -210,6 +211,10 @@ function createNewGameState() {
     bossShield: 0,
     bossCountdown: 0,
     skillPp: { speech: 12, guts: 10, law: 8, snap: 6 },
+    spirits: {},
+    equippedSpirit: null,
+    epilogueIdx: 0,
+    epilogueSeen: false,
   };
 }
 
@@ -429,6 +434,7 @@ const elLiveFeedLikes = document.getElementById('live-feed-likes');
 const elLiveFeedTitle = document.getElementById('live-feed-title');
 const elLiveFeedComment = document.getElementById('live-feed-comment');
 const elHeroSprite = document.getElementById('hero-sprite');
+const elSpiritSprite = document.getElementById('spirit-sprite');
 const elYukiSprite = document.getElementById('yuki-sprite');
 const elChloeSprite = document.getElementById('chloe-sprite');
 const elKongiSprite = document.getElementById('kongi-sprite');
@@ -1339,9 +1345,67 @@ function getEquippedBonuses() {
   const setSyn = getGearSetSynergy();
   if (setSyn.spRegen) res.spRegen += setSyn.spRegen;
   if (setSyn.crit) res.crit += setSyn.crit;
+  const spBon = getSpiritBonuses();
+  res.atk += spBon.atk;
+  res.spRegen += spBon.spRegen;
+  res.crit += spBon.crit;
   if (state.costume === 'cyber') res.crit += 0.10;
   if (state.costume === 'golden_hero') res.atk += 10;
   return res;
+}
+
+function getSpiritBonuses() {
+  const id = state.equippedSpirit;
+  if (!id) return { atk: 0, spRegen: 0, crit: 0, element: null, elemBoost: 0, spirit: null, lv: 0 };
+  const sp = SPIRITS_50.find((x) => x.id === id);
+  const lv = state.spirits?.[id] || 0;
+  if (!sp || lv <= 0) return { atk: 0, spRegen: 0, crit: 0, element: null, elemBoost: 0, spirit: null, lv: 0 };
+  const lvMult = 1 + (lv - 1) * 0.25;
+  return {
+    atk: Math.round(sp.atk * lvMult),
+    spRegen: Math.round(sp.spRegen * lvMult),
+    crit: Number((sp.crit * lvMult).toFixed(3)),
+    element: sp.element,
+    elemBoost: Number((sp.elemBoost * lvMult).toFixed(2)),
+    spirit: sp,
+    lv,
+  };
+}
+
+function grantSpirit(spiritId) {
+  const sp = SPIRITS_50.find((x) => x.id === spiritId);
+  if (!sp) return null;
+  if (!state.spirits) state.spirits = {};
+  const prevLv = state.spirits[spiritId] || 0;
+  if (prevLv === 0) {
+    state.spirits[spiritId] = 1;
+    if (!state.equippedSpirit) state.equippedSpirit = spiritId;
+    const msg = `👻 [수호정령 영입!!] ${sp.name}\n💬 나: "${sp.greet}"`;
+    state.log = (state.log ? state.log + '\n' : '') + msg;
+    showToast(`👻 신규 정령 [${sp.name}]! "${sp.greet}"`, sp.rarity === 'unique' ? 'break' : 'good');
+  } else if (prevLv < 5) {
+    state.spirits[spiritId] = prevLv + 1;
+    const msg = `✨ [정령 각성 Lv.${prevLv + 1}!] ${sp.name} — "${sp.greet}"`;
+    state.log = (state.log ? state.log + '\n' : '') + msg;
+    showToast(`✨ [${sp.name}] Lv.${prevLv + 1} 각성 완료!`, 'good');
+  } else {
+    state.points += 60;
+    state.log = (state.log ? state.log + '\n' : '') + `✨ [${sp.name}] 만렙(Lv.5) 중복 환원 → +60 P!`;
+  }
+  return sp;
+}
+
+function rollSpiritDrop(isBoss = false) {
+  const chance = isBoss ? 0.55 : 0.22;
+  if (Math.random() > chance) return null;
+  const r = Math.random();
+  let rar = 'common';
+  if (r < (isBoss ? 0.08 : 0.02)) rar = 'unique';
+  else if (r < (isBoss ? 0.28 : 0.12)) rar = 'epic';
+  else if (r < (isBoss ? 0.65 : 0.42)) rar = 'rare';
+  const pool = SPIRITS_50.filter((x) => x.rarity === rar);
+  const pick = pool[Math.floor(Math.random() * pool.length)] || SPIRITS_50[0];
+  return grantSpirit(pick.id);
 }
 
 function getGearSetSynergy() {
@@ -1781,6 +1845,7 @@ function handleEnemyDefeated(enemy) {
   }
   const enemyLv = state.currentEnemyLv || enemy.lv || state.level || 1;
   rollGearDrop(isBossId(enemy.id) || enemy.id === HIDDEN_BOSS.id, enemyLv);
+  rollSpiritDrop(isBossId(enemy.id) || enemy.id === HIDDEN_BOSS.id);
   if (enemyLv >= 15 && Math.random() < (enemyLv >= 35 ? 0.65 : 0.40)) {
     const scrapGain = enemyLv >= 35 ? 3 : (enemyLv >= 25 ? 2 : 1);
     state.scrap = (state.scrap || 0) + scrapGain;
@@ -1913,9 +1978,15 @@ function handleEnemyDefeated(enemy) {
     const ending = evaluateEnding(state, false);
     state.achievedEndingId = ending.id;
     unlockEnding(ending.id);
-    state.phase = 'victory';
-    state.log = ending.story;
-    showToast('♾️ 스토리 클리어! 시간 제한 없는 무한 자유모드가 해금되었습니다!', 'good');
+    if (!state.epilogueSeen) {
+      state.epilogueIdx = 0;
+      state.phase = 'epilogue';
+      state.log = '🎉 드디어 길고 길었던 서울의 대장정이 막을 내립니다...';
+    } else {
+      state.phase = 'victory';
+      state.log = ending.story;
+    }
+    showToast('♾️ 스토리 클리어! 에필로그 & 무한 자유모드 해금!', 'good');
     saveGame();
     render();
     return;
@@ -2096,7 +2167,10 @@ function performAttack(type) {
     state.log = `${evo.title}! 112·보건소 신고 + 공개 참교육!! (멘탈 -${dmg}${matchup.tag ? ` · ${matchup.tag}` : ''} & 기절!)`;
   }
   const setAtkMult = 1 + (getGearSetSynergy().atkPct || 0);
-  if (setAtkMult > 1) dmg = Math.round(dmg * setAtkMult);
+  const spBonAtk = getSpiritBonuses();
+  const spElemMatch = (spBonAtk.element === type) || (spBonAtk.element === 'cider' && type === 'special');
+  const spElemMult = spElemMatch ? (1 + (spBonAtk.elemBoost || 0)) : 1;
+  if (setAtkMult > 1 || spElemMult > 1) dmg = Math.round(dmg * setAtkMult * spElemMult);
   if (state.bossGimmick === 'shield' && (state.bossShield || 0) > 0) {
     const breakHits = (hitWeakness || type === 'law' || type === 'special') ? (type === 'special' ? 2 : 1) : 0;
     if (breakHits > 0) {
@@ -2278,6 +2352,7 @@ function render() {
     elChloeSprite.classList.remove('with-yuki', 'couple-right');
   }
   if (elKongiSprite) elKongiSprite.classList.add('hidden');
+  if (elSpiritSprite) elSpiritSprite.classList.add('hidden');
   if (elCoupleSprite) elCoupleSprite.classList.add('hidden');
   if (elDateFxLayer) {
     elDateFxLayer.className = 'date-fx-layer hidden';
@@ -2942,6 +3017,20 @@ function render() {
       startBattle(pick.id);
     });
     elChoicesPanel.appendChild(towerBtn);
+
+    // V32.0 보이지 않는 5속성 예절 수호정령 (N/50)
+    const spiritCount = Object.keys(state.spirits || {}).filter((k) => (state.spirits[k] || 0) > 0).length;
+    const eqSp = getSpiritBonuses().spirit;
+    const spBtn = document.createElement('button');
+    spBtn.className = 'choice-btn';
+    spBtn.style.background = 'linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%)';
+    spBtn.style.borderColor = '#3b82f6';
+    spBtn.innerHTML = `<span>👻 수호정령 (${spiritCount}/50)</span><span class="choice-sub" style="color:#1e40af;">${eqSp ? `${eqSp.name} 장착중` : '소환·장착·도감'}</span>`;
+    spBtn.addEventListener('click', () => {
+      sfx.click();
+      openSpiritModal();
+    });
+    elChoicesPanel.appendChild(spBtn);
 
     // V26.0 서울 5대 구역 치안 현황
     const distCleared = getClearedDistrictCount(state);
@@ -3768,7 +3857,8 @@ function render() {
     elBattleLog.textContent = actKiss ? `${actKiss.title}의 여운이 남은 두 사람. 조용히 시선이 마주칩니다.` : ks.text;
     elChoicesPanel.className = 'choices-panel';
 
-    ks.choices.forEach((ch) => {
+    const kissChoices = (actKiss?.id && KISS_SCENE_CHOICES[actKiss.id]) ? KISS_SCENE_CHOICES[actKiss.id] : ks.choices;
+    kissChoices.forEach((ch) => {
       const btn = document.createElement('button');
       btn.className = 'choice-btn row-btn';
       btn.innerHTML = `<span>${ch.text}</span><span class="choice-sub">${ch.sub}</span>`;
@@ -3784,11 +3874,18 @@ function render() {
         state.lastKissDay[key] = state.day;
         if (!alreadyToday) {
           state.love[key] = clamp((state.love[key] || 0) + (ch.love || 8), 0, 100);
+          if (ch.maxHp) state.maxHp += ch.maxHp;
           state.hp = clamp(state.hp + (ch.hp || 40), 1, state.maxHp);
           state.sp = clamp(state.sp + (ch.sp || 40), 0, state.maxSp);
           if (ch.lawful) state.lawful += ch.lawful;
+          if (ch.chaotic) state.chaotic += ch.chaotic;
           if (ch.followers) state.followers = (state.followers || 120) + ch.followers;
+          if (ch.speech) state.stats.speech += ch.speech;
           if (ch.guts) state.stats.guts += ch.guts;
+          if (ch.law) state.stats.law += ch.law;
+          if (ch.points) state.points += ch.points;
+          if (ch.scrap) state.scrap = (state.scrap || 0) + ch.scrap;
+          if (ch.ppRestore) restoreSkillPp(ch.ppRestore);
           state.log = `${ch.log} (📸 추억 앨범에 키스신 저장됨!)`;
         } else {
           state.log = `${ch.log} (오늘 이미 키스 보상을 받아 달콤한 여운만 남습니다 ♥)`;
@@ -4985,6 +5082,11 @@ function render() {
       elChloeSprite.classList.toggle('with-yuki', hasYuki);
     }
     if (elKongiSprite) elKongiSprite.classList.toggle('hidden', !hasPet);
+    const eqSpCombat = getSpiritBonuses().spirit;
+    if (elSpiritSprite) {
+      elSpiritSprite.classList.toggle('hidden', !eqSpCombat);
+      if (eqSpCombat) elSpiritSprite.src = `${eqSpCombat.img}?v=71`;
+    }
     elQuoteBubble.classList.add('hidden');
     elBattleLog.textContent = (state.quote ? `💬 ${state.quote}\n` : '') + (state.log || '');
     elChoicesPanel.className = 'choices-panel grid-2 is-combat-grid';
@@ -5132,10 +5234,12 @@ function render() {
       startTimingMinigame((isPerfect) => {
         const enemy = getEnemyById(state.currentEnemyId);
         const snapMu = getMatchupInfo(enemy, 'snap').mult;
+        const spSnap = getSpiritBonuses();
+        const snapSpMult = spSnap.element === 'snap' ? (1 + (spSnap.elemBoost || 0)) : 1;
         const rawSnap = isPerfect
           ? Math.round((20 + state.stats.law * 4 + state.bonusDmg) * 1.8)
           : (12 + state.stats.law * 2 + state.bonusDmg);
-        const dmg = Math.round(rawSnap * snapMu);
+        const dmg = Math.round(rawSnap * snapMu * snapSpMult);
         state.enemyHp = clamp(state.enemyHp - dmg, 0, state.enemyMaxHp);
         if (isPerfect) {
           state.pendingReports += 2;
@@ -5559,6 +5663,77 @@ function render() {
   elWeaknessPill.classList.add('hidden');
   elEnemyHpWrap.classList.add('hidden');
   elQuoteBubble.classList.add('hidden');
+
+  if (state.phase === 'epilogue') {
+    const spCnt = Object.keys(state.spirits || {}).filter((k) => (state.spirits[k] || 0) > 0).length;
+    const epScenes = [
+      {
+        title: '🌅 에필로그 1/3 · 서울에 찾아온 진짜 아침',
+        img: 'assets/images/morning_sunrise.jpg',
+        quote: '김순경: "해냈습니다 영웅님!! 블랙튜브의 모든 조작 방송이 중단되고, 서울 시민들이 거리로 나와 박수를 보내고 있어요!"',
+        text: '마포의 작은 골목에서 노란 완장 하나로 시작했던 싸움이 마침내 서울 전체를 지켜냈습니다.\n뉴스 속보마다 시민들의 감사 인사가 쏟아지고, 더 이상 억지 진상들에게 눈치 보는 사람은 없습니다.',
+      },
+      {
+        title: '💖 에필로그 2/3 · 소중한 사람들과의 약속',
+        img: (state.lovers?.includes('yuki') && state.lovers?.includes('chloe')) ? 'assets/images/triple_picnic.jpg' : (state.lovers?.includes('chloe') ? 'assets/images/chloe_wink.jpg' : 'assets/images/yuki_blush.jpg'),
+        quote: state.lovers?.length > 0
+          ? '"이제 매일 걱정하던 밤은 끝났네! 앞으로도 우리 곁을 지켜줄 거지, 영웅님? ♥"'
+          : '콩이: "멍!! 🐾" (반가운 듯 꼬리를 흔들며 당신의 발치에 기댑니다)',
+        text: '위기의 순간마다 힘이 되어준 동료들과 연인, 그리고 작은 반려견 콩이.\n당신은 그들과 함께 따뜻한 햇살 아래 행복한 웃음을 지었습니다.',
+      },
+      {
+        title: '🏆 에필로그 3/3 · 시민영웅 명예의 전당 (엔딩 크레딧)',
+        img: null,
+        quote: '"당신이 지킨 작은 예절 하나가, 2026년 서울을 기적처럼 바꾸었습니다."',
+        text:
+          `━━━━━━━━ 🎬 HALL OF FAME ━━━━━━━━\n` +
+          `🛡️ 시민영웅 레벨: Lv.${state.level || 1} (${getHeroRankTitle(state.level || 1)})\n` +
+          `📅 클리어 일수: DAY ${state.day} · 팔로워 ${(state.followers || 120).toLocaleString()}명\n` +
+          `🥊 참교육 횟수: ${state.winCount || 0}회 · 평화구역 ${getClearedDistrictCount(state)}/5\n` +
+          `👻 수집 수호정령: ${spCnt}/50종 · 💖 연인: ${(state.lovers || []).length}명\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `제작·기획: 마이프렌 × Antigravity · 플레이해주셔서 감사합니다!`,
+      },
+    ];
+    const idx = clamp(state.epilogueIdx || 0, 0, epScenes.length - 1);
+    const sc = epScenes[idx];
+    elLocation.textContent = `DAY ${state.day} · 대장정 완결`;
+    elSceneTag.textContent = '에필로그';
+    elSceneTag.className = 'scene-tag event';
+    elSceneTitle.textContent = sc.title;
+    elWeaknessPill.classList.add('hidden');
+    elEnemyHpWrap.classList.add('hidden');
+    elQuoteBubble.textContent = sc.quote;
+    elQuoteBubble.classList.remove('hidden');
+    if (sc.img) {
+      elSceneImage.src = sc.img;
+      elSceneImage.classList.remove('hidden');
+    } else {
+      showSceneCard('🏆 CITIZEN HERO · FINALE', '  ✨ 서울의 살아있는 전설 ✨\n  끝나지 않는 영웅의 이야기!', '명예의 전당 헌액 완료!');
+    }
+    elBattleLog.textContent = sc.text;
+    elChoicesPanel.className = 'choices-panel';
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'choice-btn row-btn story-main-btn';
+    nextBtn.innerHTML = idx < epScenes.length - 1
+      ? '<span>▶ 다음 에필로그 보기</span><span class="choice-sub">여운 이어가기</span>'
+      : '<span>🏆 엔딩 & 무한 자유모드로 입장!</span><span class="choice-sub">명예의 전당 등록 완료</span>';
+    nextBtn.addEventListener('click', () => {
+      sfx.victory();
+      if (idx < epScenes.length - 1) {
+        state.epilogueIdx = idx + 1;
+      } else {
+        state.epilogueSeen = true;
+        const ending = evaluateEnding(state, false);
+        state.phase = 'victory';
+        state.log = ending.story;
+      }
+      saveGame();
+      render();
+    });
+    elChoicesPanel.appendChild(nextBtn);
+    return;
+  }
 
   if (state.phase === 'victory') {
     const ending = ENDINGS.find((e) => e.id === state.achievedEndingId) || ENDINGS[ENDINGS.length - 1];
@@ -6614,6 +6789,107 @@ function openGearModal(filterRarity = currentGearFilter) {
       elEndingsList.appendChild(card);
     });
   }
+  elEndingsModal.classList.remove('hidden');
+}
+
+function openSpiritModal(filterEl = 'all') {
+  if (!state.spirits) state.spirits = {};
+  const ownedCount = Object.keys(state.spirits).filter((k) => (state.spirits[k] || 0) > 0).length;
+  const eqBon = getSpiritBonuses();
+  elEndingsModalTitle.textContent = `👻 예절 수호정령 (${ownedCount}/50)`;
+  elEndingsList.innerHTML = '';
+
+  const summonBtn = document.createElement('button');
+  summonBtn.className = 'gear-quick-btn';
+  summonBtn.style.cssText = 'width:100%;margin-bottom:8px;padding:9px 8px;background:linear-gradient(90deg,#0284c7 0%,#7e22ce 100%);';
+  summonBtn.textContent = '✨ 수호정령 소환하기 (600P · 50종 랜덤 / 중복 시 Lv각성!)';
+  summonBtn.disabled = state.points < 600;
+  summonBtn.addEventListener('click', () => {
+    if (state.points < 600) return;
+    sfx.victory();
+    state.points -= 600;
+    const r = Math.random();
+    let rar = 'common';
+    if (r < 0.06) rar = 'unique';
+    else if (r < 0.24) rar = 'epic';
+    else if (r < 0.60) rar = 'rare';
+    const pool = SPIRITS_50.filter((x) => x.rarity === rar);
+    const pick = pool[Math.floor(Math.random() * pool.length)] || SPIRITS_50[0];
+    grantSpirit(pick.id);
+    saveGame();
+    openSpiritModal(filterEl);
+    render();
+  });
+  elEndingsList.appendChild(summonBtn);
+
+  const tabsWrap = document.createElement('div');
+  tabsWrap.className = 'gear-tabs';
+  [
+    { id: 'all', label: `전체(${ownedCount}/50)` },
+    { id: 'speech', label: '🗣️언변' },
+    { id: 'guts', label: '🦁깡다구' },
+    { id: 'law', label: '⚖️법질서' },
+    { id: 'snap', label: '📸진실' },
+    { id: 'cider', label: '🫧사이다' },
+  ].forEach((t) => {
+    const tb = document.createElement('button');
+    tb.className = `gear-tab${filterEl === t.id ? ' active' : ''}`;
+    tb.textContent = t.label;
+    tb.addEventListener('click', () => { sfx.click(); openSpiritModal(t.id); });
+    tabsWrap.appendChild(tb);
+  });
+  elEndingsList.appendChild(tabsWrap);
+
+  const list = SPIRITS_50
+    .filter((sp) => filterEl === 'all' || sp.element === filterEl)
+    .sort((a, b) => {
+      const eqA = state.equippedSpirit === a.id ? 1 : 0;
+      const eqB = state.equippedSpirit === b.id ? 1 : 0;
+      if (eqA !== eqB) return eqB - eqA;
+      const ownA = (state.spirits[a.id] || 0) > 0 ? 1 : 0;
+      const ownB = (state.spirits[b.id] || 0) > 0 ? 1 : 0;
+      if (ownA !== ownB) return ownB - ownA;
+      return b.num - a.num;
+    });
+
+  list.forEach((sp) => {
+    const lv = state.spirits[sp.id] || 0;
+    const isEq = state.equippedSpirit === sp.id;
+    const rInfo = RARITY_INFO[sp.rarity] || RARITY_INFO.common;
+    const elInfo = SPIRIT_ELEMENTS[sp.element];
+    const card = document.createElement('div');
+    card.className = 'inv-item';
+    card.style.borderColor = lv > 0 ? elInfo.color : '#d4c4a8';
+    card.style.opacity = lv > 0 ? '1' : '0.68';
+    if (lv > 0) {
+      card.innerHTML = `
+        <img src="${sp.img}?v=71" alt="${sp.name}" class="item-thumb" style="width:44px;height:44px;object-fit:contain;" />
+        <div class="inv-info">
+          <h4 style="color:${rInfo.color};">[${rInfo.short}] ${sp.name} Lv.${lv}/5 ${isEq ? '✅동행중' : ''}</h4>
+          <p>${sp.desc}<br/><span style="color:#695544;font-style:italic;">"${sp.greet}"</span></p>
+        </div>
+      `;
+      const eqBtn = document.createElement('button');
+      eqBtn.className = 'use-btn';
+      eqBtn.textContent = isEq ? '해제' : '동행';
+      eqBtn.addEventListener('click', () => {
+        sfx.powerup();
+        state.equippedSpirit = isEq ? null : sp.id;
+        saveGame();
+        openSpiritModal(filterEl);
+        render();
+      });
+      card.appendChild(eqBtn);
+    } else {
+      card.innerHTML = `
+        <div class="inv-info">
+          <h4>🔒 #${sp.num} 미발견 [${elInfo.label} · ${rInfo.short}]</h4>
+          <p>전투 승리 또는 정령 소환으로 영입할 수 있습니다.</p>
+        </div>
+      `;
+    }
+    elEndingsList.appendChild(card);
+  });
   elEndingsModal.classList.remove('hidden');
 }
 

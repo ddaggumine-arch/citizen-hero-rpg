@@ -2041,3 +2041,21 @@ body[data-time="midnight"] .illustration-frame {
   background: #fee2e2;
   color: #b91c1c;
 }
+
+/* V32.0 예절 수호정령 둥실둥실 스프라이트 */
+.spirit-sprite {
+  position: absolute;
+  left: 56px;
+  top: 12px;
+  height: 44px !important;
+  width: 44px !important;
+  object-fit: contain !important;
+  z-index: 9;
+  pointer-events: none;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.85)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+  animation: spiritFloat 2.0s ease-in-out infinite;
+}
+@keyframes spiritFloat {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(-6px) scale(1.06); }
+}
