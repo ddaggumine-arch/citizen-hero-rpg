@@ -4638,9 +4638,9 @@ function render() {
     const tagBtn = document.createElement('button');
     tagBtn.className = 'choice-btn';
     const tagCost = state.costume === 'couple' ? 35 : 50;
+    const tagMeta = getTagSkillMeta();
     tagBtn.disabled = state.sp < tagCost;
-    const partnerLabel = state.lovers?.includes('yuki') ? '유키' : (state.lovers?.includes('chloe') ? '클로이' : '김순경');
-    tagBtn.innerHTML = `<span>🤝 합동 필살기 (${partnerLabel})</span><span class="choice-sub sp">${state.sp >= tagCost ? `사이다 ${tagCost} · 극딜+기절!` : `사이다 부족 (${state.sp}/${tagCost})`}</span>`;
+    tagBtn.innerHTML = `<span>${tagMeta.title}</span><span class="choice-sub sp">${state.sp >= tagCost ? `사이다 ${tagCost} · ${tagMeta.effectSummary}` : `사이다 부족 (${state.sp}/${tagCost})`}</span>`;
     tagBtn.addEventListener('click', () => performTagSkill());
     elChoicesPanel.appendChild(tagBtn);
     return;
@@ -6007,23 +6007,142 @@ function openCommunityModal() {
   elEndingsModal.classList.remove('hidden');
 }
 
+function getTagSkillMeta() {
+  const hasYuki = !!state.lovers?.includes('yuki') && !state.sulky?.yuki;
+  const hasChloe = !!state.lovers?.includes('chloe') && !state.sulky?.chloe;
+  const hasPet = !!state.pet?.adopted;
+
+  if (hasYuki && hasChloe && hasPet) {
+    return {
+      title: '🌟 풀파티 궁극기 (유키·클로이·콩이)',
+      effectSummary: '1.65배 극딜+기절+회복30%+SP20!',
+      mult: 1.65,
+      healPct: 0.30,
+      spRefund: 20,
+      enemyWeakenTurns: 2,
+      quote: '"다 같이 힘을 합치자! / Let\'s finish this!! / 멍멍!!"',
+      logPrefix: '🌟 [유키·클로이·콩이 풀파티 궁극기!!]',
+      hasYuki, hasChloe, hasPet,
+    };
+  }
+  if (hasYuki && hasChloe) {
+    return {
+      title: '💖 더블 합동 필살기 (유키·클로이)',
+      effectSummary: '1.4배 극딜+기절+회복25%+SP15!',
+      mult: 1.40,
+      healPct: 0.25,
+      spRefund: 15,
+      quote: '"다이스키! / Let\'s crush this villain together!"',
+      logPrefix: '💖 [유키 & 클로이 더블 합동 필살기!!]',
+      hasYuki, hasChloe, hasPet,
+    };
+  }
+  if (hasYuki && hasPet) {
+    return {
+      title: '🐾 합동 필살기 (유키·콩이)',
+      effectSummary: '1.35배 극딜+기절+회복20%+적약화!',
+      mult: 1.35,
+      healPct: 0.20,
+      enemyWeakenTurns: 2,
+      quote: '"유키랑 콩이가 지켜줄게요! 멍!"',
+      logPrefix: '🐾 [유키 & 콩이 합동 필살기!!]',
+      hasYuki, hasChloe, hasPet,
+    };
+  }
+  if (hasChloe && hasPet) {
+    return {
+      title: '🐾 합동 필살기 (클로이·콩이)',
+      effectSummary: '1.5배 치명극딜+기절+적약화+P↑!',
+      mult: 1.50,
+      bonusPts: 20,
+      bonusFollowers: 150,
+      enemyWeakenTurns: 2,
+      quote: '"Flash & Bite Combo!! / 멍!"',
+      logPrefix: '🐾 [클로이 & 콩이 합동 필살기!!]',
+      hasYuki, hasChloe, hasPet,
+    };
+  }
+  if (hasYuki) {
+    return {
+      title: '💚 합동 필살기 (유키)',
+      effectSummary: '극딜+기절+인내심 20% 회복!',
+      mult: 1.0,
+      healPct: 0.20,
+      quote: '"다이스키! 우리 같이 혼내주자!"',
+      logPrefix: '💚 [유키 합동 필살기!!]',
+      hasYuki, hasChloe, hasPet,
+    };
+  }
+  if (hasChloe) {
+    return {
+      title: '📸 합동 필살기 (클로이)',
+      effectSummary: '1.25배 치명극딜+기절+보상↑!',
+      mult: 1.25,
+      bonusPts: 15,
+      bonusFollowers: 120,
+      quote: '"Let\'s crush this villain together!"',
+      logPrefix: '📸 [클로이 합동 필살기!!]',
+      hasYuki, hasChloe, hasPet,
+    };
+  }
+  if (hasPet) {
+    return {
+      title: '🐾 합동 필살기 (김순경·콩이)',
+      effectSummary: '1.25배 극딜+기절+적약화!',
+      mult: 1.25,
+      enemyWeakenTurns: 2,
+      quote: '"시민영웅님, 지원 사격 들어갑니다! 멍!"',
+      logPrefix: '🐾 [김순경 & 콩이 합동 필살기!!]',
+      hasYuki, hasChloe, hasPet,
+    };
+  }
+  return {
+    title: '🤝 합동 필살기 (김순경)',
+    effectSummary: '극딜+확정기절!',
+    mult: 1.0,
+    quote: '"시민영웅님, 지원 사격 들어갑니다!"',
+    logPrefix: '🤝 [김순경 합동 필살기!!]',
+    hasYuki, hasChloe, hasPet,
+  };
+}
+
 function performTagSkill() {
   const tagCost = state.costume === 'couple' ? 35 : 50;
   if (state.sp < tagCost) return;
   const enemy = getEnemyById(state.currentEnemyId);
+  const meta = getTagSkillMeta();
   state.sp = clamp(state.sp - tagCost, 0, state.maxSp);
-  const hasYuki = state.lovers?.includes('yuki');
-  const hasChloe = state.lovers?.includes('chloe');
-  const partnerName = hasYuki ? '🇯🇵 유키' : (hasChloe ? '🇺🇸 클로이' : '👮 김순경');
-  const dmg = 45 + (state.stats.speech + state.stats.guts + state.stats.law) * 3 + state.bonusDmg;
+
+  const baseDmg = 45 + (state.stats.speech + state.stats.guts + state.stats.law) * 3 + state.bonusDmg;
+  const dmg = Math.round(baseDmg * (meta.mult || 1));
   state.enemyHp = clamp(state.enemyHp - dmg, 0, state.enemyMaxHp);
   state.enemyStunned = true;
-  state.quote = hasYuki
-    ? '"다이스키! 우리 같이 혼내주자!"'
-    : (hasChloe ? '"Let\'s crush this villain together!"' : '"시민영웅님, 지원 사격 들어갑니다!"');
-  state.log = `🤝 [${partnerName} 합동 필살기!!] 완벽한 호흡으로 빌런을 제압했습니다! (멘탈 -${dmg} · 확정 기절!)`;
-  if (hasYuki) triggerPartnerCallout('yuki', '합동 필살기!! 💖', true);
-  if (hasChloe) triggerPartnerCallout('chloe', 'Combo Finisher!! ⚡', true);
+
+  const extraEffects = [];
+  if (meta.healPct) {
+    const heal = Math.round(state.maxHp * meta.healPct);
+    state.hp = clamp(state.hp + heal, 1, state.maxHp);
+    extraEffects.push(`인내심 +${heal}`);
+  }
+  if (meta.spRefund) {
+    state.sp = clamp(state.sp + meta.spRefund, 0, state.maxSp);
+    extraEffects.push(`사이다 +${meta.spRefund} 페이백`);
+  }
+  if (meta.enemyWeakenTurns) {
+    state.enemyApologyTurns = (state.enemyApologyTurns || 0) + meta.enemyWeakenTurns;
+    extraEffects.push(`적 공격력 ${meta.enemyWeakenTurns}턴 -40%`);
+  }
+  if (meta.bonusPts) {
+    state.points += meta.bonusPts;
+    state.followers = (state.followers || 120) + (meta.bonusFollowers || 0);
+    extraEffects.push(`+${meta.bonusPts}P · 팔로워 +${meta.bonusFollowers}`);
+  }
+
+  state.quote = meta.quote;
+  state.log = `${meta.logPrefix} 완벽한 호흡으로 빌런을 제압했습니다! (멘탈 -${dmg} · 확정 기절!${extraEffects.length ? ` · ${extraEffects.join(' · ')}` : ''})`;
+  if (meta.hasYuki) triggerPartnerCallout('yuki', '합동 필살기!! 💖', true);
+  if (meta.hasChloe) triggerPartnerCallout('chloe', 'Combo Finisher!! ⚡', true);
+  if (meta.hasPet) triggerPartnerCallout('kongi', '왕! 필살 발목 물기! 🐾', true);
   playHeroAnim('attack');
   triggerEnemyHit(dmg, true);
   if (state.enemyHp <= 0) handleEnemyDefeated(enemy);

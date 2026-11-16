@@ -207,6 +207,8 @@ body {
   justify-content: space-between;
   font-size: 0.68rem;
   font-weight: 700;
+  white-space: nowrap;
+  gap: 4px;
 }
 
 .bar-track {
@@ -1021,7 +1023,7 @@ body {
 
 .hero-sprite {
   position: absolute;
-  left: 8px;
+  left: 18px;
   bottom: 2px;
   height: 78% !important;
   width: auto !important;
@@ -1035,7 +1037,7 @@ body {
 }
 
 .hero-sprite.with-yuki {
-  left: 48px;
+  left: 56px;
 }
 
 .partner-sprite {
@@ -1049,23 +1051,23 @@ body {
 }
 
 .partner-sprite.yuki-pos {
-  left: 4px;
+  left: 24px;
   height: 68% !important;
   z-index: 5;
 }
 
 .partner-sprite.chloe-pos {
-  left: 78px;
+  left: 52px;
   height: 69% !important;
   z-index: 5;
 }
 
 .partner-sprite.chloe-pos.with-yuki {
-  left: 118px;
+  left: 90px;
 }
 
 .partner-sprite.kongi-pos {
-  left: 34px;
+  left: 2px;
   height: 28% !important;
   z-index: 8;
   animation: heroBreathe 1.4s ease-in-out infinite;
