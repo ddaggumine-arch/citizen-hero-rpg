@@ -3,10 +3,10 @@ import { STORY_CHAPTERS } from './data/storyChapters.js?v=48';
 import { ACTIVITY_CATEGORIES } from './data/activities.js?v=48';
 import { MINI_EVENTS, ENEMY_INTENTS, createFeedForVictory } from './data/liveEvents.js';
 import { ENDINGS, evaluateEnding } from './data/endings.js';
-import { HEROINES, LANG_QUIZZES, DATE_EVENTS } from './data/romance.js';
+import { HEROINES, LANG_QUIZZES, DATE_EVENTS } from './data/romance.js?v=63';
 import { CARS, GEAR_UPGRADES, ACHIEVEMENTS } from './data/lifestyle.js';
 import { STREAM_MISSIONS, ROOM_UPGRADES, GUERRILLA_VILLAINS, STOCKS, HEROINE_GIFTS } from './data/v16Systems.js';
-import { COURT_CASES, COSTUMES, CAPSULE_POOL, PET_WALK_EVENTS } from './data/v17Systems.js';
+import { COURT_CASES, COSTUMES, CAPSULE_POOL, PET_WALK_EVENTS } from './data/v17Systems.js?v=63';
 import { CLUES, SOME_CRISIS_EVENTS, RIVAL_EVENTS, REFORMED_ALLIES, GETTING_TO_KNOW_EVENTS, STORY_INTERLUDES, WEEKEND_EVENTS } from './data/v19Story.js?v=51';
 import { DIFFICULTIES, RARITY_INFO, GEAR_LOOT_POOL, GEAR_ENCHANTS, PET_JOBS, LOGIC_COUNTERS, generateCommunityPosts } from './data/v24Systems.js?v=61';
 import { KISS_SCENES, LOVER_ACTIONS } from './data/v25Romance.js';
@@ -205,6 +205,10 @@ function createNewGameState() {
     partnerBond: 1,
     partnerWinTicks: 0,
     lastPicnicDay: 0,
+    dailyQuests: null,
+    bossGimmick: null,
+    bossShield: 0,
+    bossCountdown: 0,
   };
 }
 
@@ -679,30 +683,36 @@ function handleNewDayRollover() {
     }
   }
 
-  // V16.0: 연인 방치 페널티 (2일+ 소홀 시 호감도 -6, 50 미만 시 이별)
+  // V16.0/V30.0: 연인 방치 페널티 (언어 Lv.15+ 시 유예 3일 & 하락 -3, Lv.10+ 시 -4, 기본 -6)
   if (state.lovers && state.lovers.length > 0) {
     if (!state.lastContactDay) state.lastContactDay = { yuki: state.day, chloe: state.day };
     [...state.lovers].forEach((lk) => {
+      const langKey = lk === 'yuki' ? 'jp' : 'en';
+      const langLv = state.lang?.[langKey] || 1;
+      const graceDays = langLv >= 15 ? 3 : 2;
+      const decayAmt = langLv >= 15 ? 3 : (langLv >= 10 ? 4 : 6);
       const gap = state.day - (state.lastContactDay[lk] || state.day);
-      if (gap >= 2) {
-        state.love[lk] = clamp((state.love[lk] || 0) - 6, 0, 100);
+      if (gap >= graceDays) {
+        state.love[lk] = clamp((state.love[lk] || 0) - decayAmt, 0, 100);
         const nm = lk === 'yuki' ? '유키' : '클로이';
         if (!state.dateMessages) state.dateMessages = [];
         state.dateMessages.unshift({
           sender: lk === 'yuki' ? '🇯🇵 유키' : '🇺🇸 클로이',
           title: `DAY ${state.day} · 💔 서운함 경고`,
-          body: `"요즘 ${gap}일째 너무 소홀한 거 아니에요...? (호감도 -6 → ${state.love[lk]}/100)"`,
+          body: `"요즘 ${gap}일째 너무 소홀한 거 아니에요...?${langLv >= 15 ? ' (언어 Lv.15+ 신뢰 보너스로 완화!)' : ''} (호감도 -${decayAmt} → ${state.love[lk]}/100)"`,
         });
         state.unreadMessages += 1;
         if (state.love[lk] < 50) {
           state.lovers = state.lovers.filter((x) => x !== lk);
           showToast(`💔 ${nm}와(과) 소홀해져 이별했습니다...`, 'break');
         } else {
-          showToast(`💔 ${nm}에게 소홀해 호감도 -6!`, 'break');
+          showToast(`💔 ${nm}에게 소홀해 호감도 -${decayAmt}!`, 'break');
         }
       }
     });
   }
+
+  rollDailyQuests();
 
   // V28.0: D-120 골든타임 체크 (클리어 전 제한, 1회 150P 시민 청원 +30일 연장)
   const maxDay = GOLDEN_TIME_DAYS + (state.extendedGoldenTime ? 30 : 0);
@@ -933,13 +943,40 @@ const ENEMY_MODIFIERS = [
   { id: 'swift', label: '⚡ 민첩한', hpMult: 1.08, atkMult: 1.18, rewardMult: 1.3, expMult: 1.25 },
 ];
 
+function rollDailyQuests() {
+  state.dailyQuests = {
+    day: state.day,
+    claimed: false,
+    items: [
+      { id: 'win', label: '🥊 빌런 참교육', cur: 0, goal: 2 },
+      { id: 'patrol', label: '🚓 순찰·채증 활동', cur: 0, goal: 2 },
+      { id: 'care', label: '💖 어학·연애·휴식 케어', cur: 0, goal: 1 },
+    ],
+  };
+}
+
+function advanceDailyQuest(qId, amt = 1) {
+  if (!state.dailyQuests || state.dailyQuests.day !== state.day) rollDailyQuests();
+  const dq = state.dailyQuests;
+  const item = dq.items.find((x) => x.id === qId);
+  if (!item || item.cur >= item.goal) return;
+  item.cur = Math.min(item.goal, item.cur + amt);
+  if (!dq.claimed && dq.items.every((x) => x.cur >= x.goal)) {
+    dq.claimed = true;
+    state.points += 250;
+    state.scrap = (state.scrap || 0) + 3;
+    if (!state.inventory) state.inventory = [];
+    state.inventory.push('cheongsimhwan');
+    showToast('🎯 [일일 퀘스트 올클리어!!] +250P · 강화석 +3 · 청심환 +1!', 'break');
+  }
+}
+
 function addFever(amount) {
   if ((state.feverTurns || 0) > 0) return false;
-  state.feverGauge = Math.min(100, (state.feverGauge || 0) + amount);
-  if (state.feverGauge >= 100) {
-    state.feverGauge = 0;
-    state.feverTurns = 2;
-    showToast('🔥 예절 피버 타임 발동!! (2턴 약점·치명 확정 + 필살기 반값!)', 'break');
+  const prev = state.feverGauge || 0;
+  state.feverGauge = Math.min(100, prev + amount);
+  if (prev < 100 && state.feverGauge >= 100) {
+    showToast('⚡ 피버 100% 충전! [노란 완장 풀개방!!] 버튼을 눌러 각성하세요!', 'break');
     return true;
   }
   return false;
@@ -1189,7 +1226,41 @@ function getEquippedBonuses() {
   if ((d.seongsu || 0) >= 100) res.crit += 0.06;
   if ((d.jongno || 0) >= 100) res.def += 3;
   if ((d.mapo || 0) >= 100) res.spRegen += 3;
+  const setSyn = getGearSetSynergy();
+  if (setSyn.spRegen) res.spRegen += setSyn.spRegen;
+  if (setSyn.crit) res.crit += setSyn.crit;
+  if (state.costume === 'cyber') res.crit += 0.10;
+  if (state.costume === 'golden_hero') res.atk += 10;
   return res;
+}
+
+function getGearSetSynergy() {
+  const eq = state.equipped || {};
+  const items = ['weapon', 'armor', 'acc'].map((sl) => GEAR_LOOT_POOL.find((x) => x.id === eq[sl])).filter(Boolean);
+  const epicPlus = items.filter((g) => g.rarity === 'epic' || g.rarity === 'unique').length;
+  const uniqueCnt = items.filter((g) => g.rarity === 'unique').length;
+  const hasReflectArmor = (GEAR_LOOT_POOL.find((x) => x.id === eq.armor)?.reflect || 0) > 0;
+  const labels = [];
+  let startFever = 0;
+  let spRegen = 0;
+  let atkPct = 0;
+  let crit = 0;
+  let reflectStun = false;
+  if (epicPlus >= 3) {
+    labels.push('🟣 정예 영웅(피버+25%·SP+5)');
+    startFever += 25;
+    spRegen += 5;
+  }
+  if (uniqueCnt >= 2) {
+    labels.push('🟨 전설 수호자(피해+15%·치명+10%)');
+    atkPct += 0.15;
+    crit += 0.10;
+  }
+  if (hasReflectArmor && eq.acc) {
+    labels.push('🪞 거울 반사(피격20% 기절)');
+    reflectStun = true;
+  }
+  return { labels, startFever, spRegen, atkPct, crit, reflectStun };
 }
 
 function notifyNewUnlocks(prevChapter, nextChapter) {
@@ -1380,6 +1451,13 @@ function startBattle(enemyId, isRandomEncounter = false) {
   state.enemyBroken = false;
   state.citizenAssistUsed = false;
   state.feverTurns = 0;
+  state.bossGimmick = isBossEnemy ? (Math.random() < 0.5 ? 'shield' : 'countdown') : null;
+  state.bossShield = state.bossGimmick === 'shield' ? 3 : 0;
+  state.bossCountdown = state.bossGimmick === 'countdown' ? 3 : 0;
+  const setSynStart = getGearSetSynergy();
+  if (setSynStart.startFever > 0) addFever(setSynStart.startFever);
+  if (state.bossGimmick === 'shield') extraLog += `\n🛡️ [보스 기믹] 철벽 변명 실드 3겹 전개! (약점·법전·채증으로 파괴!)`;
+  if (state.bossGimmick === 'countdown') extraLog += `\n⏰ [보스 기믹] 3턴 광폭 카운트다운 시작! (기절로 초기화!)`;
   if ((state.startSpBonus || 0) > 0) {
     state.sp = clamp(state.sp + state.startSpBonus, 0, state.maxSp);
   }
@@ -1447,6 +1525,7 @@ function enemyCounterTurn(enemy, isGuarding = false) {
 
   if (state.enemyStunned) {
     state.enemyStunned = false;
+    if (state.bossGimmick === 'countdown') state.bossCountdown = 3;
     const wasDanger = state.enemyIntent !== 'normal';
     state.enemyIntent = 'normal';
     state.quote = '"으억... 잠깐 말문이 막혔다..."';
@@ -1490,6 +1569,14 @@ function enemyCounterTurn(enemy, isGuarding = false) {
   }
 
   let dmg = Math.round((scaledAtk + Math.floor(Math.random() * 5) - 2) * intentObj.mult * chaosMult);
+  if (state.bossGimmick === 'countdown') {
+    state.bossCountdown = Math.max(0, (state.bossCountdown || 3) - 1);
+    if (state.bossCountdown <= 0) {
+      dmg = Math.round(dmg * 1.8);
+      state.bossCountdown = 3;
+      state.log += `\n💥 [보스 광폭 카운트다운 0!!] 1.8배 초강력 폭언 작렬!!`;
+    }
+  }
   if ((state.weather || 'sunny') === 'rain' && ['smoker', 'spitter', 'street_smoker', 'cafe_boss'].includes(enemy.id)) {
     dmg = Math.max(2, Math.round(dmg * 0.8));
     state.log += `\n☔ [우천 약화] 빗줄기에 빌런 기세가 꺾여 피해 -20%!`;
@@ -1519,6 +1606,15 @@ function enemyCounterTurn(enemy, isGuarding = false) {
   }
 
   state.hp = clamp(state.hp - dmg, 0, state.maxHp);
+  if (getGearSetSynergy().reflectStun && dmg > 1 && Math.random() < 0.20) {
+    state.enemyStunned = true;
+    state.log += `\n🪞 [거울 반사 세트!!] 반사 충격으로 빌런이 기절했습니다!`;
+  }
+  if (state.costume === 'cyber') addFever(15);
+  if (state.costume === 'golden_hero' && state.hp > 0) {
+    state.hp = clamp(state.hp + 12, 1, state.maxHp);
+    state.log += `\n👑 [1대 영웅의 황금 코트] 인내심 +12 자동 회복!`;
+  }
   if (eqBonus.spRegen > 0) state.sp = clamp(state.sp + eqBonus.spRegen, 0, state.maxSp);
   if (state.pet?.adopted && state.pet.job === 'healer' && state.hp > 0) {
     state.hp = clamp(state.hp + 5, 1, state.maxHp);
@@ -1588,6 +1684,7 @@ function handleEnemyDefeated(enemy) {
     showToast(`🥤 [Lv.${enemyLv} 보급품] ${dropName} +1 획득!`, 'good');
   }
   state.winCount = (state.winCount || 0) + 1;
+  advanceDailyQuest('win', 1);
   if (!state.villainWins) state.villainWins = {};
   state.villainWins[enemy.id] = (state.villainWins[enemy.id] || 0) + 1;
   state.enemyBroken = false;
@@ -1879,6 +1976,20 @@ function performAttack(type) {
     state.lawful += 8;
     if (evo.healPct) state.hp = clamp(state.hp + Math.round(state.maxHp * evo.healPct), 1, state.maxHp);
     state.log = `${evo.title}! 112·보건소 신고 + 공개 참교육!! (멘탈 -${dmg} & 기절!)`;
+  }
+  const setAtkMult = 1 + (getGearSetSynergy().atkPct || 0);
+  if (setAtkMult > 1) dmg = Math.round(dmg * setAtkMult);
+  if (state.bossGimmick === 'shield' && (state.bossShield || 0) > 0) {
+    const breakHits = (hitWeakness || type === 'law' || type === 'special') ? (type === 'special' ? 2 : 1) : 0;
+    if (breakHits > 0) {
+      state.bossShield = Math.max(0, state.bossShield - breakHits);
+      state.log += state.bossShield === 0
+        ? `\n💥 [보스 실드 완전 파괴!!] 이제 전력이 그대로 들어갑니다!`
+        : `\n🛡️ [보스 실드 -${breakHits}!] (남은 실드: ${state.bossShield}겹)`;
+    } else {
+      dmg = Math.round(dmg * 0.6);
+      state.log += `\n🛡️ [실드 방어!] 피해 40% 감소 (약점·법전·필살기로 파괴!)`;
+    }
   }
   if ((eqBonus.lifesteal || 0) > 0 && dmg > 0) {
     const ls = Math.max(2, Math.round(dmg * eqBonus.lifesteal));
@@ -2540,7 +2651,11 @@ function render() {
     });
     animateChibiTo(activeLoc);
 
-    elBattleLog.textContent = state.log || '서울 시내 지도입니다. 미션을 달성해 스토리를 해금하고 자유행동으로 이동하세요!';
+    if (!state.dailyQuests || state.dailyQuests.day !== state.day) rollDailyQuests();
+    const dqLine = state.dailyQuests.claimed
+      ? '🎯 오늘의 미션: ✅ 올클리어 완료!'
+      : `🎯 오늘의 미션: ${state.dailyQuests.items.map((x) => `${x.label}(${x.cur}/${x.goal})`).join(' · ')}`;
+    elBattleLog.textContent = (state.log || '서울 시내 지도입니다. 미션을 달성해 스토리를 해금하고 자유행동으로 이동하세요!') + `\n${dqLine}`;
 
     elChoicesPanel.className = 'choices-panel grid-2';
 
@@ -3823,6 +3938,7 @@ function render() {
           state.love[k] = clamp((state.love[k] || 0) + gain, 0, 100);
           if (!state.lastContactDay) state.lastContactDay = { yuki: state.day, chloe: state.day };
           state.lastContactDay[k] = state.day;
+          advanceDailyQuest('care', 1);
           if (!state.dailyStats) state.dailyStats = { wins: 0, loveGain: 0 };
           state.dailyStats.loveGain += gain;
           sfx.victory();
@@ -4657,6 +4773,8 @@ function render() {
       elCombatBadges.innerHTML = '';
       const activeBadges = [];
       const passiveBadges = [];
+      if (state.bossGimmick === 'shield' && (state.bossShield || 0) > 0) activeBadges.push({ cls: 'is-break', txt: `🛡️ 보스실드 ${state.bossShield}겹` });
+      if (state.bossGimmick === 'countdown') activeBadges.push({ cls: 'is-break', txt: `⏰ 광폭까지 ${state.bossCountdown || 3}턴` });
       if (state.enemyBroken) activeBadges.push({ cls: 'is-break', txt: '💥 멘붕 1.5배!' });
       if (state.enemyStunned) activeBadges.push({ cls: 'is-stun', txt: '💫 기절' });
       if ((state.enemyApologyTurns || 0) > 0) activeBadges.push({ cls: 'is-stun', txt: `📝 반성문(${state.enemyApologyTurns}턴)` });
@@ -4687,6 +4805,7 @@ function render() {
       if ((state.allies?.length || 0) > 0) passiveBadges.push({ cls: 'is-pet', txt: `🤝 영웅단 ${state.allies.length}명` });
       if ((state.weakCombo || 0) > 0) passiveBadges.push({ cls: 'is-combo', txt: `⚡ 약점콤보 ${state.weakCombo}/2` });
       if (state.pet?.adopted) passiveBadges.push({ cls: 'is-pet', txt: `🐶 콩이 Lv.${state.pet.level}` });
+      getGearSetSynergy().labels.forEach((lb) => passiveBadges.push({ cls: 'is-pet', txt: lb }));
       if (state.timeIndex >= 2) passiveBadges.push({ cls: '', txt: '🌙 야간+25%' });
 
       activeBadges.forEach((b) => {
@@ -4769,6 +4888,24 @@ function render() {
       elChoicesPanel.appendChild(tipBtn);
     }
 
+    if ((state.feverGauge || 0) >= 100 && !(state.feverTurns > 0)) {
+      const feverBtn = document.createElement('button');
+      feverBtn.className = 'choice-btn row-btn story-main-btn';
+      feverBtn.style.gridColumn = 'span 2';
+      feverBtn.innerHTML = '<span>⚡ [노란 완장 풀개방!!] 각성 변신 발동!</span><span class="choice-sub">턴 소모 없음 · 2턴 약점/치명 확정 + 필살기 반값 + SP+20!</span>';
+      feverBtn.addEventListener('click', () => {
+        sfx.victory();
+        vibrate([40, 30, 70]);
+        state.feverGauge = 0;
+        state.feverTurns = 2;
+        state.sp = clamp(state.sp + 20, 0, state.maxSp);
+        state.log = '⚡ [노란 완장 풀개방!!] 눈빛이 변했습니다! 2턴간 모든 공격 약점·치명 확정 & 필살기 반값! (SP +20)';
+        showToast('🔥 노란 완장 풀개방!! 2턴 각성 모드!', 'break');
+        render();
+      });
+      elChoicesPanel.appendChild(feverBtn);
+    }
+
     if (intentObj.isDanger) {
       const guardBtn = document.createElement('button');
       guardBtn.className = 'choice-btn row-btn guard-btn';
@@ -4835,6 +4972,7 @@ function render() {
           state.pendingReports += 2;
           state.sp = clamp(state.sp + 20, 0, state.maxSp);
           state.perfectSnaps = (state.perfectSnaps || 0) + 1;
+          if (state.bossGimmick === 'shield' && (state.bossShield || 0) > 0) state.bossShield -= 1;
           addFever(35);
           state.log = `📸 [PERFECT 채증!!] 결정적 순간 포착! (멘탈 -${dmg} · 채증+2 · 사이다+20)`;
           checkAchievements();
@@ -6000,7 +6138,10 @@ function openGearModal(filterRarity = currentGearFilter) {
 
   const guideBar = document.createElement('div');
   guideBar.className = 'gear-guide-bar';
-  guideBar.textContent = '등급: ⬜일반 ★1(C) < 🟦레어 ★2(B) < 🟪에픽 ★3(A) < 🟨유니크 ★4(S)';
+  const synLabels = getGearSetSynergy().labels;
+  guideBar.textContent = synLabels.length > 0
+    ? `✨ 발동 세트: ${synLabels.join(' · ')}`
+    : '등급: ⬜일반 ★1(C) < 🟦레어 ★2(B) < 🟪에픽 ★3(A) < 🟨유니크 ★4(S)';
   elEndingsList.appendChild(guideBar);
 
   const gachaBtn = document.createElement('button');
@@ -6575,7 +6716,11 @@ function executeActivity(act, cat) {
   }
 
   state.activityCount = (state.activityCount || 0) + 1;
-  if (act.isPatrol) state.patrolCount = (state.patrolCount || 0) + 1;
+  if (act.isPatrol) {
+    state.patrolCount = (state.patrolCount || 0) + 1;
+    advanceDailyQuest('patrol', 1);
+  }
+  if (act.sleep || cat?.id === 'heal') advanceDailyQuest('care', 1);
   if (cat && cat.id) state.mapLoc = cat.id;
   if (cat && cat.image) {
     state.lastCutscene = { image: cat.image, animClass: cat.animClass || '' };

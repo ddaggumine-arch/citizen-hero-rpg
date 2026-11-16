@@ -1,4 +1,5 @@
 // V11.0 외국어 공부 미연시 데이터 (일본인 유키 & 미국인 클로이)
+import { EXTRA_JP_QUIZZES, EXTRA_EN_QUIZZES } from './langQuizzes100.js?v=63';
 
 export const HEROINES = {
   yuki: {
@@ -65,6 +66,7 @@ export const LANG_QUIZZES = {
       reactOk: '유키: "네! 내일도 꼭 카페 놀러 오세요~" (일본어 Lv+1 · 호감도+10)',
       reactNo: '유키: "모르겠다니요? 열심히 공부하셔야죠!" (호감도-5)',
     },
+    ...EXTRA_JP_QUIZZES,
   ],
   en: [
     {
@@ -109,6 +111,7 @@ export const LANG_QUIZZES = {
       reactOk: '클로이: "Hell yeah! We\'ve got this!! 내가 사진 다 찍어줄게!" (영어 Lv+1 · 호감도+10)',
       reactNo: '클로이: "지금 졸리다고?! 의욕이 너무 없는데..." (호감도-5)',
     },
+    ...EXTRA_EN_QUIZZES,
   ],
 };
 

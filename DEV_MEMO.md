@@ -5,7 +5,14 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V29.1
+## 현재 최신 버전: V30.0
+- **V30.0**:
+  - **어학 퀴즈 200+문제 확장 & 언어 Lv.15+ 연인 신뢰 보너스 (`data/langQuizzes100.js`, `data/romance.js`, `app.js`)**: `LANG_QUIZZES.jp` / `.en` 각 106문제(총 212문제)로 확장 + 언어 Lv.10+ 소홀함 하락 `-4`, **Lv.15+ 유예 3일 & 하락 `-3`** 완화 적용
+  - **오늘의 시민영웅 일일 퀘스트 3종 (`rollDailyQuests`, `advanceDailyQuest`)**: 매일 참교육·순찰/채증·케어 3종 미션 부여, 올클리어 시 `+250P · 강화석 +3 · 청심환 +1`
+  - **보스전 전용 특수 기믹 (`bossGimmick`: `shield` / `countdown`)**: 철벽 변명 실드 3겹(약점·법전·필살기·채증으로 파괴) 및 3턴 광폭 카운트다운(기절 시 초기화) 도입
+  - **장비 세트 시너지 (`getGearSetSynergy`)**: `🟣 정예 영웅(에픽↑ 3부위: 시작 피버+25%·SP+5)`, `🟨 전설 수호자(유니크 2+: 피해+15%·치명+10%)`, `🪞 거울 반사(반사 방어구+악세: 피격 20% 자동 기절)`
+  - **피버 100% 수동 발동 `[노란 완장 풀개방!!]` & 스페셜 코스튬 2종 (`data/v17Systems.js`)**: 원하는 턴에 2턴 각성 변신 발동 + `⚡ 네오 사이버 슈트` · `👑 1대 영웅의 황금 코트` 추가 (`?v=63`)
+- **V29.1**:
 - **V29.1**:
   - **스크롤 없는 한 화면 전투 UI & 패시브 배지 접기 (`style.css`, `app.js`)**: 전투 진입/턴마다 `.story-container` `scrollTop = 0` 자동 정렬 + `.story-container.is-combat` 모바일 컴팩트 간격/프레임 높이(`138~158px`) 적용 + 상시 패시브 배지를 `✨ 패시브 N개 ▾` 토글 칩으로 압축해 1~2줄 유지 + 밤/심야 테마 HUD 스탯 숫자 가독성 수정
   - **합동 필살기 밸런스 개편 (`getTagSkillMeta`, `performTagSkill`)**: 합동 필살기 HP 회복 제거(회복 아이템 가치 유지) 및 **전투당 1회 사용 제한(`tagSkillUsedThisBattle`)** 적용 (`?v=62`)

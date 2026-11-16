@@ -80,6 +80,20 @@ export const COSTUMES = [
     unlockText: '유키 또는 클로이와 연인 성사',
     check: (s) => (s.lovers?.length || 0) >= 1,
   },
+  {
+    id: 'cyber',
+    name: '⚡ 네오 사이버 슈트',
+    desc: '매 턴 피버 +15% · 치명타 확률 +10%!',
+    unlockText: '레벨 15+ 또는 승리 30회+',
+    check: (s) => (s.level || 1) >= 15 || (s.winCount || 0) >= 30,
+  },
+  {
+    id: 'golden_hero',
+    name: '👑 1대 영웅의 황금 코트',
+    desc: '전 스탯 +5 · 매 턴 인내심 +12 회복!',
+    unlockText: '스토리 25화+ 또는 배틀타워 5층+',
+    check: (s) => (s.chapterIndex || 0) >= 24 || (s.bestTowerFloor || 0) >= 5 || !!s.storyCleared,
+  },
 ];
 
 export const CAPSULE_POOL = [
