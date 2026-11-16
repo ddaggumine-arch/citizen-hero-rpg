@@ -1138,6 +1138,57 @@ function showSceneCard(badge, ascii, sub = '') {
   elSceneCardSub.textContent = sub;
 }
 
+const VILLAIN_PERSONALITIES = {
+  aggro: { id: 'aggro', label: '🗣️ 어그로·허세형', hint: '팩트⬆️ · 거울⬇️', up: ['speech'], down: ['guts'] },
+  reckless: { id: 'reckless', label: '🦁 배째라·무대포형', hint: '법전⬆️ · 팩트⬇️', up: ['law'], down: ['speech'] },
+  slippery: { id: 'slippery', label: '⚖️ 얌체·법꾸라지형', hint: '거울⬆️ · 법전⬇️', up: ['guts'], down: ['law'] },
+  covert: { id: 'covert', label: '🕶️ 은폐·조작형', hint: '채증⬆️ · 법전⬇️', up: ['snap'], down: ['law'] },
+  tyrant: { id: 'tyrant', label: '👑 권력·갑질형', hint: '필살·합동⬆️ · 기본⬇️', up: ['special', 'tag'], down: ['speech', 'guts', 'law'] },
+};
+
+function getEnemyPersonality(enemy) {
+  if (!enemy) return VILLAIN_PERSONALITIES.aggro;
+  const id = String(enemy.id || '').toLowerCase();
+  if (enemy.personality && VILLAIN_PERSONALITIES[enemy.personality]) {
+    return VILLAIN_PERSONALITIES[enemy.personality];
+  }
+  if (/dumper|trash|deepfake|spy|leak|hack|stalker|scam|fake|sb_22|sb_26|sb_28/.test(id)) {
+    return VILLAIN_PERSONALITIES.covert;
+  }
+  if (/vip|boss|chaos|king|valet|golf|landlord|sb_20|sb_27|sb_30|hidden/.test(id)) {
+    return VILLAIN_PERSONALITIES.tyrant;
+  }
+  if (enemy.weakness === 'law') return VILLAIN_PERSONALITIES.reckless;
+  if (enemy.weakness === 'guts') return VILLAIN_PERSONALITIES.slippery;
+  return VILLAIN_PERSONALITIES.aggro;
+}
+
+function getActionStatValue(actionType) {
+  const s = state.stats || { speech: 2, guts: 2, law: 2 };
+  if (actionType === 'speech') return s.speech || 2;
+  if (actionType === 'guts') return s.guts || 2;
+  if (actionType === 'law' || actionType === 'snap') return s.law || 2;
+  return Math.round(((s.speech || 2) + (s.guts || 2) + (s.law || 2)) / 3);
+}
+
+function getMatchupInfo(enemy, actionType) {
+  const p = getEnemyPersonality(enemy);
+  const statVal = getActionStatValue(actionType);
+  const upBonus = statVal >= 50 ? 0.30 : (statVal >= 25 ? 0.15 : 0);
+  const downMit = statVal >= 50 ? 0.20 : (statVal >= 25 ? 0.10 : 0);
+  if (p.up.includes(actionType)) {
+    const base = actionType === 'snap' ? 1.75 : (actionType === 'special' || actionType === 'tag' ? 1.45 : 1.60);
+    const mult = Number((base + upBonus).toFixed(2));
+    return { mult, isUp: true, isDown: false, tag: `⬆️ 유리 ${mult}배!`, cls: 'weak' };
+  }
+  if (p.down.includes(actionType)) {
+    const base = p.id === 'tyrant' ? 0.80 : 0.70;
+    const mult = Number(Math.min(0.95, base + downMit).toFixed(2));
+    return { mult, isUp: false, isDown: true, tag: `⬇️ 반감 ${mult}배`, cls: 'resist' };
+  }
+  return { mult: 1.0, isUp: false, isDown: false, tag: '', cls: '' };
+}
+
 function setStageBg(bgFile) {
   if (!elFrame) return;
   if (bgFile) {
@@ -1951,59 +2002,60 @@ function performAttack(type) {
   const isFever = (state.feverTurns || 0) > 0;
   const spCost = isFever ? 20 : 40;
   const evo = getSkillEvolution(type);
+  const matchup = getMatchupInfo(enemy, type);
   if (type === 'speech') {
     const base = 18 + state.stats.speech * 4 + state.bonusDmg + allyFirstBonus + sodaBonus;
-    const isWeak = isFever || enemy.weakness === 'speech';
+    const isWeak = isFever || matchup.isUp || enemy.weakness === 'speech';
     hitWeakness = isWeak;
     const critRoll = isFever || Math.random() < (0.15 + state.critBonus + chloeCrit + (evo.critBonus || 0));
     if (critRoll && chloeCrit > 0) triggerPartnerCallout('chloe', 'Nice Shot! 📸');
-    dmg = Math.round(base * (evo.dmgMult || 1) * (isWeak ? 1.45 : 1) * (critRoll ? 1.5 : 1));
+    dmg = Math.round(base * (evo.dmgMult || 1) * matchup.mult * (critRoll ? 1.5 : 1));
     isCrit = isWeak || critRoll;
     state.sp = clamp(state.sp + 10, 0, state.maxSp);
     state.lawful += 5;
-    state.log = `${evo.title}! (적 멘탈 -${dmg}${isWeak ? ' · 약점 적중!' : ''}${critRoll ? ' · 치명타!' : ''})`;
+    state.log = `${evo.title}! (적 멘탈 -${dmg}${matchup.isUp ? ` · ${matchup.tag}` : (matchup.isDown ? ` · ${matchup.tag}` : '')}${critRoll ? ' · 치명타!' : ''})`;
   } else if (type === 'guts') {
     const base = 16 + state.stats.guts * 4 + state.bonusDmg + allyFirstBonus;
-    const isWeak = isFever || enemy.weakness === 'guts';
+    const isWeak = isFever || matchup.isUp || enemy.weakness === 'guts';
     hitWeakness = isWeak;
     const critRoll = isFever || Math.random() < chloeCrit;
-    dmg = Math.round(base * (evo.dmgMult || 1) * (isWeak ? 1.45 : 1) * (critRoll ? 1.5 : 1));
+    dmg = Math.round(base * (evo.dmgMult || 1) * matchup.mult * (critRoll ? 1.5 : 1));
     isCrit = isWeak || critRoll;
     const spGain = 15 + state.gutsSpBonus + (evo.spExtra || 0);
     state.sp = clamp(state.sp + spGain, 0, state.maxSp);
     if (evo.vampPct) state.hp = clamp(state.hp + Math.round(state.maxHp * evo.vampPct), 1, state.maxHp);
     state.chaotic += 10;
-    state.log = `${evo.title} 시전! (적 멘탈 -${dmg}, 사이다 +${spGain}, 광인 +10)`;
+    state.log = `${evo.title} 시전! (적 멘탈 -${dmg}${matchup.isUp ? ` · ${matchup.tag}` : (matchup.isDown ? ` · ${matchup.tag}` : '')}, 사이다 +${spGain})`;
   } else if (type === 'law') {
     sfx.dice();
     const roll = Math.floor(Math.random() * 20) + 1;
     const repBonus = rep.mode === 'lawful' ? 2 : 0;
     const costumeLawBonus = state.costume === 'police' ? 3 : 0;
     const total = roll + state.stats.law + state.diceBonus + repBonus + costumeLawBonus + (evo.diceExtra || 0);
-    const isWeak = isFever || enemy.weakness === 'law';
+    const isWeak = isFever || matchup.isUp || enemy.weakness === 'law';
     hitWeakness = isWeak;
     state.lawful += 10;
     if (total >= 12 || isFever) {
-      dmg = Math.round((24 + state.stats.law * 5 + state.bonusDmg + allyFirstBonus) * (evo.dmgMult || 1) * (isWeak ? 1.4 : 1));
+      dmg = Math.round((24 + state.stats.law * 5 + state.bonusDmg + allyFirstBonus) * (evo.dmgMult || 1) * matchup.mult);
       isCrit = true;
       state.enemyStunned = true;
       const gotApology = Math.random() < 0.5;
       if (gotApology) state.enemyApologyTurns = 2;
-      state.log = `${evo.title} [주사위 ${roll}+보정=${total}] 대성공! (멘탈 -${dmg} & 기절${gotApology ? ' · 📝반성문 2턴!' : '!'})`;
+      state.log = `${evo.title} [주사위 ${roll}+보정=${total}] 대성공! (멘탈 -${dmg}${matchup.tag ? ` · ${matchup.tag}` : ''} & 기절${gotApology ? ' · 📝반성문 2턴!' : '!'})`;
     } else {
-      dmg = 10 + state.bonusDmg + allyFirstBonus;
+      dmg = Math.round((10 + state.bonusDmg + allyFirstBonus) * matchup.mult);
       state.log = `${evo.title} [주사위 ${roll}+보정=${total}] 법 조항이 가물가물... (적 멘탈 -${dmg})`;
     }
   } else if (type === 'special') {
     if (state.sp < spCost) return;
     state.sp -= spCost;
-    dmg = Math.round((45 + state.spDmgBonus + state.bonusDmg + (state.stats.speech + state.stats.guts + state.stats.law) * 2) * (evo.dmgMult || 1));
+    dmg = Math.round((45 + state.spDmgBonus + state.bonusDmg + (state.stats.speech + state.stats.guts + state.stats.law) * 2) * (evo.dmgMult || 1) * matchup.mult);
     isCrit = true;
     hitWeakness = true;
     state.enemyStunned = true;
     state.lawful += 8;
     if (evo.healPct) state.hp = clamp(state.hp + Math.round(state.maxHp * evo.healPct), 1, state.maxHp);
-    state.log = `${evo.title}! 112·보건소 신고 + 공개 참교육!! (멘탈 -${dmg} & 기절!)`;
+    state.log = `${evo.title}! 112·보건소 신고 + 공개 참교육!! (멘탈 -${dmg}${matchup.tag ? ` · ${matchup.tag}` : ''} & 기절!)`;
   }
   const setAtkMult = 1 + (getGearSetSynergy().atkPct || 0);
   if (setAtkMult > 1) dmg = Math.round(dmg * setAtkMult);
@@ -4798,8 +4850,9 @@ function render() {
     elLocation.textContent = `DAY ${state.day} · ${enemy.location}`;
     elSceneTag.textContent = isBoss ? '보스전' : '빌런 조우';
     elSceneTag.className = `scene-tag ${isBoss ? 'boss' : ''}`;
+    const pType = getEnemyPersonality(enemy);
     elSceneTitle.textContent = enemy.name;
-    elWeaknessPill.textContent = enemy.weaknessLabel;
+    elWeaknessPill.textContent = `${pType.label} (${pType.hint})`;
     elWeaknessPill.classList.remove('hidden');
 
     elEnemyHpWrap.classList.remove('hidden');
@@ -4962,31 +5015,38 @@ function render() {
 
     const lawBonus = state.stats.law + state.diceBonus + (rep.mode === 'lawful' ? 2 : 0);
 
+    const muSpeech = getMatchupInfo(enemy, 'speech');
+    const muGuts = getMatchupInfo(enemy, 'guts');
+    const muLaw = getMatchupInfo(enemy, 'law');
+    const muSpec = getMatchupInfo(enemy, 'special');
+    const muSnap = getMatchupInfo(enemy, 'snap');
+    const muTag = getMatchupInfo(enemy, 'tag');
+
     const skills = [
       {
         title: getSkillEvolution('speech').title,
-        sub: enemy.weakness === 'speech' ? '약점 1.45배!' : `언변 ${state.stats.speech} 기반`,
-        subClass: enemy.weakness === 'speech' ? 'weak' : '',
+        sub: muSpeech.tag || `언변 ${state.stats.speech} 기반`,
+        subClass: muSpeech.cls,
         action: () => performAttack('speech'),
       },
       {
         title: getSkillEvolution('guts').title,
-        sub: enemy.weakness === 'guts' ? '약점 + 광인↑' : '사이다+15 · 광인↑',
-        subClass: enemy.weakness === 'guts' ? 'weak' : '',
+        sub: muGuts.tag ? `${muGuts.tag} · 사이다↑` : '사이다+15 · 광인↑',
+        subClass: muGuts.cls,
         action: () => performAttack('guts'),
       },
       {
         title: getSkillEvolution('law').title,
-        sub: `🎲 12+ 기절 (+${lawBonus}) · 모범↑`,
-        subClass: enemy.weakness === 'law' ? 'weak' : '',
+        sub: muLaw.tag ? `${muLaw.tag} · 🎲12+ 기절` : `🎲 12+ 기절 (+${lawBonus})`,
+        subClass: muLaw.cls,
         action: () => performAttack('law'),
       },
       {
         title: getSkillEvolution('special').title,
         sub: state.sp >= ((state.feverTurns || 0) > 0 ? 20 : 40)
-          ? `사이다 ${(state.feverTurns || 0) > 0 ? '20(피버 반값!)' : '40'} · 확정기절!`
+          ? `사이다 ${(state.feverTurns || 0) > 0 ? '20(피버 반값!)' : '40'}${muSpec.tag ? ` · ${muSpec.tag}` : ' · 확정기절!'}`
           : `사이다 부족 (${state.sp}/${(state.feverTurns || 0) > 0 ? 20 : 40})`,
-        subClass: 'sp',
+        subClass: muSpec.isUp ? 'weak' : 'sp',
         disabled: state.sp < ((state.feverTurns || 0) > 0 ? 20 : 40),
         action: () => performAttack('special'),
       },
@@ -5004,14 +5064,16 @@ function render() {
     // V14.0: 타이밍 채증 셔터 & 합동 필살기
     const snapBtn = document.createElement('button');
     snapBtn.className = 'choice-btn';
-    snapBtn.innerHTML = '<span>📸 채증 셔터</span><span class="choice-sub">타이밍 1.8배 · 채증+2</span>';
+    snapBtn.innerHTML = `<span>📸 채증 셔터</span><span class="choice-sub ${muSnap.cls}">${muSnap.tag ? `${muSnap.tag} · 채증+2` : '타이밍 1.8배 · 채증+2'}</span>`;
     snapBtn.addEventListener('click', () => {
       sfx.click();
       startTimingMinigame((isPerfect) => {
         const enemy = getEnemyById(state.currentEnemyId);
-        const dmg = isPerfect
+        const snapMu = getMatchupInfo(enemy, 'snap').mult;
+        const rawSnap = isPerfect
           ? Math.round((20 + state.stats.law * 4 + state.bonusDmg) * 1.8)
           : (12 + state.stats.law * 2 + state.bonusDmg);
+        const dmg = Math.round(rawSnap * snapMu);
         state.enemyHp = clamp(state.enemyHp - dmg, 0, state.enemyMaxHp);
         if (isPerfect) {
           state.pendingReports += 2;
@@ -5039,7 +5101,7 @@ function render() {
     const tagMeta = getTagSkillMeta();
     const tagUsed = !!state.tagSkillUsedThisBattle;
     tagBtn.disabled = tagUsed || state.sp < tagCost;
-    tagBtn.innerHTML = `<span>${tagMeta.title}</span><span class="choice-sub sp">${tagUsed ? '전투당 1회 사용 완료' : (state.sp >= tagCost ? `사이다 ${tagCost} · ${tagMeta.effectSummary}` : `사이다 부족 (${state.sp}/${tagCost})`)}</span>`;
+    tagBtn.innerHTML = `<span>${tagMeta.title}</span><span class="choice-sub ${muTag.isUp ? 'weak' : 'sp'}">${tagUsed ? '전투당 1회 사용 완료' : (state.sp >= tagCost ? `사이다 ${tagCost}${muTag.tag ? ` · ${muTag.tag}` : ''} · ${tagMeta.effectSummary}` : `사이다 부족 (${state.sp}/${tagCost})`)}</span>`;
     tagBtn.addEventListener('click', () => performTagSkill());
     elChoicesPanel.appendChild(tagBtn);
     return;
@@ -6584,7 +6646,8 @@ function performTagSkill() {
   state.sp = clamp(state.sp - tagCost, 0, state.maxSp);
 
   const baseDmg = 45 + (state.stats.speech + state.stats.guts + state.stats.law) * 3 + state.bonusDmg;
-  const dmg = Math.round(baseDmg * (meta.mult || 1));
+  const tagMu = getMatchupInfo(enemy, 'tag');
+  const dmg = Math.round(baseDmg * (meta.mult || 1) * tagMu.mult);
   state.enemyHp = clamp(state.enemyHp - dmg, 0, state.enemyMaxHp);
   state.enemyStunned = true;
 

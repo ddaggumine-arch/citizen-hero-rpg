@@ -1993,3 +1993,7 @@ body[data-time="midnight"] .illustration-frame {
   background-position: center center !important;
   background-repeat: no-repeat !important;
 }
+.choice-sub.resist {
+  color: #6b7280 !important;
+  font-weight: 700;
+}
