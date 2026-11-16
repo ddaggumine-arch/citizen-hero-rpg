@@ -1037,7 +1037,7 @@ body {
 }
 
 .hero-sprite.with-yuki {
-  left: 56px;
+  left: 54px;
 }
 
 .partner-sprite {
@@ -1051,19 +1051,19 @@ body {
 }
 
 .partner-sprite.yuki-pos {
-  left: 24px;
+  left: 22px;
   height: 68% !important;
   z-index: 5;
 }
 
 .partner-sprite.chloe-pos {
-  left: 52px;
+  left: 82px;
   height: 69% !important;
   z-index: 5;
 }
 
 .partner-sprite.chloe-pos.with-yuki {
-  left: 90px;
+  left: 116px;
 }
 
 .partner-sprite.kongi-pos {
