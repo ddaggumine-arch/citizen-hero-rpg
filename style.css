@@ -1382,13 +1382,13 @@ body {
 /* ===== V15.0 토스트 알림 · 상태 배지 · 타격감 · 야경 모드 ===== */
 .toast-container {
   position: absolute;
-  top: 56px;
+  bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
-  width: 90%;
-  max-width: 380px;
+  width: 92%;
+  max-width: 390px;
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
   gap: 5px;
   z-index: 90;
   pointer-events: none;
@@ -1968,8 +1968,8 @@ body[data-time="midnight"] .illustration-frame {
   gap: 4px;
 }
 .story-container.is-combat .illustration-frame.combat-stage {
-  min-height: 138px;
-  max-height: 158px;
+  min-height: 152px;
+  max-height: 176px;
 }
 .story-container.is-combat .quote-bubble {
   padding: 5px 9px;
@@ -1989,7 +1989,7 @@ body[data-time="midnight"] .illustration-frame {
 
 /* V31.0 구역·보스·자취방·법정·차량 배경 연동 */
 .illustration-frame.has-bg {
-  background-size: cover !important;
-  background-position: center !important;
+  background-size: 100% 100% !important;
+  background-position: center center !important;
   background-repeat: no-repeat !important;
 }
