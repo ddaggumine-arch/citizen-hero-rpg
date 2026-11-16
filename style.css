@@ -1986,3 +1986,10 @@ body[data-time="midnight"] .illustration-frame {
   border-color: #9ca3af;
   cursor: pointer;
 }
+
+/* V31.0 구역·보스·자취방·법정·차량 배경 연동 */
+.illustration-frame.has-bg {
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}

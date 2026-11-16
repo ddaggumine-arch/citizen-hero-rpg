@@ -960,13 +960,13 @@ function advanceDailyQuest(qId, amt = 1) {
   const item = dq.items.find((x) => x.id === qId);
   if (!item || item.cur >= item.goal) return;
   item.cur = Math.min(item.goal, item.cur + amt);
-  if (!dq.claimed && dq.items.every((x) => x.cur >= x.goal)) {
+  if (dq.claimed === false && dq.items.every((x) => x.cur >= x.goal)) {
     dq.claimed = true;
-    state.points += 250;
+    state.points += 120;
     state.scrap = (state.scrap || 0) + 3;
     if (!state.inventory) state.inventory = [];
     state.inventory.push('cheongsimhwan');
-    showToast('🎯 [일일 퀘스트 올클리어!!] +250P · 강화석 +3 · 청심환 +1!', 'break');
+    showToast('🎯 [일일 퀘스트 올클리어!!] +120P · 강화석 +3 · 청심환 +1!', 'break');
   }
 }
 
@@ -1135,6 +1135,17 @@ function showSceneCard(badge, ascii, sub = '') {
   elSceneCardSub.textContent = sub;
 }
 
+function setStageBg(bgFile) {
+  if (!elFrame) return;
+  if (bgFile) {
+    elFrame.style.backgroundImage = `linear-gradient(180deg, rgba(15,10,5,0.06) 0%, rgba(15,10,5,0.22) 100%), url('assets/images/${bgFile}?v=65')`;
+    elFrame.classList.add('has-bg');
+  } else {
+    elFrame.style.backgroundImage = '';
+    elFrame.classList.remove('has-bg');
+  }
+}
+
 function showEnemyVisual(enemy) {
   elSceneCard.classList.add('hidden');
   if (enemy.image) {
@@ -1144,6 +1155,21 @@ function showEnemyVisual(enemy) {
     elSceneImage.classList.toggle('enemy-sprite', isPngSprite);
     elSceneImage.classList.toggle('boss-scale', isPngSprite && (enemy.id === HIDDEN_BOSS.id || !!enemy.storyBossScale));
     elWantedPoster.classList.add('hidden');
+    if (isPngSprite) {
+      const isBoss = isBossId(enemy.id) || !!enemy.storyOnly || enemy.id === HIDDEN_BOSS.id;
+      if (enemy.id === HIDDEN_BOSS.id || (state.nightmareFloor || 0) > 0 || (isBoss && (state.chapterIndex || 0) >= 24)) {
+        setStageBg('bg_boss_final.jpg');
+      } else if ((state.towerFloor || 0) > 0) {
+        setStageBg('bg_court.jpg');
+      } else if (isBoss) {
+        setStageBg('bg_boss_normal.jpg');
+      } else {
+        const dId = enemy.district || getDistrictIdForEnemy(enemy.id) || 'mapo';
+        setStageBg(`bg_${dId}.jpg`);
+      }
+    } else {
+      setStageBg(null);
+    }
   } else {
     elSceneImage.classList.add('hidden');
     elSceneImage.classList.remove('enemy-sprite', 'boss-scale');
@@ -1420,7 +1446,7 @@ function startBattle(enemyId, isRandomEncounter = false) {
     name: `[Lv.${enemyLv}] ${mod ? `[${mod.label}] ` : ''}${floor > 0 ? `[타워 ${floor}층] ` : ''}${baseEnemy.name}`,
     maxHp: Math.round(rawMaxHp * diff.hpMult * ngMult),
     atk: Math.round(rawAtk * diff.atkMult * ngMult),
-    reward: Math.round((floor > 0 ? 25 + floor * 12 : baseEnemy.reward + enemyLv * 2) * diff.rewardMult * modRewardMult),
+    reward: Math.round((floor > 0 ? 25 + floor * 10 : baseEnemy.reward + Math.min(30, enemyLv)) * diff.rewardMult * modRewardMult),
   };
   const rep = getReputationInfo();
   let startHp = enemy.maxHp;
@@ -1695,10 +1721,10 @@ function handleEnemyDefeated(enemy) {
   if (state.invadedDistrict && state.invadedDistrict.enemyId === enemy.id) {
     const dName = state.invadedDistrict.name;
     state.invadedDistrict = null;
-    state.points += 150;
+    state.points += 90;
     state.scrap = (state.scrap || 0) + 3;
     rollGearDrop(true, Math.max(enemyLv, 20));
-    showToast(`🛡️ [${dName} 디펜스 성공!!] +150 P · 강화석 +3 · 보너스 장비!`, 'break');
+    showToast(`🛡️ [${dName} 디펜스 성공!!] +90 P · 강화석 +3 · 보너스 장비!`, 'break');
   }
   if (state.lovers?.includes('yuki') && state.lovers?.includes('chloe') && state.pet?.adopted) {
     state.partnerWinTicks = (state.partnerWinTicks || 0) + 1;
@@ -1863,10 +1889,10 @@ function checkStreamMission(actionId) {
   state.log += `\n📺 [시청자 미션 성공!] 도네이션 +${p} P · 팔로워 +${f}!`;
   if (state.goldenMission) {
     state.goldenMission = false;
-    state.points += 150;
+    state.points += 80;
     state.scrap = (state.scrap || 0) + 2;
-    state.log += `\n🌟 [동접 10만 황금 별풍선 잭팟!!] +150 P · 강화석 +2개 즉석 지급!`;
-    showToast(`🌟 황금 별풍선 잭팟!! +150 P · 강화석 +2!`, 'break');
+    state.log += `\n🌟 [동접 10만 황금 별풍선 잭팟!!] +80 P · 강화석 +2개 즉석 지급!`;
+    showToast(`🌟 황금 별풍선 잭팟!! +80 P · 강화석 +2!`, 'break');
   } else {
     showToast(`📺 도네이션 +${p} P · 팔로워 +${f}!`, 'good');
   }
@@ -2144,6 +2170,7 @@ function render() {
   elSceneCard.classList.add('hidden');
   elSceneImage.classList.add('hidden');
   elSceneImage.className = '';
+  setStageBg(null);
   if (elFrame) elFrame.classList.remove('combat-stage', 'couple-stage', 'story-stage');
   elHeroSprite.classList.add('hidden');
   elHeroSprite.classList.remove('with-yuki', 'couple-left');
@@ -2880,7 +2907,15 @@ function render() {
     elEnemyHpWrap.classList.add('hidden');
     elQuoteBubble.classList.add('hidden');
 
-    if (state.pet.adopted) {
+    if (state.lifeTab === 'room') {
+      elSceneImage.src = 'assets/images/bg_home.jpg?v=65';
+      elSceneImage.classList.remove('hidden');
+      elSceneCard.classList.add('hidden');
+    } else if ((state.carLevel || 0) >= 1 && (state.lifeTab === 'main' || !state.pet.adopted)) {
+      elSceneImage.src = `assets/images/bg_car_${Math.min(3, state.carLevel)}.jpg?v=65`;
+      elSceneImage.classList.remove('hidden');
+      elSceneCard.classList.add('hidden');
+    } else if (state.pet.adopted) {
       elSceneImage.src = 'assets/images/pet_walk.jpg';
       elSceneImage.classList.remove('hidden');
       elSceneCard.classList.add('hidden');
@@ -3055,13 +3090,14 @@ function render() {
         const sBtn = document.createElement('button');
         sBtn.className = 'choice-btn';
         sBtn.disabled = hold <= 0;
-        sBtn.innerHTML = `<span>💰 ${st.name} 매도 (+${price}P)</span><span class="choice-sub">${hold > 0 ? `1주 매도 가능 (보유 ${hold}주)` : '보유 주식 없음'}</span>`;
+        const netPrice = Math.round(price * 0.9);
+        sBtn.innerHTML = `<span>💰 ${st.name} 매도 (+${netPrice}P)</span><span class="choice-sub">${hold > 0 ? `수수료 10% 차감 (보유 ${hold}주)` : '보유 주식 없음'}</span>`;
         sBtn.addEventListener('click', () => {
           if (hold <= 0) return;
-          state.points += price;
+          state.points += netPrice;
           state.stockHoldings[st.id] = hold - 1;
           sfx.powerup();
-          state.log = `💰 [${st.name}] 1주 매도 완료! (+${price} P · 남은 ${hold - 1}주)`;
+          state.log = `💰 [${st.name}] 1주 매도 완료! (+${netPrice} P · 남은 ${hold - 1}주)`;
           saveGame();
           render();
         });
@@ -4189,7 +4225,14 @@ function render() {
     elEnemyHpWrap.classList.add('hidden');
     elQuoteBubble.textContent = ev.quote;
     elQuoteBubble.classList.remove('hidden');
-    elSceneImage.src = isConfess ? hero.imgSpecial : (ev.image || hero.imgNormal);
+    if (isConfess) {
+      elSceneImage.src = hero.imgSpecial;
+    } else if (state.isDriveDate) {
+      const carTier = Math.min(3, Math.max(1, state.carLevel || 1));
+      elSceneImage.src = `assets/images/drive_${key}_${carTier}.jpg?v=65`;
+    } else {
+      elSceneImage.src = ev.image || hero.imgNormal;
+    }
     elSceneImage.classList.remove('hidden');
     elBattleLog.textContent = ev.text;
     elChoicesPanel.className = 'choices-panel';
@@ -5217,6 +5260,7 @@ function render() {
     elEnemyHpWrap.classList.add('hidden');
     elQuoteBubble.textContent = cs.excuse;
     elQuoteBubble.classList.remove('hidden');
+    setStageBg('bg_court.jpg');
     showSceneCard(
       '⚖️ CITIZEN COURT · 즉결 심판',
       ` 사건: ${cs.villain} 약식 재판\n 보유 채증: ${state.pendingReports}건\n 성공 시 벌금 2.5배 (${Math.round(state.pendingReports * 25 * 2.5)} P) 몰수!`,
@@ -6145,13 +6189,13 @@ function openGearModal(filterRarity = currentGearFilter) {
 
   const gachaBtn = document.createElement('button');
   gachaBtn.className = 'gear-quick-btn';
-  gachaBtn.style.cssText = 'width:100%;margin-bottom:8px;padding:9px 8px;background:linear-gradient(90deg,#7e22ce 0%,#b45309 100%);';
-  gachaBtn.textContent = '🎁 암시장 전설 장비 상자 뽑기 (1,500P · 에픽72%/유니크28%)';
-  gachaBtn.disabled = state.points < 1500;
+  gachaBtn.style.cssText = 'width:100%;margin-bottom:6px;padding:9px 8px;background:linear-gradient(90deg,#7e22ce 0%,#b45309 100%);';
+  gachaBtn.textContent = '🎁 암시장 전설 상자 뽑기 (3,000P · 에픽72%/유니크28%)';
+  gachaBtn.disabled = state.points < 3000;
   gachaBtn.addEventListener('click', () => {
-    if (state.points < 1500) return;
+    if (state.points < 3000) return;
     sfx.victory();
-    state.points -= 1500;
+    state.points -= 3000;
     const rar = Math.random() < 0.28 ? 'unique' : 'epic';
     const lv = Math.max(15, state.level || 1);
     let pool = GEAR_LOOT_POOL.filter((x) => x.rarity === rar && (x.minDropLv || 1) <= lv);
@@ -6167,6 +6211,28 @@ function openGearModal(filterRarity = currentGearFilter) {
     render();
   });
   elEndingsList.appendChild(gachaBtn);
+
+  const mythicBtn = document.createElement('button');
+  mythicBtn.className = 'gear-quick-btn';
+  mythicBtn.style.cssText = 'width:100%;margin-bottom:8px;padding:9px 8px;background:linear-gradient(90deg,#b45309 0%,#dc2626 100%);';
+  mythicBtn.textContent = '💎 신화 영웅 패키지 (5,000P · 유니크 ★4 확정 + 강화석 5개!)';
+  mythicBtn.disabled = state.points < 5000;
+  mythicBtn.addEventListener('click', () => {
+    if (state.points < 5000) return;
+    sfx.victory();
+    state.points -= 5000;
+    state.scrap = (state.scrap || 0) + 5;
+    const pool = GEAR_LOOT_POOL.filter((x) => x.rarity === 'unique');
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    if (pick) {
+      state.gearBag.push(pick.id);
+      showToast(`💎 [신화 패키지 대박!!] 🟨 ${pick.name} + 강화석 5개!`, 'break');
+    }
+    saveGame();
+    openGearModal(currentGearFilter);
+    render();
+  });
+  elEndingsList.appendChild(mythicBtn);
 
   if (state.gearBag.length === 0) {
     const emptyP = document.createElement('p');
@@ -6366,12 +6432,12 @@ function openGearModal(filterRarity = currentGearFilter) {
       const encBtn = document.createElement('button');
       encBtn.className = 'use-btn';
       encBtn.style.background = '#7e22ce';
-      encBtn.textContent = encObj ? '재각인(800)' : '✨각인(800)';
-      encBtn.disabled = state.points < 800;
+      encBtn.textContent = encObj ? '재각인(1500)' : '✨각인(1500)';
+      encBtn.disabled = state.points < 1500;
       encBtn.addEventListener('click', () => {
-        if (state.points < 800) return;
+        if (state.points < 1500) return;
         sfx.powerup();
-        state.points -= 800;
+        state.points -= 1500;
         if (!state.gearEnchants) state.gearEnchants = {};
         const pickEnc = GEAR_ENCHANTS[Math.floor(Math.random() * GEAR_ENCHANTS.length)];
         state.gearEnchants[g.id] = pickEnc.id;
