@@ -4974,10 +4974,29 @@ function render() {
     elBattleLog.textContent = state.log;
     elChoicesPanel.className = 'choices-panel';
 
+    const getDraftMeta = (opt) => {
+      if (opt.kind === 'trait_new') return { tier: 's', rank: 4, label: '🟨 S급 · 신규 특성', cls: 'draft-card-s' };
+      if (opt.kind === 'loot_box') return { tier: 's', rank: 4, label: '🟨 S급 · 장비 보급', cls: 'draft-card-s' };
+      if (opt.kind === 'trait_up') {
+        const curLv = (state.traits || []).find((x) => x.id === opt.id)?.level || 1;
+        return curLv >= 4
+          ? { tier: 's', rank: 4, label: '🟨 S급 · 만렙 각성!', cls: 'draft-card-s' }
+          : { tier: 'a', rank: 3, label: '🟪 A급 · 특성 강화', cls: 'draft-card-a' };
+      }
+      if (opt.kind === 'gear_polish') return { tier: 'a', rank: 3, label: '🟪 A급 · 영구 스펙', cls: 'draft-card-a' };
+      if (opt.kind === 'first_aid_pack' || opt.kind === 'bounty_bonus') return { tier: 'b', rank: 2, label: '🟦 B급 · 보급/현상금', cls: 'draft-card-b' };
+      return { tier: 'c', rank: 1, label: '⬜ C급 · 기초 성장', cls: 'draft-card-c' };
+    };
+    const bestRank = Math.max(...state.draftOptions.map((o) => getDraftMeta(o).rank));
+    let shownRec = false;
+
     state.draftOptions.forEach((opt) => {
+      const meta = getDraftMeta(opt);
+      const isRec = !shownRec && meta.rank === bestRank && meta.rank >= 2;
+      if (isRec) shownRec = true;
       const btn = document.createElement('button');
-      btn.className = 'choice-btn';
-      btn.innerHTML = `<span>${opt.name}</span><span class="choice-sub">${opt.desc}</span>`;
+      btn.className = `choice-btn ${meta.cls}`;
+      btn.innerHTML = `<span><span class="draft-tier-badge ${meta.tier}">${meta.label}</span>${opt.name}${isRec ? ' <b style="color:#b45309;font-size:0.72rem;">✨추천</b>' : ''}</span><span class="choice-sub">${opt.desc}</span>`;
       btn.addEventListener('click', () => {
         sfx.powerup();
         vibrate([25, 25, 50]);

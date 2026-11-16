@@ -1842,3 +1842,37 @@ body[data-time="midnight"] .illustration-frame {
 }
 .inv-tag.heal { background: #dcfce7; color: #166534; }
 .inv-tag.equip { background: #ede9fe; color: #5b21b6; }
+
+/* V28.2 참교육 보상 3지선다 등급별 카드 스타일 */
+.draft-card-s {
+  border-color: #d97706 !important;
+  border-left: 5px solid #d97706 !important;
+  background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%) !important;
+}
+.draft-card-a {
+  border-color: #7e22ce !important;
+  border-left: 5px solid #7e22ce !important;
+  background: linear-gradient(180deg, #faf5ff 0%, #f3e8ff 100%) !important;
+}
+.draft-card-b {
+  border-color: #1d4ed8 !important;
+  border-left: 5px solid #1d4ed8 !important;
+  background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%) !important;
+}
+.draft-card-c {
+  border-color: #9ca3af !important;
+  border-left: 5px solid #9ca3af !important;
+}
+.draft-tier-badge {
+  display: inline-block;
+  font-size: 0.66rem;
+  font-weight: 900;
+  padding: 1px 6px;
+  border-radius: 99px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+.draft-tier-badge.s { background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; }
+.draft-tier-badge.a { background: #f3e8ff; color: #6b21a8; border: 1px solid #a855f7; }
+.draft-tier-badge.b { background: #dbeafe; color: #1e40af; border: 1px solid #60a5fa; }
+.draft-tier-badge.c { background: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db; }
