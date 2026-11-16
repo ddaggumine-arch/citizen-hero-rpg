@@ -70,9 +70,50 @@ const raw = [
   ['spirit_50', 'cider', 'unique', '🐉 궁극의 사이다 황금신룡', 25, 11, 0.15, 0.42, '50종 정령의 정점, 무지개 황금신룡이 응답했다!! 이제 진짜 서울의 수호신이야!!'],
 ];
 
+const PERK_MAP = {
+  speech: {
+    common: { id: 'pp_refund', desc: '승리 시 전 기술 PP +1 환급' },
+    rare:   { id: 'exp_up',    desc: '전투 획득 EXP +35% 증가' },
+    epic:   { id: 'boss_slayer', desc: '보스·강적 상대 피해 +20%' },
+    unique: { id: 'overdrive', desc: '전 속성 상성 +0.25배 · 매 턴 지원타' },
+  },
+  guts: {
+    common: { id: 'start_fever', desc: '전투 시작 시 피버 +30% 선제 충전' },
+    rare:   { id: 'drop_up',   desc: '장비 드랍률 +25% & 고철+1' },
+    epic:   { id: 'boss_slayer', desc: '보스·강적 상대 피해 +20%' },
+    unique: { id: 'overdrive', desc: '전 속성 상성 +0.25배 · 매 턴 지원타' },
+  },
+  law: {
+    common: { id: 'apology_up', desc: '법전·기절 시 반성문 100% 부여' },
+    rare:   { id: 'exp_up',    desc: '전투 획득 EXP +35% 증가' },
+    epic:   { id: 'boss_slayer', desc: '보스·강적 상대 피해 +20%' },
+    unique: { id: 'overdrive', desc: '전 속성 상성 +0.25배 · 매 턴 지원타' },
+  },
+  snap: {
+    common: { id: 'snap_wide', desc: '채증 셔터 PERFECT 판정 폭 1.5배' },
+    rare:   { id: 'drop_up',   desc: '장비 드랍률 +25% & 고철+1' },
+    epic:   { id: 'boss_slayer', desc: '보스·강적 상대 피해 +20%' },
+    unique: { id: 'overdrive', desc: '전 속성 상성 +0.25배 · 매 턴 지원타' },
+  },
+  cider: {
+    common: { id: 'turn_heal', desc: '매 턴 인내심 4% 자동 재생' },
+    rare:   { id: 'exp_up',    desc: '전투 획득 EXP +35% 증가' },
+    epic:   { id: 'boss_slayer', desc: '보스·강적 상대 피해 +20%' },
+    unique: { id: 'overdrive', desc: '전 속성 상성 +0.25배 · 매 턴 지원타' },
+  },
+};
+
+const ZONE_MAP = {
+  common: '마포·전구역 (Lv.1~10)',
+  rare:   '성수·종로 (Lv.11~25)',
+  epic:   '종로·강남 (Lv.21~40)',
+  unique: '강남·여의도·마계 (Lv.31+)',
+};
+
 export const SPIRITS_50 = raw.map(([id, element, rarity, name, atk, spRegen, crit, elemBoost, greet], i) => {
   const num = i + 1;
   const elInfo = SPIRIT_ELEMENTS[element];
+  const perk = PERK_MAP[element][rarity];
   return {
     id,
     num,
@@ -85,6 +126,9 @@ export const SPIRITS_50 = raw.map(([id, element, rarity, name, atk, spRegen, cri
     crit,
     elemBoost,
     greet,
-    desc: `${elInfo.label} · 공+${atk} · 매턴 SP+${spRegen} · 치명+${Math.round(crit * 100)}% · ${elInfo.skillName} +${Math.round(elemBoost * 100)}%`,
+    perkId: perk.id,
+    perkDesc: perk.desc,
+    zoneHint: ZONE_MAP[rarity],
+    desc: `${elInfo.label} · 공+${atk} · SP+${spRegen} · 치명+${Math.round(crit * 100)}% · ★특수: ${perk.desc}`,
   };
 });

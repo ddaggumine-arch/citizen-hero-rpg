@@ -10,7 +10,7 @@ import { COURT_CASES, COSTUMES, CAPSULE_POOL, PET_WALK_EVENTS } from './data/v17
 import { CLUES, SOME_CRISIS_EVENTS, RIVAL_EVENTS, REFORMED_ALLIES, GETTING_TO_KNOW_EVENTS, STORY_INTERLUDES, WEEKEND_EVENTS } from './data/v19Story.js?v=51';
 import { DIFFICULTIES, RARITY_INFO, GEAR_LOOT_POOL, GEAR_ENCHANTS, PET_JOBS, LOGIC_COUNTERS, generateCommunityPosts } from './data/v24Systems.js?v=61';
 import { KISS_SCENES, LOVER_ACTIONS, KISS_SCENE_CHOICES } from './data/v25Romance.js?v=71';
-import { SPIRITS_50, SPIRIT_ELEMENTS } from './data/spirits50.js?v=71';
+import { SPIRITS_50, SPIRIT_ELEMENTS } from './data/spirits50.js?v=72';
 import { UNLOCK_MILESTONES, isFeatureUnlocked, SEOUL_DISTRICTS, getDistrictIdForEnemy, getClearedDistrictCount } from './data/v26World.js?v=48';
 import { STORY_BOSSES } from './data/storyBosses.js?v=45';
 import { sfx } from './sound.js';
@@ -213,6 +213,7 @@ function createNewGameState() {
     skillPp: { speech: 12, guts: 10, law: 8, snap: 6 },
     spirits: {},
     equippedSpirit: null,
+    pendingSpiritEncounter: null,
     epilogueIdx: 0,
     epilogueSeen: false,
   };
@@ -1215,7 +1216,8 @@ function getMatchupInfo(enemy, actionType) {
   const downMit = statVal >= 50 ? 0.20 : (statVal >= 25 ? 0.10 : 0);
   if (p.up.includes(actionType)) {
     const base = actionType === 'snap' ? 1.75 : (actionType === 'special' || actionType === 'tag' ? 1.45 : 1.60);
-    const mult = Number((base + upBonus).toFixed(2));
+    const spOver = getSpiritBonuses().perkId === 'overdrive' ? 0.25 : 0;
+    const mult = Number((base + upBonus + spOver).toFixed(2));
     return { mult, isUp: true, isDown: false, tag: `⬆️ 유리 ${mult}배!`, cls: 'weak' };
   }
   if (p.down.includes(actionType)) {
@@ -1356,10 +1358,10 @@ function getEquippedBonuses() {
 
 function getSpiritBonuses() {
   const id = state.equippedSpirit;
-  if (!id) return { atk: 0, spRegen: 0, crit: 0, element: null, elemBoost: 0, spirit: null, lv: 0 };
+  if (!id) return { atk: 0, spRegen: 0, crit: 0, element: null, elemBoost: 0, perkId: null, spirit: null, lv: 0 };
   const sp = SPIRITS_50.find((x) => x.id === id);
   const lv = state.spirits?.[id] || 0;
-  if (!sp || lv <= 0) return { atk: 0, spRegen: 0, crit: 0, element: null, elemBoost: 0, spirit: null, lv: 0 };
+  if (!sp || lv <= 0) return { atk: 0, spRegen: 0, crit: 0, element: null, elemBoost: 0, perkId: null, spirit: null, lv: 0 };
   const lvMult = 1 + (lv - 1) * 0.25;
   return {
     atk: Math.round(sp.atk * lvMult),
@@ -1367,24 +1369,26 @@ function getSpiritBonuses() {
     crit: Number((sp.crit * lvMult).toFixed(3)),
     element: sp.element,
     elemBoost: Number((sp.elemBoost * lvMult).toFixed(2)),
+    perkId: sp.perkId || null,
     spirit: sp,
     lv,
   };
 }
 
-function grantSpirit(spiritId) {
+function grantSpirit(spiritId, autoEquip = false) {
   const sp = SPIRITS_50.find((x) => x.id === spiritId);
   if (!sp) return null;
   if (!state.spirits) state.spirits = {};
   const prevLv = state.spirits[spiritId] || 0;
   if (prevLv === 0) {
     state.spirits[spiritId] = 1;
-    if (!state.equippedSpirit) state.equippedSpirit = spiritId;
+    if (autoEquip || !state.equippedSpirit) state.equippedSpirit = spiritId;
     const msg = `👻 [수호정령 영입!!] ${sp.name}\n💬 나: "${sp.greet}"`;
     state.log = (state.log ? state.log + '\n' : '') + msg;
-    showToast(`👻 신규 정령 [${sp.name}]! "${sp.greet}"`, sp.rarity === 'unique' ? 'break' : 'good');
+    showToast(`👻 신규 정령 [${sp.name}] 영입!`, sp.rarity === 'unique' ? 'break' : 'good');
   } else if (prevLv < 5) {
     state.spirits[spiritId] = prevLv + 1;
+    if (autoEquip) state.equippedSpirit = spiritId;
     const msg = `✨ [정령 각성 Lv.${prevLv + 1}!] ${sp.name} — "${sp.greet}"`;
     state.log = (state.log ? state.log + '\n' : '') + msg;
     showToast(`✨ [${sp.name}] Lv.${prevLv + 1} 각성 완료!`, 'good');
@@ -1395,17 +1399,33 @@ function grantSpirit(spiritId) {
   return sp;
 }
 
-function rollSpiritDrop(isBoss = false) {
-  const chance = isBoss ? 0.55 : 0.22;
+function rollSpiritEncounter(isBoss = false, enemyLv = 1) {
+  if ((state.towerFloor || 0) > 0 || (state.nightmareFloor || 0) > 0) return null;
+  const chance = isBoss ? 0.55 : 0.26;
   if (Math.random() > chance) return null;
-  const r = Math.random();
+  const lv = Math.max(1, Number(enemyLv) || 1);
+  let weights;
+  if (lv >= 41) weights = { unique: 0.08, epic: 0.47, rare: 0.35, common: 0.10 };
+  else if (lv >= 31) weights = { unique: 0.04, epic: 0.36, rare: 0.45, common: 0.15 };
+  else if (lv >= 21) weights = { unique: 0.01, epic: 0.17, rare: 0.52, common: 0.30 };
+  else if (lv >= 11) weights = { unique: 0, epic: 0.03, rare: 0.42, common: 0.55 };
+  else weights = { unique: 0, epic: 0, rare: 0.15, common: 0.85 };
+
+  if (isBoss) {
+    weights.unique *= 2;
+    weights.epic *= 1.5;
+  }
+  const total = weights.unique + weights.epic + weights.rare + weights.common;
+  let r = Math.random() * total;
   let rar = 'common';
-  if (r < (isBoss ? 0.08 : 0.02)) rar = 'unique';
-  else if (r < (isBoss ? 0.28 : 0.12)) rar = 'epic';
-  else if (r < (isBoss ? 0.65 : 0.42)) rar = 'rare';
+  if (r < weights.unique) rar = 'unique';
+  else if (r < weights.unique + weights.epic) rar = 'epic';
+  else if (r < weights.unique + weights.epic + weights.rare) rar = 'rare';
+
   const pool = SPIRITS_50.filter((x) => x.rarity === rar);
   const pick = pool[Math.floor(Math.random() * pool.length)] || SPIRITS_50[0];
-  return grantSpirit(pick.id);
+  state.pendingSpiritEncounter = pick.id;
+  return pick;
 }
 
 function getGearSetSynergy() {
@@ -1447,7 +1467,8 @@ function notifyNewUnlocks(prevChapter, nextChapter) {
 
 function rollGearDrop(isBoss = false, enemyLv = state.currentEnemyLv || state.level || 1) {
   const diff = getDiffObj();
-  const dropChance = isBoss ? 1.0 : Math.min(0.95, diff.dropChance + (enemyLv >= 25 ? 0.1 : 0));
+  const spDropBonus = getSpiritBonuses().perkId === 'drop_up' ? 0.25 : 0;
+  const dropChance = isBoss ? 1.0 : Math.min(0.95, diff.dropChance + (enemyLv >= 25 ? 0.1 : 0) + spDropBonus);
   if (Math.random() > dropChance) return null;
 
   const lv = Math.max(1, Number(enemyLv) || 1);
@@ -1630,6 +1651,10 @@ function startBattle(enemyId, isRandomEncounter = false) {
   state.bossCountdown = state.bossGimmick === 'countdown' ? 3 : 0;
   const setSynStart = getGearSetSynergy();
   if (setSynStart.startFever > 0) addFever(setSynStart.startFever);
+  if (getSpiritBonuses().perkId === 'start_fever') {
+    addFever(30);
+    extraLog += `\n🔥 [${getSpiritBonuses().spirit.name}] 선제 기세로 피버 +30% 충전!`;
+  }
   if (state.bossGimmick === 'shield') extraLog += `\n🛡️ [보스 기믹] 철벽 변명 실드 3겹 전개! (약점·법전·채증으로 파괴!)`;
   if (state.bossGimmick === 'countdown') extraLog += `\n⏰ [보스 기믹] 3턴 광폭 카운트다운 시작! (기절로 초기화!)`;
   if ((state.startSpBonus || 0) > 0) {
@@ -1726,6 +1751,28 @@ function enemyCounterTurn(enemy, isGuarding = false) {
       handleEnemyDefeated(enemy);
       return;
     }
+  }
+
+  const spBonTurn = getSpiritBonuses();
+  if (spBonTurn.spirit && Math.random() < (spBonTurn.perkId === 'overdrive' ? 1.0 : 0.45)) {
+    const spHit = 8 + Math.round(spBonTurn.atk * 0.7);
+    state.enemyHp = clamp(state.enemyHp - spHit, 0, state.enemyMaxHp);
+    state.log += `\n👻 [${spBonTurn.spirit.name} 협공!] 수호정령의 기운이 빌런을 강타! (멘탈 -${spHit})`;
+    if (elSpiritSprite) {
+      elSpiritSprite.classList.remove('spirit-hop');
+      void elSpiritSprite.offsetWidth;
+      elSpiritSprite.classList.add('spirit-hop');
+    }
+    triggerEnemyHit(spHit, false);
+    if (state.enemyHp <= 0) {
+      handleEnemyDefeated(enemy);
+      return;
+    }
+  }
+  if (spBonTurn.perkId === 'turn_heal' && state.hp > 0) {
+    const regenHp = Math.max(4, Math.round(state.maxHp * 0.04));
+    state.hp = clamp(state.hp + regenHp, 1, state.maxHp);
+    state.log += `\n🫧 [${spBonTurn.spirit.name}] 탄산 재생! 인내심 +${regenHp}`;
   }
 
   const intentObj = ENEMY_INTENTS.find((i) => i.id === state.enemyIntent) || ENEMY_INTENTS[0];
@@ -1836,8 +1883,16 @@ function handleEnemyDefeated(enemy) {
   const nightBonus = state.timeIndex >= 2 ? Math.round(baseReward * 0.25) : 0;
   const dustBonus = (state.weather || 'sunny') === 'dust' ? 10 : 0;
   state.points += baseReward + nightBonus + dustBonus;
-  const expGain = Math.round((24 + (enemy.reward || 30) * 0.65) * ((isBossId(enemy.id) || enemy.storyOnly) ? 1.6 : 1) * (1 + (eqBon.expMult || 0)));
+  const expSpMult = getSpiritBonuses().perkId === 'exp_up' ? 1.35 : 1;
+  const expGain = Math.round((24 + (enemy.reward || 30) * 0.65) * ((isBossId(enemy.id) || enemy.storyOnly) ? 1.6 : 1) * (1 + (eqBon.expMult || 0)) * expSpMult);
   gainHeroExp(expGain);
+  if (getSpiritBonuses().perkId === 'pp_refund') {
+    restoreSkillPp(1);
+    state.log = (state.log ? state.log + '\n' : '') + `🎵 [${getSpiritBonuses().spirit.name}] 승리의 여운으로 전 기술 PP +1 환급!`;
+  }
+  if (getSpiritBonuses().perkId === 'drop_up') {
+    state.scrap = (state.scrap || 0) + 1;
+  }
   state.pendingReports += 1;
   if (state.pet?.adopted && state.pet.job === 'detective' && Math.random() < 0.5) {
     state.pendingReports += 1;
@@ -1845,7 +1900,7 @@ function handleEnemyDefeated(enemy) {
   }
   const enemyLv = state.currentEnemyLv || enemy.lv || state.level || 1;
   rollGearDrop(isBossId(enemy.id) || enemy.id === HIDDEN_BOSS.id, enemyLv);
-  rollSpiritDrop(isBossId(enemy.id) || enemy.id === HIDDEN_BOSS.id);
+  rollSpiritEncounter(isBossId(enemy.id) || enemy.id === HIDDEN_BOSS.id, enemyLv);
   if (enemyLv >= 15 && Math.random() < (enemyLv >= 35 ? 0.65 : 0.40)) {
     const scrapGain = enemyLv >= 35 ? 3 : (enemyLv >= 25 ? 2 : 1);
     state.scrap = (state.scrap || 0) + scrapGain;
@@ -2148,7 +2203,7 @@ function performAttack(type) {
       dmg = Math.round((24 + state.stats.law * 5 + state.bonusDmg + allyFirstBonus) * (evo.dmgMult || 1) * matchup.mult);
       isCrit = true;
       state.enemyStunned = true;
-      const gotApology = Math.random() < 0.5;
+      const gotApology = getSpiritBonuses().perkId === 'apology_up' ? true : Math.random() < 0.5;
       if (gotApology) state.enemyApologyTurns = 2;
       state.log = `${evo.title} [주사위 ${roll}+보정=${total}] 대성공! (멘탈 -${dmg}${matchup.tag ? ` · ${matchup.tag}` : ''} & 기절${gotApology ? ' · 📝반성문 2턴!' : '!'})`;
     } else {
@@ -2170,7 +2225,9 @@ function performAttack(type) {
   const spBonAtk = getSpiritBonuses();
   const spElemMatch = (spBonAtk.element === type) || (spBonAtk.element === 'cider' && type === 'special');
   const spElemMult = spElemMatch ? (1 + (spBonAtk.elemBoost || 0)) : 1;
-  if (setAtkMult > 1 || spElemMult > 1) dmg = Math.round(dmg * setAtkMult * spElemMult);
+  const isBossNow = isBossId(enemy.id) || !!enemy.storyOnly || enemy.id === HIDDEN_BOSS.id;
+  const spBossMult = (isBossNow && spBonAtk.perkId === 'boss_slayer') ? 1.20 : 1;
+  if (setAtkMult > 1 || spElemMult > 1 || spBossMult > 1) dmg = Math.round(dmg * setAtkMult * spElemMult * spBossMult);
   if (state.bossGimmick === 'shield' && (state.bossShield || 0) > 0) {
     const breakHits = (hitWeakness || type === 'law' || type === 'special') ? (type === 'special' ? 2 : 1) : 0;
     if (breakHits > 0) {
@@ -2419,6 +2476,108 @@ function render() {
   }
 
   updateBgmForPhase();
+
+  // V32.1 정령 조우 대기 시 전용 컷신 화면으로 전환
+  if (state.phase === 'map' && state.pendingSpiritEncounter) {
+    state.phase = 'spirit_encounter';
+  }
+
+  // 0.5 정령 조우 & 영입 컷신 (V32.1)
+  if (state.phase === 'spirit_encounter') {
+    const sp = SPIRITS_50.find((s) => s.id === state.pendingSpiritEncounter);
+    if (!sp) {
+      state.pendingSpiritEncounter = null;
+      state.phase = 'map';
+      render();
+      return;
+    }
+    const elInfo = SPIRIT_ELEMENTS[sp.element] || { name: sp.element, emoji: '✨', color: '#38bdf8' };
+    const ownedCount = state.spirits?.[sp.id] || 0;
+    const rarityBadge = { common: '일반', rare: '레어', epic: '에픽', unique: '유니크' }[sp.rarity] || sp.rarity;
+    elLocation.textContent = '✨ 정령 교감 · SPIRIT ENCOUNTER';
+    elSceneTag.textContent = `${elInfo.emoji} ${elInfo.name} · ${rarityBadge}`;
+    elSceneTag.className = 'scene-tag event';
+    elSceneTitle.textContent = `✨ [${sp.name}] 이(가) 모습을 드러냈다!`;
+    elWeaknessPill.classList.add('hidden');
+    elEnemyHpWrap.classList.add('hidden');
+    elQuoteBubble.classList.remove('hidden');
+    elQuoteBubble.textContent = `💬 주인공: "${sp.greet}"`;
+
+    showSceneCard(
+      `SPIRIT ENCOUNTER · ${elInfo.name.toUpperCase()}`,
+      `✨ ${elInfo.emoji} [${sp.name}] (${rarityBadge})`,
+      `출몰 구역: ${sp.zoneHint || '서울 전역'}`
+    );
+
+    elBattleLog.innerHTML = `
+      <div style="display:flex;gap:12px;align-items:center;padding:8px 10px;border-radius:10px;background:rgba(15,23,42,0.55);border:1px solid ${elInfo.color}66;">
+        <img src="./images/spirits/${sp.id}.png" alt="${sp.name}" style="width:76px;height:76px;object-fit:contain;border-radius:10px;background:rgba(255,255,255,0.92);padding:4px;flex-shrink:0;" />
+        <div style="font-size:12px;line-height:1.5;flex:1;">
+          <div style="font-weight:800;font-size:14px;color:${elInfo.color};">${elInfo.emoji} ${sp.name} <span style="font-size:11px;opacity:0.85;">[${rarityBadge}]${ownedCount > 0 ? ` · 현재 ${ownedCount}체 보유` : ' · 첫 만남!'}</span></div>
+          <div style="color:#e2e8f0;margin-top:2px;">${sp.desc}</div>
+          <div style="color:#fde047;font-weight:700;margin-top:4px;">★ 특수 기술: ${sp.perkDesc || '전투 시 동행 지원'}</div>
+          <div style="color:#94a3b8;font-size:11px;margin-top:2px;">📍 출몰: ${sp.zoneHint || '서울 전역'} · 전투 중 함께 따라다니며 지원 공격!</div>
+        </div>
+      </div>
+    `;
+
+    elChoicesPanel.className = 'choices-panel';
+    elChoicesPanel.innerHTML = '';
+
+    const finishEncounter = (msg) => {
+      state.pendingSpiritEncounter = null;
+      state.phase = 'map';
+      state.lastLog = msg;
+      saveGame();
+      render();
+    };
+
+    const btnEquip = document.createElement('button');
+    btnEquip.className = 'choice-btn primary';
+    btnEquip.innerHTML = `<span class="choice-title">✨ 교감 영입 + 바로 동행하기</span><span class="choice-sub">${sp.name}을(를) 영입하고 전투 파트너로 즉시 장착합니다!</span>`;
+    btnEquip.onclick = () => {
+      const res = grantSpirit(sp.id, true);
+      sfx.win?.();
+      finishEncounter(`✨ ${sp.name} 영입 완료! (Lv.${res.count} · 바로 동행 중) "${sp.greet}"`);
+    };
+
+    const btnStore = document.createElement('button');
+    btnStore.className = 'choice-btn';
+    btnStore.innerHTML = `<span class="choice-title">📖 도감에 보관하고 나중에 동행하기</span><span class="choice-sub">현재 동행 중인 정령을 유지하고 도감에만 등록합니다.</span>`;
+    btnStore.onclick = () => {
+      const res = grantSpirit(sp.id, false);
+      sfx.click?.();
+      finishEncounter(`📖 ${sp.name}을(를) 정령 도감에 보관했습니다! (보유 ${res.count}체)`);
+    };
+
+    const canSnack = state.money >= 300;
+    const btnSnack = document.createElement('button');
+    btnSnack.className = 'choice-btn';
+    btnSnack.disabled = !canSnack;
+    btnSnack.innerHTML = `<span class="choice-title">🍡 정령 간식으로 호감도 대폭 상승 (300P)</span><span class="choice-sub">${canSnack ? '간식을 나눠주어 +2체 추가 교감(총 +3체) + 즉시 동행!' : '포인트가 부족합니다 (300P 필요)'}</span>`;
+    btnSnack.onclick = () => {
+      if (state.money < 300) return;
+      state.money -= 300;
+      grantSpirit(sp.id, true);
+      grantSpirit(sp.id, false);
+      const res = grantSpirit(sp.id, false);
+      sfx.win?.();
+      finishEncounter(`🍡 정령 간식 대성공! ${sp.name} 호감도 Lv.${res.count} 달성 및 동행 시작!`);
+    };
+
+    const btnRelease = document.createElement('button');
+    btnRelease.className = 'choice-btn';
+    btnRelease.innerHTML = `<span class="choice-title">🍃 조용히 보내주기 (사이다 +30 · 평판 +2)</span><span class="choice-sub">정령의 기운만 받고 자유롭게 보내줍니다.</span>`;
+    btnRelease.onclick = () => {
+      state.mp = Math.min(getMaxMp(), state.mp + 30);
+      state.rep += 2;
+      sfx.click?.();
+      finishEncounter(`🍃 ${sp.name}을(를) 자유롭게 보내주었습니다. (사이다 +30, 평판 +2)`);
+    };
+
+    elChoicesPanel.append(btnEquip, btnStore, btnSnack, btnRelease);
+    return;
+  }
 
   // 1. 타이틀 화면
   if (state.phase === 'title') {
@@ -6217,7 +6376,8 @@ function startTimingMinigame(onFinish) {
     clearInterval(timer);
     btnTimingTap.removeEventListener('click', handleTap);
     elTimingModal.classList.add('hidden');
-    const isPerfect = pos >= 38 && pos <= 62;
+    const wide = getSpiritBonuses().perkId === 'snap_wide';
+    const isPerfect = wide ? (pos >= 32 && pos <= 68) : (pos >= 38 && pos <= 62);
     onFinish(isPerfect);
   };
   btnTimingTap.addEventListener('click', handleTap);
@@ -6810,9 +6970,9 @@ function openSpiritModal(filterEl = 'all') {
     state.points -= 600;
     const r = Math.random();
     let rar = 'common';
-    if (r < 0.06) rar = 'unique';
-    else if (r < 0.24) rar = 'epic';
-    else if (r < 0.60) rar = 'rare';
+    if (r < 0.02) rar = 'unique';
+    else if (r < 0.13) rar = 'epic';
+    else if (r < 0.45) rar = 'rare';
     const pool = SPIRITS_50.filter((x) => x.rarity === rar);
     const pick = pool[Math.floor(Math.random() * pool.length)] || SPIRITS_50[0];
     grantSpirit(pick.id);
@@ -6863,10 +7023,10 @@ function openSpiritModal(filterEl = 'all') {
     card.style.opacity = lv > 0 ? '1' : '0.68';
     if (lv > 0) {
       card.innerHTML = `
-        <img src="${sp.img}?v=71" alt="${sp.name}" class="item-thumb" style="width:44px;height:44px;object-fit:contain;" />
+        <img src="${sp.img}?v=72" alt="${sp.name}" class="item-thumb" style="width:44px;height:44px;object-fit:contain;" />
         <div class="inv-info">
           <h4 style="color:${rInfo.color};">[${rInfo.short}] ${sp.name} Lv.${lv}/5 ${isEq ? '✅동행중' : ''}</h4>
-          <p>${sp.desc}<br/><span style="color:#695544;font-style:italic;">"${sp.greet}"</span></p>
+          <p>${sp.desc}<br/><span style="color:#1e40af;font-size:0.68rem;">📍 출몰: ${sp.zoneHint}</span><br/><span style="color:#695544;font-style:italic;">"${sp.greet}"</span></p>
         </div>
       `;
       const eqBtn = document.createElement('button');
@@ -6884,7 +7044,7 @@ function openSpiritModal(filterEl = 'all') {
       card.innerHTML = `
         <div class="inv-info">
           <h4>🔒 #${sp.num} 미발견 [${elInfo.label} · ${rInfo.short}]</h4>
-          <p>전투 승리 또는 정령 소환으로 영입할 수 있습니다.</p>
+          <p>📍 출몰: ${sp.zoneHint} · ★특수: ${sp.perkDesc}</p>
         </div>
       `;
     }
