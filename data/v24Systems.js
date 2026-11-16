@@ -34,10 +34,10 @@ export const DIFFICULTIES = {
 };
 
 export const RARITY_INFO = {
-  common: { label: '⬜ 일반', color: '#6c757d', salvageP: 15 },
-  rare: { label: '🟦 레어', color: '#1d4ed8', salvageP: 35 },
-  epic: { label: '🟪 에픽', color: '#7e22ce', salvageP: 80 },
-  unique: { label: '🟨 유니크', color: '#b45309', salvageP: 250 },
+  common: { label: '⬜ 일반 ★1 (C)', short: '★1 일반', tier: 1, color: '#6c757d', salvageP: 15 },
+  rare: { label: '🟦 레어 ★2 (B)', short: '★2 레어', tier: 2, color: '#1d4ed8', salvageP: 35 },
+  epic: { label: '🟪 에픽 ★3 (A)', short: '★3 에픽', tier: 3, color: '#7e22ce', salvageP: 80 },
+  unique: { label: '🟨 유니크 ★4 (S)', short: '★4 유니크', tier: 4, color: '#b45309', salvageP: 250 },
 };
 
 export const GEAR_LOOT_POOL = [

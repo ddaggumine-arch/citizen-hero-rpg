@@ -8,7 +8,7 @@ import { CARS, GEAR_UPGRADES, ACHIEVEMENTS } from './data/lifestyle.js';
 import { STREAM_MISSIONS, ROOM_UPGRADES, GUERRILLA_VILLAINS, STOCKS, HEROINE_GIFTS } from './data/v16Systems.js';
 import { COURT_CASES, COSTUMES, CAPSULE_POOL, PET_WALK_EVENTS } from './data/v17Systems.js';
 import { CLUES, SOME_CRISIS_EVENTS, RIVAL_EVENTS, REFORMED_ALLIES, GETTING_TO_KNOW_EVENTS, STORY_INTERLUDES, WEEKEND_EVENTS } from './data/v19Story.js?v=51';
-import { DIFFICULTIES, RARITY_INFO, GEAR_LOOT_POOL, PET_JOBS, LOGIC_COUNTERS, generateCommunityPosts } from './data/v24Systems.js?v=51';
+import { DIFFICULTIES, RARITY_INFO, GEAR_LOOT_POOL, PET_JOBS, LOGIC_COUNTERS, generateCommunityPosts } from './data/v24Systems.js?v=56';
 import { KISS_SCENES, LOVER_ACTIONS } from './data/v25Romance.js';
 import { UNLOCK_MILESTONES, isFeatureUnlocked, SEOUL_DISTRICTS, getDistrictIdForEnemy, getClearedDistrictCount } from './data/v26World.js?v=48';
 import { STORY_BOSSES } from './data/storyBosses.js?v=45';
@@ -1218,18 +1218,37 @@ function rollGearDrop(isBoss = false, enemyLv = state.currentEnemyLv || state.le
 
   if (!state.gearBag) state.gearBag = [];
   if (!state.equipped) state.equipped = { weapon: null, armor: null, acc: null };
+  const slotNames = { weapon: '무기', armor: '방어구', acc: '악세서리' };
+  const prevId = state.equipped[picked.slot];
+  const prevGear = prevId ? GEAR_LOOT_POOL.find((x) => x.id === prevId) : null;
+  const newScore = getGearPowerScore(picked, state.gearPlus?.[picked.id] || 0);
+  const prevScore = prevGear ? getGearPowerScore(prevGear, state.gearPlus?.[prevGear.id] || 0) : -1;
+
   state.gearBag.push(picked.id);
-  if (!state.equipped[picked.slot]) {
+  let cmpHint = '';
+  if (!prevGear) {
     state.equipped[picked.slot] = picked.id;
+    cmpHint = '✨ 빈 슬롯 자동 장착!';
+  } else if (newScore > prevScore) {
+    cmpHint = `🔥 현재 ${slotNames[picked.slot]}보다 강함! (창고서 교체 추천)`;
+  } else {
+    cmpHint = `♻️ 기존 장비가 더 강함 (고철 분해 추천)`;
   }
   const rLabel = RARITY_INFO[rarity]?.label || rarity;
+  const dropLine = `🎁 [${rLabel} · ${slotNames[picked.slot]}] ${picked.name} (${picked.desc}) — ${cmpHint}`;
+  state.log = (state.log ? state.log + '\n' : '') + dropLine;
   showToast(
     rarity === 'unique'
-      ? `🟨✨ [Lv.${lv} 기적!! 유니크 드랍!] ${picked.name} 획득!!`
-      : `🎁 [Lv.${lv} · ${rLabel}] ${picked.name} 획득!`,
+      ? `🟨✨ [Lv.${lv} 유니크 ★4!!] ${picked.name} (${picked.desc})`
+      : `🎁 [${rLabel}] ${picked.name} — ${cmpHint}`,
     rarity === 'unique' ? 'break' : 'good'
   );
   return picked;
+}
+
+function getGearPowerScore(g, plus = 0) {
+  if (!g) return 0;
+  return (g.atk || 0) + plus * 3 + ((g.def || 0) + plus * 2) * 0.9 + (g.crit || 0) * 80 + (g.reflect || 0) * 60 + (g.spRegen || 0) * 1.5;
 }
 
 function pickLevelAppropriateVillain(pool, heroLv = state.level || 1) {
@@ -5366,9 +5385,12 @@ btnInventory.addEventListener('click', () => {
       const item = ITEMS[id];
       if (!item) return;
       const used = !item.consumable && state.usedEquipThisBattle.includes(id);
+      const tagHtml = item.consumable
+        ? '<span class="inv-tag heal">💊 소모품</span>'
+        : '<span class="inv-tag equip">⚔️ 영구장비</span>';
       const card = document.createElement('div');
       card.className = 'inv-item';
-      card.innerHTML = `${itemImgHtml(id, 'item-thumb')}<div class="inv-info"><h4>${item.name}</h4><p>${item.desc}</p></div>`;
+      card.innerHTML = `${itemImgHtml(id, 'item-thumb')}<div class="inv-info"><h4>${item.name}${tagHtml}</h4><p>${item.desc}</p></div>`;
       const uBtn = document.createElement('button');
       uBtn.className = 'use-btn';
       uBtn.textContent = used ? '사용완료' : '사용';
@@ -5748,15 +5770,98 @@ function openGearModal() {
 
   const slotNames = { weapon: '⚔️ 무기', armor: '🧥 방어구', acc: '🎖️ 악세서리' };
   const scrapMap = { common: 1, rare: 2, epic: 4, unique: 8 };
+
+  const guideBar = document.createElement('div');
+  guideBar.className = 'gear-guide-bar';
+  guideBar.textContent = '등급: ⬜일반 ★1(C) < 🟦레어 ★2(B) < 🟪에픽 ★3(A) < 🟨유니크 ★4(S)';
+  elEndingsList.appendChild(guideBar);
+
   if (state.gearBag.length === 0) {
-    elEndingsList.innerHTML = '<p style="text-align:center;color:#695544;padding:16px 0;">아직 파밍한 장비가 없습니다. 빌런/보스를 처치해 레어~0.1% 유니크 장비를 획득하세요!</p>';
+    const emptyP = document.createElement('p');
+    emptyP.style.cssText = 'text-align:center;color:#695544;padding:16px 0;';
+    emptyP.textContent = '아직 파밍한 장비가 없습니다. 빌런/보스를 처치해 레어~유니크 장비를 획득하세요!';
+    elEndingsList.appendChild(emptyP);
   } else {
+    const quickWrap = document.createElement('div');
+    quickWrap.className = 'gear-quick-actions';
+    const autoEqBtn = document.createElement('button');
+    autoEqBtn.className = 'gear-quick-btn';
+    autoEqBtn.style.background = '#15803d';
+    autoEqBtn.textContent = '⚡ 부위별 최강 자동 장착';
+    autoEqBtn.addEventListener('click', () => {
+      sfx.powerup();
+      ['weapon', 'armor', 'acc'].forEach((slot) => {
+        let bestId = null;
+        let bestScore = -1;
+        state.gearBag.forEach((gid) => {
+          const item = GEAR_LOOT_POOL.find((x) => x.id === gid);
+          if (!item || item.slot !== slot) return;
+          const sc = getGearPowerScore(item, state.gearPlus?.[item.id] || 0);
+          if (sc > bestScore) { bestScore = sc; bestId = item.id; }
+        });
+        if (bestId) state.equipped[slot] = bestId;
+      });
+      showToast('⚡ 부위별 최강 장비로 자동 세팅 완료!', 'good');
+      saveGame();
+      openGearModal();
+      render();
+    });
+    const bulkSalBtn = document.createElement('button');
+    bulkSalBtn.className = 'gear-quick-btn';
+    bulkSalBtn.style.background = '#9e2a2b';
+    bulkSalBtn.textContent = '🔨 미장착 일반·레어 일괄분해';
+    bulkSalBtn.addEventListener('click', () => {
+      let cnt = 0;
+      let ptsGain = 0;
+      let scrapGain = 0;
+      const kept = [];
+      state.gearBag.forEach((gid) => {
+        const item = GEAR_LOOT_POOL.find((x) => x.id === gid);
+        const isCurrentlyEq = item && state.equipped?.[item.slot] === item.id;
+        if (item && !isCurrentlyEq && (item.rarity === 'common' || item.rarity === 'rare')) {
+          cnt += 1;
+          ptsGain += RARITY_INFO[item.rarity]?.salvageP || 15;
+          scrapGain += scrapMap[item.rarity] || 1;
+        } else {
+          kept.push(gid);
+        }
+      });
+      if (cnt === 0) {
+        showToast('분해할 미장착 일반·레어 장비가 없습니다.', 'warn');
+        return;
+      }
+      sfx.powerup();
+      state.gearBag = kept;
+      state.points += ptsGain;
+      state.scrap = (state.scrap || 0) + scrapGain;
+      showToast(`🔨 ${cnt}개 일괄 분해! +${ptsGain}P · 강화석 +${scrapGain}개`, 'good');
+      saveGame();
+      openGearModal();
+      render();
+    });
+    quickWrap.appendChild(autoEqBtn);
+    quickWrap.appendChild(bulkSalBtn);
+    elEndingsList.appendChild(quickWrap);
+
     state.gearBag.forEach((gid, idx) => {
       const g = GEAR_LOOT_POOL.find((x) => x.id === gid);
       if (!g) return;
       const rInfo = RARITY_INFO[g.rarity] || RARITY_INFO.common;
       const isEq = state.equipped[g.slot] === g.id;
       const plus = state.gearPlus[g.id] || 0;
+      const eqGearId = state.equipped[g.slot];
+      const eqGear = eqGearId ? GEAR_LOOT_POOL.find((x) => x.id === eqGearId) : null;
+      let cmpBadge = '';
+      if (!isEq && eqGear) {
+        const curSc = getGearPowerScore(eqGear, state.gearPlus?.[eqGear.id] || 0);
+        const thisSc = getGearPowerScore(g, plus);
+        const atkDiff = ((g.atk || 0) + plus * 3) - ((eqGear.atk || 0) + (state.gearPlus?.[eqGear.id] || 0) * 3);
+        const defDiff = ((g.def || 0) + plus * 2) - ((eqGear.def || 0) + (state.gearPlus?.[eqGear.id] || 0) * 2);
+        const diffStr = `${atkDiff >= 0 ? `공+${atkDiff}` : `공${atkDiff}`}·${defDiff >= 0 ? `방+${defDiff}` : `방${defDiff}`}`;
+        cmpBadge = thisSc > curSc
+          ? `<span class="gear-cmp-up">▲ UP (${diffStr})</span>`
+          : `<span class="gear-cmp-down">▼ 하위 (${diffStr})</span>`;
+      }
       const needScrap = 1 + Math.floor(plus / 2);
       const needPts = 30 + plus * 20;
       const gainScrap = scrapMap[g.rarity] || 1;
@@ -5766,7 +5871,7 @@ function openGearModal() {
       card.innerHTML = `
         ${itemImgHtml(g.icon, 'item-thumb')}
         <div class="inv-info">
-          <h4 style="color:${rInfo.color};">[${rInfo.label}] ${g.name}${plus > 0 ? ` +${plus}` : ''} ${isEq ? '✅장착중' : ''}</h4>
+          <h4 style="color:${rInfo.color};">[${rInfo.label}] ${g.name}${plus > 0 ? ` +${plus}` : ''} ${isEq ? '✅장착중' : ''}${cmpBadge}</h4>
           <p>${slotNames[g.slot]} · ${g.desc}${plus > 0 ? ` (강화: 공+${plus * 3}, 방+${plus * 2})` : ''}</p>
         </div>
       `;
