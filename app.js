@@ -212,8 +212,10 @@ function createNewGameState() {
     bossCountdown: 0,
     skillPp: { speech: 12, guts: 10, law: 8, snap: 6 },
     spirits: {},
+    spiritProgress: {},
     equippedSpirit: null,
     pendingSpiritEncounter: null,
+    spiritCaptureResult: null,
     epilogueIdx: 0,
     epilogueSeen: false,
   };
@@ -1356,13 +1358,47 @@ function getEquippedBonuses() {
   return res;
 }
 
+function getSpiritNextExp(lv) {
+  return 50 + Math.max(0, lv - 1) * 35;
+}
+
+function getSpiritProgress(spiritId) {
+  if (!state.spiritProgress) state.spiritProgress = {};
+  const p = state.spiritProgress[spiritId] || { lv: 1, exp: 0 };
+  const lv = Math.max(1, Math.min(20, p.lv || 1));
+  return { lv, exp: p.exp || 0, maxExp: getSpiritNextExp(lv) };
+}
+
+function gainSpiritExp(spiritId, amount) {
+  const sp = SPIRITS_50.find((x) => x.id === spiritId);
+  if (!sp || !state.spirits?.[spiritId] || amount <= 0) return { leveledUp: false, lv: 1 };
+  if (!state.spiritProgress) state.spiritProgress = {};
+  if (!state.spiritProgress[spiritId]) state.spiritProgress[spiritId] = { lv: 1, exp: 0 };
+  const prog = state.spiritProgress[spiritId];
+  if (prog.lv >= 20) return { leveledUp: false, lv: 20 };
+  prog.exp += amount;
+  let leveledUp = false;
+  while (prog.lv < 20 && prog.exp >= getSpiritNextExp(prog.lv)) {
+    prog.exp -= getSpiritNextExp(prog.lv);
+    prog.lv += 1;
+    leveledUp = true;
+  }
+  if (prog.lv >= 20) prog.exp = 0;
+  if (leveledUp) {
+    state.log = (state.log ? state.log + '\n' : '') + `🌟 [정령 레벨업!] ${sp.name} Lv.${prog.lv} 달성! (능력치·특수기술 강화)`;
+    showToast(`🌟 [${sp.name}] Lv.${prog.lv} 레벨업!`, 'good');
+  }
+  return { leveledUp, lv: prog.lv };
+}
+
 function getSpiritBonuses() {
   const id = state.equippedSpirit;
-  if (!id) return { atk: 0, spRegen: 0, crit: 0, element: null, elemBoost: 0, perkId: null, spirit: null, lv: 0 };
+  if (!id) return { atk: 0, spRegen: 0, crit: 0, element: null, elemBoost: 0, perkId: null, spirit: null, lv: 0, growthLv: 0 };
   const sp = SPIRITS_50.find((x) => x.id === id);
   const lv = state.spirits?.[id] || 0;
-  if (!sp || lv <= 0) return { atk: 0, spRegen: 0, crit: 0, element: null, elemBoost: 0, perkId: null, spirit: null, lv: 0 };
-  const lvMult = 1 + (lv - 1) * 0.25;
+  if (!sp || lv <= 0) return { atk: 0, spRegen: 0, crit: 0, element: null, elemBoost: 0, perkId: null, spirit: null, lv: 0, growthLv: 0 };
+  const growthLv = getSpiritProgress(id).lv;
+  const lvMult = (1 + (lv - 1) * 0.20) * (1 + (growthLv - 1) * 0.045);
   return {
     atk: Math.round(sp.atk * lvMult),
     spRegen: Math.round(sp.spRegen * lvMult),
@@ -1372,6 +1408,7 @@ function getSpiritBonuses() {
     perkId: sp.perkId || null,
     spirit: sp,
     lv,
+    growthLv,
   };
 }
 
@@ -1379,9 +1416,11 @@ function grantSpirit(spiritId, autoEquip = false) {
   const sp = SPIRITS_50.find((x) => x.id === spiritId);
   if (!sp) return null;
   if (!state.spirits) state.spirits = {};
+  if (!state.spiritProgress) state.spiritProgress = {};
   const prevLv = state.spirits[spiritId] || 0;
   if (prevLv === 0) {
     state.spirits[spiritId] = 1;
+    state.spiritProgress[spiritId] = { lv: 1, exp: 0 };
     if (autoEquip || !state.equippedSpirit) state.equippedSpirit = spiritId;
     const msg = `👻 [수호정령 영입!!] ${sp.name}\n💬 나: "${sp.greet}"`;
     state.log = (state.log ? state.log + '\n' : '') + msg;
@@ -1389,14 +1428,16 @@ function grantSpirit(spiritId, autoEquip = false) {
   } else if (prevLv < 5) {
     state.spirits[spiritId] = prevLv + 1;
     if (autoEquip) state.equippedSpirit = spiritId;
-    const msg = `✨ [정령 각성 Lv.${prevLv + 1}!] ${sp.name} — "${sp.greet}"`;
+    gainSpiritExp(spiritId, 80);
+    const msg = `✨ [정령 ★${prevLv + 1} 각성!] ${sp.name} (EXP+80) — "${sp.greet}"`;
     state.log = (state.log ? state.log + '\n' : '') + msg;
-    showToast(`✨ [${sp.name}] Lv.${prevLv + 1} 각성 완료!`, 'good');
+    showToast(`✨ [${sp.name}] ★${prevLv + 1} 각성 + EXP 80!`, 'good');
   } else {
     state.points += 60;
-    state.log = (state.log ? state.log + '\n' : '') + `✨ [${sp.name}] 만렙(Lv.5) 중복 환원 → +60 P!`;
+    gainSpiritExp(spiritId, 100);
+    state.log = (state.log ? state.log + '\n' : '') + `✨ [${sp.name}] ★5 중복 환원 → +60 P · 정령 EXP+100!`;
   }
-  return sp;
+  return { spirit: sp, isNew: prevLv === 0, count: state.spirits[spiritId], growthLv: getSpiritProgress(spiritId).lv };
 }
 
 function rollSpiritEncounter(isBoss = false, enemyLv = 1) {
@@ -1611,11 +1652,13 @@ function startBattle(enemyId, isRandomEncounter = false) {
   const rawAtk = nmFloor > 0
     ? baseScaledAtk + nmFloor * 4
     : (floor > 0 ? baseScaledAtk + floor * 2 : baseScaledAtk);
+  const spiritHpBal = enemyLv >= 21 ? 1.28 : (enemyLv >= 9 ? 1.15 : 1.0);
+  const spiritAtkBal = enemyLv >= 21 ? 1.15 : (enemyLv >= 9 ? 1.10 : 1.0);
   const enemy = {
     ...baseEnemy,
     name: `[Lv.${enemyLv}] ${mod ? `[${mod.label}] ` : ''}${floor > 0 ? `[타워 ${floor}층] ` : ''}${baseEnemy.name}`,
-    maxHp: Math.round(rawMaxHp * diff.hpMult * ngMult),
-    atk: Math.round(rawAtk * diff.atkMult * ngMult),
+    maxHp: Math.round(rawMaxHp * diff.hpMult * ngMult * spiritHpBal),
+    atk: Math.round(rawAtk * diff.atkMult * ngMult * spiritAtkBal),
     reward: Math.round((floor > 0 ? 25 + floor * 10 : baseEnemy.reward + Math.min(30, enemyLv)) * diff.rewardMult * modRewardMult),
   };
   const rep = getReputationInfo();
@@ -1755,9 +1798,9 @@ function enemyCounterTurn(enemy, isGuarding = false) {
 
   const spBonTurn = getSpiritBonuses();
   if (spBonTurn.spirit && Math.random() < (spBonTurn.perkId === 'overdrive' ? 1.0 : 0.45)) {
-    const spHit = 8 + Math.round(spBonTurn.atk * 0.7);
+    const spHit = 8 + Math.round(spBonTurn.atk * 0.7) + Math.round((spBonTurn.growthLv || 1) * 1.2);
     state.enemyHp = clamp(state.enemyHp - spHit, 0, state.enemyMaxHp);
-    state.log += `\n👻 [${spBonTurn.spirit.name} 협공!] 수호정령의 기운이 빌런을 강타! (멘탈 -${spHit})`;
+    state.log += `\n👻 [${spBonTurn.spirit.name} Lv.${spBonTurn.growthLv || 1} 협공!] 수호정령의 기운이 빌런을 강타! (멘탈 -${spHit})`;
     if (elSpiritSprite) {
       elSpiritSprite.classList.remove('spirit-hop');
       void elSpiritSprite.offsetWidth;
@@ -1770,7 +1813,7 @@ function enemyCounterTurn(enemy, isGuarding = false) {
     }
   }
   if (spBonTurn.perkId === 'turn_heal' && state.hp > 0) {
-    const regenHp = Math.max(4, Math.round(state.maxHp * 0.04));
+    const regenHp = Math.max(4, Math.round(state.maxHp * 0.04) + Math.floor(((spBonTurn.growthLv || 1) - 1) / 2));
     state.hp = clamp(state.hp + regenHp, 1, state.maxHp);
     state.log += `\n🫧 [${spBonTurn.spirit.name}] 탄산 재생! 인내심 +${regenHp}`;
   }
@@ -1886,6 +1929,9 @@ function handleEnemyDefeated(enemy) {
   const expSpMult = getSpiritBonuses().perkId === 'exp_up' ? 1.35 : 1;
   const expGain = Math.round((24 + (enemy.reward || 30) * 0.65) * ((isBossId(enemy.id) || enemy.storyOnly) ? 1.6 : 1) * (1 + (eqBon.expMult || 0)) * expSpMult);
   gainHeroExp(expGain);
+  if (state.equippedSpirit) {
+    gainSpiritExp(state.equippedSpirit, Math.max(15, Math.round(expGain * 0.85)));
+  }
   if (getSpiritBonuses().perkId === 'pp_refund') {
     restoreSkillPp(1);
     state.log = (state.log ? state.log + '\n' : '') + `🎵 [${getSpiritBonuses().spirit.name}] 승리의 여운으로 전 기술 PP +1 환급!`;
@@ -2482,11 +2528,12 @@ function render() {
     state.phase = 'spirit_encounter';
   }
 
-  // 0.5 정령 조우 & 영입 컷신 (V32.1)
+  // 0.5 정령 조우 & 포켓몬식 포획 컷신 (V32.2)
   if (state.phase === 'spirit_encounter') {
     const sp = SPIRITS_50.find((s) => s.id === state.pendingSpiritEncounter);
     if (!sp) {
       state.pendingSpiritEncounter = null;
+      state.spiritCaptureResult = null;
       state.phase = 'map';
       render();
       return;
@@ -2494,88 +2541,179 @@ function render() {
     const elInfo = SPIRIT_ELEMENTS[sp.element] || { name: sp.element, emoji: '✨', color: '#38bdf8' };
     const ownedCount = state.spirits?.[sp.id] || 0;
     const rarityBadge = { common: '일반', rare: '레어', epic: '에픽', unique: '유니크' }[sp.rarity] || sp.rarity;
-    elLocation.textContent = '✨ 정령 교감 · SPIRIT ENCOUNTER';
+    const baseRates = { common: 75, rare: 55, epic: 35, unique: 20 };
+    const baseRate = baseRates[sp.rarity] || 60;
+    const snackRate = Math.min(95, baseRate + 35);
+    const capRes = state.spiritCaptureResult;
+
+    elLocation.textContent = '✨ 정령 조우 · SPIRIT ENCOUNTER';
     elSceneTag.textContent = `${elInfo.emoji} ${elInfo.name} · ${rarityBadge}`;
     elSceneTag.className = 'scene-tag event';
-    elSceneTitle.textContent = `✨ [${sp.name}] 이(가) 모습을 드러냈다!`;
+    elSceneTitle.textContent = capRes?.status === 'caught'
+      ? `💥 찰칵!! [${sp.name}] 포획 성공!!`
+      : capRes?.status === 'escaped'
+        ? `💨 앗! [${sp.name}] 이(가) 달아났다...`
+        : `✨ 야생 [${sp.name}] 이(가) 나타났다!`;
     elWeaknessPill.classList.add('hidden');
     elEnemyHpWrap.classList.add('hidden');
     elQuoteBubble.classList.remove('hidden');
-    elQuoteBubble.textContent = `💬 주인공: "${sp.greet}"`;
+    elQuoteBubble.textContent = capRes?.status === 'caught'
+      ? `💬 나: "좋아, 넌 내 동료다! ${sp.greet}"`
+      : `💬 주인공: "${sp.greet}"`;
 
     showSceneCard(
-      `SPIRIT ENCOUNTER · ${elInfo.name.toUpperCase()}`,
+      `SPIRIT ENCOUNTER · No.${String(sp.num).padStart(2, '0')}`,
       `✨ ${elInfo.emoji} [${sp.name}] (${rarityBadge})`,
       `출몰 구역: ${sp.zoneHint || '서울 전역'}`
     );
 
-    elBattleLog.innerHTML = `
-      <div style="display:flex;gap:12px;align-items:center;padding:8px 10px;border-radius:10px;background:rgba(15,23,42,0.55);border:1px solid ${elInfo.color}66;">
-        <img src="./images/spirits/${sp.id}.png" alt="${sp.name}" style="width:76px;height:76px;object-fit:contain;border-radius:10px;background:rgba(255,255,255,0.92);padding:4px;flex-shrink:0;" />
-        <div style="font-size:12px;line-height:1.5;flex:1;">
-          <div style="font-weight:800;font-size:14px;color:${elInfo.color};">${elInfo.emoji} ${sp.name} <span style="font-size:11px;opacity:0.85;">[${rarityBadge}]${ownedCount > 0 ? ` · 현재 ${ownedCount}체 보유` : ' · 첫 만남!'}</span></div>
-          <div style="color:#e2e8f0;margin-top:2px;">${sp.desc}</div>
-          <div style="color:#fde047;font-weight:700;margin-top:4px;">★ 특수 기술: ${sp.perkDesc || '전투 시 동행 지원'}</div>
-          <div style="color:#94a3b8;font-size:11px;margin-top:2px;">📍 출몰: ${sp.zoneHint || '서울 전역'} · 전투 중 함께 따라다니며 지원 공격!</div>
-        </div>
-      </div>
-    `;
-
-    elChoicesPanel.className = 'choices-panel';
-    elChoicesPanel.innerHTML = '';
-
     const finishEncounter = (msg) => {
       state.pendingSpiritEncounter = null;
+      state.spiritCaptureResult = null;
       state.phase = 'map';
       state.lastLog = msg;
       saveGame();
       render();
     };
 
-    const btnEquip = document.createElement('button');
-    btnEquip.className = 'choice-btn primary';
-    btnEquip.innerHTML = `<span class="choice-title">✨ 교감 영입 + 바로 동행하기</span><span class="choice-sub">${sp.name}을(를) 영입하고 전투 파트너로 즉시 장착합니다!</span>`;
-    btnEquip.onclick = () => {
-      const res = grantSpirit(sp.id, true);
-      sfx.win?.();
-      finishEncounter(`✨ ${sp.name} 영입 완료! (Lv.${res.count} · 바로 동행 중) "${sp.greet}"`);
-    };
+    elChoicesPanel.className = 'choices-panel';
+    elChoicesPanel.innerHTML = '';
 
-    const btnStore = document.createElement('button');
-    btnStore.className = 'choice-btn';
-    btnStore.innerHTML = `<span class="choice-title">📖 도감에 보관하고 나중에 동행하기</span><span class="choice-sub">현재 동행 중인 정령을 유지하고 도감에만 등록합니다.</span>`;
-    btnStore.onclick = () => {
-      const res = grantSpirit(sp.id, false);
+    if (capRes?.status === 'shaking') {
+      elBattleLog.innerHTML = `
+        <div class="spirit-ball-stage">
+          <div class="spirit-ball-orb"></div>
+          <div style="font-weight:800;font-size:14px;color:#fde047;">🟡 ${capRes.label} 던졌다!!</div>
+          <div style="font-size:12px;color:#e2e8f0;">흔들... 흔들... 흔들... 과연 잡힐까?!</div>
+        </div>
+      `;
+      const waitBtn = document.createElement('button');
+      waitBtn.className = 'choice-btn';
+      waitBtn.disabled = true;
+      waitBtn.innerHTML = `<span class="choice-title">⏳ 포획 판정 중...</span><span class="choice-sub">예절 완장 구슬이 흔들리고 있습니다!</span>`;
+      elChoicesPanel.appendChild(waitBtn);
+      return;
+    }
+
+    if (capRes?.status === 'caught') {
+      const regLabel = capRes.isNew ? `🆕 도감 신규 등록! No.${String(sp.num).padStart(2, '0')}` : `★${capRes.awakeLv} 각성 완료! (EXP 보너스)`;
+      elBattleLog.innerHTML = `
+        <div style="display:flex;gap:12px;align-items:center;padding:10px;border-radius:10px;background:rgba(15,23,42,0.72);border:2px solid #fde047;">
+          <img src="${sp.img}?v=72" alt="${sp.name}" style="width:76px;height:76px;object-fit:contain;border-radius:10px;background:rgba(255,255,255,0.95);padding:4px;flex-shrink:0;" />
+          <div style="font-size:12px;line-height:1.5;flex:1;">
+            <div style="display:inline-block;padding:2px 7px;border-radius:99px;background:#facc15;color:#1e293b;font-weight:800;font-size:11px;margin-bottom:3px;">${regLabel}</div>
+            <div style="font-weight:800;font-size:14px;color:${elInfo.color};">${elInfo.emoji} ${sp.name} <span style="font-size:11px;color:#e2e8f0;">[Lv.${capRes.growthLv}/20 · ★${capRes.awakeLv}]</span></div>
+            <div style="color:#e2e8f0;margin-top:2px;">기본 효과: 공격 +${sp.atk} · 사이다 +${sp.spRegen} · 치명 +${Math.round(sp.crit * 100)}%</div>
+            <div style="color:#fde047;font-weight:700;margin-top:3px;">★ 특수 기술: ${sp.perkDesc}</div>
+          </div>
+        </div>
+      `;
+      const btnNowEquip = document.createElement('button');
+      btnNowEquip.className = 'choice-btn primary';
+      btnNowEquip.innerHTML = `<span class="choice-title">✨ 지금 바로 동행하고 맵으로</span><span class="choice-sub">${sp.name}을(를) 전투 파트너로 장착하고 출발합니다!</span>`;
+      btnNowEquip.onclick = () => {
+        state.equippedSpirit = sp.id;
+        sfx.powerup?.();
+        finishEncounter(`💥 ${sp.name} 포획 & 도감 등록 완료! (동행 시작)`);
+      };
+      const btnKeepOnly = document.createElement('button');
+      btnKeepOnly.className = 'choice-btn';
+      btnKeepOnly.innerHTML = `<span class="choice-title">📖 도감에 보관하고 맵으로</span><span class="choice-sub">현재 동행 중인 정령을 유지합니다.</span>`;
+      btnKeepOnly.onclick = () => {
+        sfx.click?.();
+        finishEncounter(`📖 ${sp.name} 도감 등록 완료!`);
+      };
+      elChoicesPanel.append(btnNowEquip, btnKeepOnly);
+      return;
+    }
+
+    if (capRes?.status === 'escaped') {
+      elBattleLog.innerHTML = `
+        <div style="padding:12px;border-radius:10px;background:rgba(15,23,42,0.65);border:1px solid #f87171;">
+          <div style="font-weight:800;font-size:14px;color:#fca5a5;">💨 앗! [${sp.name}] 이(가) 완장 빛을 튕겨내고 도망쳤다!</div>
+          <div style="font-size:12px;color:#e2e8f0;margin-top:4px;">아쉽지만 다음 순찰에서 다시 만날 수 있습니다. (위로 보상: 도덕P +15 · 영웅 EXP +15)</div>
+        </div>
+      `;
+      const btnBack = document.createElement('button');
+      btnBack.className = 'choice-btn primary';
+      btnBack.innerHTML = `<span class="choice-title">🗺️ 맵으로 돌아가기</span><span class="choice-sub">다음 기회에 꼭 포획하자!</span>`;
+      btnBack.onclick = () => finishEncounter(`💨 ${sp.name} 포획 실패... (위로 보상 +15P · EXP +15)`);
+      elChoicesPanel.appendChild(btnBack);
+      return;
+    }
+
+    elBattleLog.innerHTML = `
+      <div style="display:flex;gap:12px;align-items:center;padding:8px 10px;border-radius:10px;background:rgba(15,23,42,0.55);border:1px solid ${elInfo.color}66;">
+        <img src="${sp.img}?v=72" alt="${sp.name}" style="width:76px;height:76px;object-fit:contain;border-radius:10px;background:rgba(255,255,255,0.92);padding:4px;flex-shrink:0;" />
+        <div style="font-size:12px;line-height:1.5;flex:1;">
+          <div style="font-weight:800;font-size:14px;color:${elInfo.color};">${elInfo.emoji} ${sp.name} <span style="font-size:11px;opacity:0.85;">[${rarityBadge}]${ownedCount > 0 ? ` · 현재 ★${ownedCount} 보유` : ' · 미등록 야생 정령!'}</span></div>
+          <div style="color:#e2e8f0;margin-top:2px;">${sp.desc}</div>
+          <div style="color:#fde047;font-weight:700;margin-top:4px;">★ 특수 기술: ${sp.perkDesc || '전투 시 동행 지원'}</div>
+          <div style="color:#94a3b8;font-size:11px;margin-top:2px;">📍 출몰: ${sp.zoneHint || '서울 전역'} · 전투 동행 시 자동 레벨업!</div>
+        </div>
+      </div>
+    `;
+
+    const tryCapture = (rate, cost, label, expBonus = 0) => {
+      if (cost > 0 && state.points < cost) return;
+      if (cost > 0) state.points -= cost;
       sfx.click?.();
-      finishEncounter(`📖 ${sp.name}을(를) 정령 도감에 보관했습니다! (보유 ${res.count}체)`);
+      state.spiritCaptureResult = { status: 'shaking', label };
+      render();
+      setTimeout(() => {
+        if (state.phase !== 'spirit_encounter') return;
+        const success = Math.random() * 100 < rate;
+        if (success) {
+          const res = grantSpirit(sp.id, false);
+          if (expBonus > 0) gainSpiritExp(sp.id, expBonus);
+          sfx.victory?.();
+          state.spiritCaptureResult = {
+            status: 'caught',
+            isNew: res.isNew,
+            awakeLv: res.count,
+            growthLv: getSpiritProgress(sp.id).lv,
+          };
+        } else {
+          state.points += 15;
+          gainHeroExp(15);
+          sfx.hit?.();
+          state.spiritCaptureResult = { status: 'escaped' };
+        }
+        saveGame();
+        render();
+      }, 1150);
     };
 
-    const canSnack = state.money >= 300;
+    const btnFree = document.createElement('button');
+    btnFree.className = 'choice-btn primary';
+    btnFree.innerHTML = `<span class="choice-title">✨ 맨손 교감 포획 (무료 · 성공률 ${baseRate}%)</span><span class="choice-sub">진심 어린 예절의 기운으로 교감을 시도합니다!</span>`;
+    btnFree.onclick = () => tryCapture(baseRate, 0, '예절 교감구를');
+
+    const canSnack = state.points >= 300;
     const btnSnack = document.createElement('button');
     btnSnack.className = 'choice-btn';
     btnSnack.disabled = !canSnack;
-    btnSnack.innerHTML = `<span class="choice-title">🍡 정령 간식으로 호감도 대폭 상승 (300P)</span><span class="choice-sub">${canSnack ? '간식을 나눠주어 +2체 추가 교감(총 +3체) + 즉시 동행!' : '포인트가 부족합니다 (300P 필요)'}</span>`;
-    btnSnack.onclick = () => {
-      if (state.money < 300) return;
-      state.money -= 300;
-      grantSpirit(sp.id, true);
-      grantSpirit(sp.id, false);
-      const res = grantSpirit(sp.id, false);
-      sfx.win?.();
-      finishEncounter(`🍡 정령 간식 대성공! ${sp.name} 호감도 Lv.${res.count} 달성 및 동행 시작!`);
-    };
+    btnSnack.innerHTML = `<span class="choice-title">🍡 정령 간식 꼬시기 (300P · 성공률 ${snackRate}%)</span><span class="choice-sub">${canSnack ? '포획률 +35% 대폭 상승! 성공 시 정령 EXP +60 보너스' : '도덕P가 부족합니다 (300P 필요)'}</span>`;
+    btnSnack.onclick = () => tryCapture(snackRate, 300, '달콤한 간식구를', 60);
+
+    const canMaster = state.points >= 800;
+    const btnMaster = document.createElement('button');
+    btnMaster.className = 'choice-btn';
+    btnMaster.disabled = !canMaster;
+    btnMaster.innerHTML = `<span class="choice-title">🟡 황금 완장 봉인구 (800P · 100% 확정 포획!)</span><span class="choice-sub">${canMaster ? '절대 놓치지 않는 100% 확정 포획 + 정령 EXP +80!' : '도덕P가 부족합니다 (800P 필요)'}</span>`;
+    btnMaster.onclick = () => tryCapture(100, 800, '황금 완장 봉인구를', 80);
 
     const btnRelease = document.createElement('button');
     btnRelease.className = 'choice-btn';
     btnRelease.innerHTML = `<span class="choice-title">🍃 조용히 보내주기 (사이다 +30 · 평판 +2)</span><span class="choice-sub">정령의 기운만 받고 자유롭게 보내줍니다.</span>`;
     btnRelease.onclick = () => {
-      state.mp = Math.min(getMaxMp(), state.mp + 30);
+      state.sp = clamp(state.sp + 30, 0, state.maxSp);
       state.rep += 2;
       sfx.click?.();
       finishEncounter(`🍃 ${sp.name}을(를) 자유롭게 보내주었습니다. (사이다 +30, 평판 +2)`);
     };
 
-    elChoicesPanel.append(btnEquip, btnStore, btnSnack, btnRelease);
+    elChoicesPanel.append(btnFree, btnSnack, btnMaster, btnRelease);
     return;
   }
 
@@ -7022,13 +7160,18 @@ function openSpiritModal(filterEl = 'all') {
     card.style.borderColor = lv > 0 ? elInfo.color : '#d4c4a8';
     card.style.opacity = lv > 0 ? '1' : '0.68';
     if (lv > 0) {
+      const prog = getSpiritProgress(sp.id);
+      const expPct = prog.lv >= 20 ? 100 : Math.min(100, Math.round((prog.exp / prog.maxExp) * 100));
       card.innerHTML = `
         <img src="${sp.img}?v=72" alt="${sp.name}" class="item-thumb" style="width:44px;height:44px;object-fit:contain;" />
         <div class="inv-info">
-          <h4 style="color:${rInfo.color};">[${rInfo.short}] ${sp.name} Lv.${lv}/5 ${isEq ? '✅동행중' : ''}</h4>
+          <h4 style="color:${rInfo.color};">[${rInfo.short}] ${sp.name} <span style="color:#0369a1;">Lv.${prog.lv}/20</span> · ★${lv}/5 ${isEq ? '✅동행중' : ''}</h4>
           <p>${sp.desc}<br/><span style="color:#1e40af;font-size:0.68rem;">📍 출몰: ${sp.zoneHint}</span><br/><span style="color:#695544;font-style:italic;">"${sp.greet}"</span></p>
+          <div class="spirit-exp-track"><div class="spirit-exp-fill" style="width:${expPct}%"></div></div>
         </div>
       `;
+      const btnCol = document.createElement('div');
+      btnCol.style.cssText = 'display:flex;flex-direction:column;gap:4px;flex-shrink:0;';
       const eqBtn = document.createElement('button');
       eqBtn.className = 'use-btn';
       eqBtn.textContent = isEq ? '해제' : '동행';
@@ -7039,7 +7182,25 @@ function openSpiritModal(filterEl = 'all') {
         openSpiritModal(filterEl);
         render();
       });
-      card.appendChild(eqBtn);
+      btnCol.appendChild(eqBtn);
+      if (prog.lv < 20) {
+        const candyBtn = document.createElement('button');
+        candyBtn.className = 'use-btn';
+        candyBtn.style.cssText = 'background:#f59e0b;font-size:0.68rem;padding:4px 6px;';
+        candyBtn.textContent = '🍪사탕150P';
+        candyBtn.disabled = state.points < 150;
+        candyBtn.addEventListener('click', () => {
+          if (state.points < 150) return;
+          state.points -= 150;
+          sfx.powerup();
+          gainSpiritExp(sp.id, 100);
+          saveGame();
+          openSpiritModal(filterEl);
+          render();
+        });
+        btnCol.appendChild(candyBtn);
+      }
+      card.appendChild(btnCol);
     } else {
       card.innerHTML = `
         <div class="inv-info">

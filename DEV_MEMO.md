@@ -5,7 +5,11 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V32.1
+## 현재 최신 버전: V32.2
+- **V32.2**:
+  - **포켓몬식 확률 포획 + 구슬 흔들림·찰칵 + 도감 등록 카드 (`spirit_encounter`, `style.css`)**: 맨손 교감(`75/55/35/20%`) · 300P 간식 꼬시기(`+35%`) · 800P 황금 완장 봉인구(`100% 확정`) 3종 포획 수단 + 구슬 3회 흔들림(`.spirit-ball-orb`) 연출 + 성공 시 `[🆕 도감 등록! No.XX]` 요약 카드 출력(실패 시 위로 보상 `+15P · EXP+15`)
+  - **정령 레벨제(`Lv.1~20`) + 동행 자동 EXP + 🍪 정령 사탕(150P) + 중복 각성(`★1~★5`) 연동 (`gainSpiritExp`, `getSpiritProgress`, `openSpiritModal`)**: 전투 승리 시 동행 정령 EXP 동반 획득, 도감 모달에서 150P 사탕 육성, 중복 포획 시 `★` 각성과 EXP+80 동시 적용
+  - **정령 성장 반영 적 밸런스 보정 (`startBattle`)**: `Lv.9~20` 적 HP `+15%`/ATK `+10%`, `Lv.21+` 적 HP `+28%`/ATK `+15%` 상향으로 정령 육성과 턴제 긴장감 동시 유지 (`?v=73`)
 - **V32.1**:
   - **정령 조우 전용 컷신 (`spirit_encounter` phase) & 출몰 구역/적 레벨 연동 등급 확률 (`rollSpiritEncounter`)**: 정령 조우 시 바로 도감에 들어가던 방식에서 벗어나 대형 정령 이미지 + 주인공 고유 대사 + 특수 기술 안내 + 4지선다(`교감 영입+동행` / `도감 보관` / `300P 정령 간식 꼬시기(+3체)` / `보내주기`) 컷신 연출! 적 레벨(Lv.1~10 일반 위주 → Lv.35+ 에픽/유니크 해금) & 소환(55%/32%/11%/2%)에 따라 고등급 정령이 희귀하게 등장하도록 밸런싱
   - **50종 정령 전원 고유 특수 기술(`perkId`/`perkDesc`) & 출몰 구역(`zoneHint`) 부여 (`data/spirits50.js`)**: 낮은 등급(일반/레어) 정령도 `pp_refund`(전투 후 PP+1)·`start_fever`(피버+25%)·`apology_up`(반성문+1턴)·`snap_wide`(셔터 판정완화)·`turn_heal`(매턴HP회복)·`exp_up`(EXP+25%)·`drop_up`(드랍률2배) 등 실용적인 고유 유틸을 보유해 고등급과 전략적 선택 가능
