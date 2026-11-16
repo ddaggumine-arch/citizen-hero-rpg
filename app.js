@@ -949,7 +949,6 @@ function rollDailyQuests() {
     claimed: false,
     items: [
       { id: 'win', label: '🥊 빌런 참교육', cur: 0, goal: 2 },
-      { id: 'patrol', label: '🚓 순찰·채증 활동', cur: 0, goal: 2 },
       { id: 'care', label: '💖 어학·연애·휴식 케어', cur: 0, goal: 1 },
     ],
   };
