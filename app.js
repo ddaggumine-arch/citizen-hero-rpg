@@ -4534,7 +4534,7 @@ function render() {
     kissChoices.forEach((ch) => {
       const btn = document.createElement('button');
       btn.className = 'choice-btn row-btn';
-      btn.innerHTML = `<span>${ch.text}</span><span class="choice-sub">${ch.sub}</span>`;
+      btn.innerHTML = `<span>${ch.text}</span><span class="choice-sub">💬 대화 선택</span>`;
       btn.addEventListener('click', () => {
         if (!state.kissUnlocked) state.kissUnlocked = { yuki: false, chloe: false };
         if (!state.lastKissDay) state.lastKissDay = { yuki: 0, chloe: 0 };
@@ -5247,7 +5247,7 @@ function render() {
       sc.choices.forEach((ch) => {
         const cb = document.createElement('button');
         cb.className = 'choice-btn';
-        cb.innerHTML = `<span class="choice-title">${ch.label}</span><span class="choice-sub">${ch.sub}</span>`;
+        cb.innerHTML = `<span class="choice-title">${ch.label}</span><span class="choice-sub">💬 선택 후 반응 확인</span>`;
         cb.addEventListener('click', () => {
           applyChoiceReward(ch);
           if (!isFinalScene) {
@@ -5432,7 +5432,7 @@ function render() {
     ev.choices.forEach((ch) => {
       const btn = document.createElement('button');
       btn.className = 'choice-btn row-btn';
-      btn.innerHTML = `<span>${ch.text}</span><span class="choice-sub">${ch.sub}</span>`;
+      btn.innerHTML = `<span>${ch.text}</span><span class="choice-sub">💬 대화 선택</span>`;
       btn.addEventListener('click', () => {
         sfx.victory();
         state.love[key] = clamp((state.love[key] || 0) + (ch.love || 8), 0, 100);
@@ -5477,7 +5477,7 @@ function render() {
     ev.choices.forEach((ch) => {
       const btn = document.createElement('button');
       btn.className = 'choice-btn row-btn';
-      btn.innerHTML = `<span>${ch.text}</span><span class="choice-sub">${ch.sub} (필요 ${ch.reqStat === 'law' ? '법률' : ch.reqStat === 'guts' ? '배짱' : '언변'} ${ch.reqVal}+)</span>`;
+      btn.innerHTML = `<span>${ch.text}</span><span class="choice-sub">필요 ${ch.reqStat === 'law' ? '법률' : ch.reqStat === 'guts' ? '배짱' : '언변'} ${ch.reqVal}+</span>`;
       btn.addEventListener('click', () => {
         const ok = (state.stats[ch.reqStat] || 0) >= ch.reqVal;
         if (ok) {
@@ -5593,7 +5593,7 @@ function render() {
     shuffle(ev.choices).forEach((ch) => {
       const btn = document.createElement('button');
       btn.className = 'choice-btn row-btn';
-      btn.innerHTML = `<span>${ch.text}</span><span class="choice-sub">${ch.sub}</span>`;
+      btn.innerHTML = `<span>${ch.text}</span><span class="choice-sub">💬 대화 선택</span>`;
       btn.addEventListener('click', () => {
         let loveGain = ch.love || 0;
         let extraMsg = '';
@@ -5786,7 +5786,7 @@ function render() {
     shuffle(ev.choices).forEach((ch) => {
       const btn = document.createElement('button');
       btn.className = 'choice-btn row-btn';
-      btn.innerHTML = `<span>${ch.text}</span><span class="choice-sub">${ch.sub}</span>`;
+      btn.innerHTML = `<span>${ch.text}</span><span class="choice-sub">💬 대화 선택</span>`;
       btn.addEventListener('click', () => {
         sfx.powerup();
         vibrate(25);
@@ -5833,7 +5833,7 @@ function render() {
     shuffle(ev.choices).forEach((ch) => {
       const btn = document.createElement('button');
       btn.className = 'choice-btn';
-      btn.innerHTML = `<span>${ch.text}</span><span class="choice-sub">${ch.sub}</span>`;
+      btn.innerHTML = `<span>${ch.text}</span><span class="choice-sub">💬 대화 선택</span>`;
       btn.addEventListener('click', () => {
         sfx.powerup();
         vibrate(25);
@@ -6794,7 +6794,7 @@ function render() {
     ev.choices.forEach((ch) => {
       const btn = document.createElement('button');
       btn.className = 'choice-btn row-btn';
-      btn.innerHTML = `<span>${ch.text}</span><span class="choice-sub">${ch.sub}</span>`;
+      btn.innerHTML = `<span>${ch.text}</span><span class="choice-sub">💬 대화 선택</span>`;
       btn.addEventListener('click', () => {
         const ef = ch.effect || {};
         if (ef.points) state.points += ef.points;
