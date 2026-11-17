@@ -5,7 +5,9 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V35.0 (1단계: 연애 엔진 + 유키 20화 10배 풀볼륨)
+## 현재 최신 버전: V35.1 (연애 스토리 10배 풀볼륨 완결)
+- **V35.1 (Phase 2)**:
+  - **클로이 편 20화 10배 풀볼륨 완성 (`data/romanceStoryChloe.js`)**: 화당 8씬(총 160씬) + 20종 클로이 전용 미니게임(화보 셔터·시장 방어·네컷 부스·러닝·인형뽑기·재즈 건배·코너링·갤러리 반박·심야 추격·남산 키스 등) + 20종 아련한 여운·다음 화 예고 완성! → **유키 160씬 + 클로이 160씬 = 총 320씬 & 40종 미니게임** 대장정 완결 (`?v=89`)
 - **V35.0 (Phase 1)**:
   - **연애 스토리 엔진 전면 업그레이드 (`romance_story`, `romance_epilogue` in `app.js`, `style.css`)**:
     - 6종 인터랙티브 미니게임(`timing`/`shutter` 타이밍, `mash` 3.8초 연타, `quiz`/`counter`/`phrase` 선택형) 내장
