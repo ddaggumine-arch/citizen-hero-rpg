@@ -6264,7 +6264,7 @@ function render() {
       dipBtn.style.gridColumn = 'span 2';
       dipBtn.style.background = 'linear-gradient(180deg, #f0f9ff 0%, #dbeafe 100%)';
       dipBtn.style.borderColor = '#3b82f6';
-      dipBtn.innerHTML = `<span>🗣️ [오블리비언 외교] 말로 설득 · 협박 · 매수</span><span class="choice-sub" style="color:#1e40af;">화술 Lv.${state.skills.speech} · 악명 ${state.infamy} · 무혈 제압 시도</span>`;
+      dipBtn.innerHTML = `<span>🗣️ [현장 교섭] 말로 설득 · 협박 · 매수</span><span class="choice-sub" style="color:#1e40af;">화술 Lv.${state.skills.speech} · 악명 ${state.infamy} · 무혈 제압 시도</span>`;
       dipBtn.addEventListener('click', () => {
         sfx.click();
         openDiplomacyModal(enemy);
@@ -8814,7 +8814,7 @@ function setRumor(txt) {
 
 function openOblivionSheetModal() {
   ensureSandboxState();
-  elActivityModalTitle.textContent = '📜 자유도 시트 · 오블리비언 샌드박스';
+  elActivityModalTitle.textContent = '📜 시민영웅 자유도 · 숙련도 시트';
   if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
   elActivityList.innerHTML = '';
 
@@ -8898,7 +8898,7 @@ function openAlchemyModal(firstPick = null) {
 
 function openSpellmakingModal() {
   ensureSandboxState();
-  elActivityModalTitle.textContent = '✨ 나만의 필살기 제작소 (Spellmaking)';
+  elActivityModalTitle.textContent = '✨ 나만의 필살기 제작소';
   if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
   elActivityList.innerHTML = '';
 
@@ -8996,7 +8996,7 @@ function useCustomPotionInCombat(enemy) {
 
 function openDiplomacyModal(enemy) {
   ensureSandboxState();
-  elActivityModalTitle.textContent = `🗣️ 오블리비언 외교 — ${enemy.name}`;
+  elActivityModalTitle.textContent = `🗣️ 현장 교섭 — ${enemy.name}`;
   if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
   elActivityList.innerHTML = '';
 
@@ -9214,7 +9214,7 @@ function openLocationMenu(locId) {
     addAction('✨ 나만의 필살기 제작소 (60P)', '효과와 이름을 직접 정하는 커스텀 필살기 창조', () => {
       openSpellmakingModal();
     });
-    addAction('📜 내 숙련도 · 명성/악명 시트', '오블리비언식 자유도 스탯 및 소문 확인', () => {
+    addAction('📜 내 숙련도 · 명성/악명 시트', '숙련도 · 명성/악명 및 서울 소문 확인', () => {
       openOblivionSheetModal();
     });
   } else if (locId === 'shop') {
