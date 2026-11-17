@@ -5,7 +5,16 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V38.0
+## 현재 최신 버전: V40.0
+- **V40.0**:
+  - **전국 5대 액트 대장정 (`data/koreaActs.js`, `app.js`)**: `Act 1 전주` → `Act 2 평택` → `Act 3 동탄` → `Act 4 마계 인천` → `Act 5 서울` 5대 지역 이동·액트 스토리·지역 보스전 및 영구 버프!
+  - **손 많이 가는 4대 파고들기 시스템**:
+    1. **🕸️ 지역 던전 크롤링 (`startActDungeon`)**: 부평 지하상가 미로 등 4층 갈림길 탐색(매복 전투/보물/정령석/던전 보스방).
+    2. **🚚 보부상 특산품 무역 (`openTradeModal`)**: 시간대마다 변하는 도시별 시세 차익 거래.
+    3. **👥 자경단 지부 파견 (`openDispatchModal`)**: 제패한 도시에 지부 개설 시 턴당 자동 +10P 수급.
+    4. **💎 장비 정령석(룬) 소켓 각인 (`openRuneSocketModal`)**: 무기·방어구·장신구에 지역 정령석 장착 (`?v=100`).
+- **V38.1**:
+  - **안드로이드 뒤로가기(`<`) 실수 종료 방어 (`app.js`)**: `popstate` 가로채기로 모달 닫기·서브화면 복귀·2초 내 2연타 시에만 종료 (`?v=99`).
 - **V38.0**:
   - **하루 7시간대 확장 + 7종 풀 배경색 테마 (`data/gameData.js`, `style.css`, `app.js`)**: `아침 → 오전 → 점심 → 오후 → 저녁 → 밤 → 심야` 7칸으로 하루 행동 횟수 확장 & 시간대마다 다른 배경·HUD·조명 색상 실시간 전환 (`dawn/morning/noon/afternoon/evening/night/midnight`)!
   - **현재 난이도 HUD 배지 상시 표기 + 난이도별 정령/드랍 밸런싱 (`index.html`, `style.css`, `app.js`)**: 상단 `#diff-pill`에 `🌱 노멀 / 🔥 하드 / 💀 헬` 상시 표시 + `rollSpiritEncounter`에 난이도별 조우율(`노멀 26%/보스 55% → 하드 34%/68% → 헬 42%/80%`) 및 에픽·유니크 가중치(`1.0x / 1.35x / 1.75x`) 적정 보정 적용.

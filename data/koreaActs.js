@@ -1,0 +1,251 @@
+// V40.0: 전국 5대 액트 대장정 (전주 → 평택 → 동탄 → 마계 인천 → 서울)
+// + 보부상 지역 무역, 정령석 소켓 각인, 지역별 스토리·빌런·던전 데이터
+
+export const KOREA_ACTS = [
+  {
+    id: 'jeonju',
+    actNum: 1,
+    name: '🍲 Act 1 · 전주',
+    sub: '한옥마을 & 전북대 · Lv.1~10',
+    minLv: 1,
+    bossId: 'act_jeonju_boss',
+    desc: '바가지 상인과 길거리 새치기 빌런이 판치는 전주 한옥마을! 첫 노란 완장의 전설이 시작됩니다.',
+    dungeonName: '🏯 한옥마을 야시장 뒷골목',
+    buffDesc: '클리어 보상: 최대 HP +20 · 전주 비빔밥 요리법 해금',
+  },
+  {
+    id: 'pyeongtaek',
+    actNum: 2,
+    name: '🚆 Act 2 · 평택',
+    sub: '평택역 & 항구·기지앞 · Lv.10~20',
+    minLv: 5,
+    bossId: 'act_pyeongtaek_boss',
+    desc: '다국적 클럽 진상과 불법 트럭단, 항구 밀수꾼이 모이는 교차로! 외국어와 기동력이 빛납니다.',
+    dungeonName: '⚓ 평택항 심야 컨테이너 구역',
+    buffDesc: '클리어 보상: 공격력 +4 · 알바/무역 수익 +10%',
+  },
+  {
+    id: 'dongtan',
+    actNum: 3,
+    name: '🏙️ Act 3 · 동탄',
+    sub: '호수공원 & 신도시 · Lv.20~30',
+    minLv: 10,
+    bossId: 'act_dongtan_boss',
+    desc: '층간소음 리코더 마왕과 맘카페 여론 조작단이 지배하는 신도시! 논리와 화술로 진실을 밝히세요.',
+    dungeonName: '🏢 동탄 메타폴리스 지하주차장',
+    buffDesc: '클리어 보상: 방어력 +3 · 사이다 회복 +3',
+  },
+  {
+    id: 'incheon',
+    actNum: 4,
+    name: '😈 Act 4 · 마계 인천',
+    sub: '부평 지하상가 · 월미도 · 차이나타운 · Lv.30~42',
+    minLv: 15,
+    bossId: 'act_incheon_boss',
+    desc: '한 번 들어가면 못 나온다는 부평 지하상가 미로와 월미도 디스코팡팡 DJ 마왕이 군림하는 진짜 마계!',
+    dungeonName: '🕸️ 부평 지하상가 무한 미로 던전',
+    buffDesc: '클리어 보상: 치명타 +8% · 마계 정령석 드랍률 대폭 상승!',
+  },
+  {
+    id: 'seoul',
+    actNum: 5,
+    name: '👑 Act 5 · 서울',
+    sub: '대한민국 최종 결전 본진 · Lv.42+',
+    minLv: 1,
+    bossId: 'cafe_boss',
+    desc: '전국 4개 도시를 평정한 시민영웅이 서울 최종 흑막과 마주하는 최후의 무대!',
+    dungeonName: '🚇 2호선 심야 환승 미궁',
+    buffDesc: '전국 5대 액트 완전 제패 시 칭호 [대한민국 총괄 영웅] 부여!',
+  },
+];
+
+export const REGIONAL_GOODS = [
+  { id: 'good_jeonju', origin: 'jeonju', name: '🍲 전주 수제 모주·비빔팩', basePrice: 30, desc: '서울·인천에서 고가에 팔리는 전통 보양 특산품' },
+  { id: 'good_pyeongtaek', origin: 'pyeongtaek', name: '⚡ 평택 수입 에너지팩', basePrice: 55, desc: '동탄·서울 직장인들이 줄 서서 사는 고카페인 보급품' },
+  { id: 'good_dongtan', origin: 'dongtan', name: '☕ 동탄 스페셜티 원두', basePrice: 80, desc: '전주·인천 카페거리에서 프리미엄 붙는 원두' },
+  { id: 'good_incheon', origin: 'incheon', name: '😈 마계 인천 정령촉매', basePrice: 120, desc: '차이나타운 뒷골목에서만 구할 수 있는 희귀 촉매' },
+  { id: 'good_seoul', origin: 'seoul', name: '🎗️ 서울 노란완장 굿즈', basePrice: 45, desc: '지방 팬덤이 열광하는 정품 시민영웅 굿즈' },
+];
+
+export const RUNE_STONES = [
+  { id: 'rune_jeonju', name: '🟢 전주의 숨결석', atk: 2, def: 2, crit: 0, spRegen: 1, desc: '공격+2 · 방어+2 · 매턴 사이다+1' },
+  { id: 'rune_pyeongtaek', name: '🔵 평택의 번개석', atk: 5, def: 0, crit: 0.04, spRegen: 0, desc: '공격+5 · 치명타+4%' },
+  { id: 'rune_dongtan', name: '🟡 동탄의 방패석', atk: 1, def: 5, crit: 0, spRegen: 2, desc: '공격+1 · 방어+5 · 매턴 사이다+2' },
+  { id: 'rune_incheon', name: '🟣 마계 인천의 심연석', atk: 8, def: 2, crit: 0.08, spRegen: 0, desc: '공격+8 · 방어+2 · 치명타+8%' },
+  { id: 'rune_seoul', name: '🌟 서울 각성석', atk: 6, def: 4, crit: 0.05, spRegen: 3, desc: '공격+6 · 방어+4 · 치명+5% · 사이다+3' },
+];
+
+export const ACT_VILLAINS = [
+  {
+    id: 'act_jeonju_mob',
+    actId: 'jeonju',
+    name: '🍡 한옥마을 꼬치 새치기 빌런',
+    hp: 95,
+    atk: 11,
+    reward: 35,
+    weak: 'speech',
+    minLv: 1,
+    img: 'assets/images/villains/line_cutter.png',
+    quote: '"아 줄 서는 거 답답해서 못 기다려요~ 먼저 좀 삽시다!"',
+  },
+  {
+    id: 'act_jeonju_boss',
+    actId: 'jeonju',
+    isActBoss: true,
+    name: '🏮 한옥마을 바가지 대왕 (Act 1 보스)',
+    hp: 175,
+    atk: 16,
+    reward: 95,
+    weak: 'law',
+    minLv: 3,
+    img: 'assets/images/villains/cafe_hogger.png',
+    quote: '"관광지 프리미엄 몰라?! 물 한 병에 만 원이야!"',
+  },
+  {
+    id: 'act_pyeongtaek_mob',
+    actId: 'pyeongtaek',
+    name: '🚛 평택역 불법 주정차 덤프트럭단',
+    hp: 155,
+    atk: 18,
+    reward: 55,
+    weak: 'snap',
+    minLv: 8,
+    img: 'assets/images/villains/illegal_parker.png',
+    quote: '"비상등 켰잖아! 5분만 대고 간다고!!"',
+  },
+  {
+    id: 'act_pyeongtaek_boss',
+    actId: 'pyeongtaek',
+    isActBoss: true,
+    name: '⚓ 평택항 심야 밀수 브로커 (Act 2 보스)',
+    hp: 270,
+    atk: 24,
+    reward: 150,
+    weak: 'speech',
+    minLv: 10,
+    img: 'assets/images/villains/night_biker.png',
+    quote: '"항구 바닷바람 맞으며 조용히 사라지고 싶지 않으면 비켜라."',
+  },
+  {
+    id: 'act_dongtan_mob',
+    actId: 'dongtan',
+    name: '🛴 동탄 호수공원 무법 전동킥보드족',
+    hp: 230,
+    atk: 25,
+    reward: 80,
+    weak: 'guts',
+    minLv: 16,
+    img: 'assets/images/villains/shorts_villain.png',
+    quote: '"비켜요 비켜! 2인 탑승 풀악셀 간다!!"',
+  },
+  {
+    id: 'act_dongtan_boss',
+    actId: 'dongtan',
+    isActBoss: true,
+    name: '🎺 층간소음 리코더 마왕 (Act 3 보스)',
+    hp: 380,
+    atk: 31,
+    reward: 220,
+    weak: 'law',
+    minLv: 20,
+    img: 'assets/images/villains/pen_clicker.png',
+    quote: '"새벽 3시엔 역시 삐리리~ 내 집에서 내가 부는데 무슨 상관?!"',
+  },
+  {
+    id: 'act_incheon_mob',
+    actId: 'incheon',
+    name: '🕸️ 부평 지하상가 호객꾼 망령',
+    hp: 340,
+    atk: 34,
+    reward: 115,
+    weak: 'speech',
+    minLv: 26,
+    img: 'assets/images/villains/trash_dumper.png',
+    quote: '"학생~ 딱 1분만 보고 가~ 출구 못 찾지? 이쪽이야 크크크!"',
+  },
+  {
+    id: 'act_incheon_boss',
+    actId: 'incheon',
+    isActBoss: true,
+    name: '🎡 월미도 디스코팡팡 마왕 DJ (Act 4 보스)',
+    hp: 540,
+    atk: 42,
+    reward: 350,
+    weak: 'guts',
+    minLv: 30,
+    img: 'assets/images/villains/dr_chaos.png',
+    quote: '"어디 한번 버텨봐라!! 마계 인천의 원심력을 맛보여주마!!"',
+  },
+];
+
+export const ACT_STORY_EPISODES = {
+  jeonju: [
+    {
+      title: '🍲 제1막 · 한옥마을 첫 순찰',
+      text: '전주 한옥마을 돌담길에 노란 완장을 매고 첫발을 내디뎠습니다. 달콤한 초코파이 냄새 너머로 관광지 바가지 상인과 새치기 빌런의 고성이 들려옵니다!',
+      choices: [
+        { label: '🗣️ 줄 서기 질서 캠페인 주도', sub: '명성 +2 · 화술 숙련도 상승', fame: 2, points: 30, skill: 'speech' },
+        { label: '🤫 바가지 상인 장부 몰래 촬영', sub: '은신 숙련도 상승 · 단서 확보', fame: 1, points: 45, skill: 'sneak' },
+      ],
+    },
+    {
+      title: '🏮 제1막 결전 · 한옥마을 바가지 대왕',
+      text: '물 한 병을 만 원에 팔며 관광객을 위협하는 [한옥마을 바가지 대왕]이 나타났습니다! 전주의 명예를 걸고 참교육하세요!',
+      battleBossId: 'act_jeonju_boss',
+    },
+  ],
+  pyeongtaek: [
+    {
+      title: '🚆 제2막 · 평택역 24시 교차로',
+      text: '수도권과 충청을 잇는 평택역 앞! 불법 주정차 덤프트럭과 다국적 진상들이 뒤엉켜 교통이 마비되었습니다.',
+      choices: [
+        { label: '🌐 외국어 안내 & 교통 정리', sub: '명성 +2 · 화술 숙련도 상승', fame: 2, points: 55, skill: 'speech' },
+        { label: '😈 불법 트럭 운전수들에게 과태료 압박', sub: '악명 +2 · 70P 회수', infamy: 2, points: 70, skill: 'combat' },
+      ],
+    },
+    {
+      title: '⚓ 제2막 결전 · 평택항 밀수 브로커',
+      text: '심야 평택항 컨테이너 사이로 수상한 거래 현장을 포착했습니다! [평택항 심야 밀수 브로커]가 앞을 막아섭니다!',
+      battleBossId: 'act_pyeongtaek_boss',
+    },
+  ],
+  dongtan: [
+    {
+      title: '🏙️ 제3막 · 동탄 신도시의 그림자',
+      text: '화려한 동탄 호수공원 야경 뒤로, 익명 커뮤니티 여론을 조작하고 새벽마다 리코더를 부는 빌런의 소문이 퍼지고 있습니다.',
+      choices: [
+        { label: '📱 커뮤니티 팩트체크 반박문 게시', sub: '팔로워 +120명 · 명성 +3', fame: 3, followers: 120, skill: 'speech' },
+        { label: '🧪 동탄 특산 원두로 에너지 보충', sub: '연금 재료 획득 · 사이다 풀회복', spFull: true, ing: 'cold_brew', skill: 'alchemy' },
+      ],
+    },
+    {
+      title: '🎺 제3막 결전 · 층간소음 리코더 마왕',
+      text: '아파트 옥상에서 확성기를 연결해 리코더를 불어대는 [층간소음 리코더 마왕]! 오늘 밤 동탄의 숙면을 되찾아주세요!',
+      battleBossId: 'act_dongtan_boss',
+    },
+  ],
+  incheon: [
+    {
+      title: '😈 제4막 · 마계 인천 입성',
+      text: '드디어 발을 들인 마계 인천! 끝없이 이어지는 부평 지하상가의 갈림길과 월미도의 광기 어린 비트가 심장을 두드립니다.',
+      choices: [
+        { label: '🕵️ 지하상가 비밀 상인 루트 개척', sub: '마계 정령촉매 획득 · 은신 상승', ing: 'spirit_dust', points: 90, skill: 'sneak' },
+        { label: '🥊 월미도 펀치기계 신기록 경신', sub: '격투 숙련도 대폭 상승 · 악명/명성', points: 110, skill: 'combat' },
+      ],
+    },
+    {
+      title: '🎡 제4막 결전 · 월미도 디스코팡팡 마왕 DJ',
+      text: '화려한 조명 아래 마이크를 쥔 [월미도 디스코팡팡 마왕 DJ]가 전 국민을 튕겨버리려 합니다! 마계 인천을 정복하세요!',
+      battleBossId: 'act_incheon_boss',
+    },
+  ],
+  seoul: [
+    {
+      title: '👑 제5막 · 전국 제패 시민영웅 서울 귀환',
+      text: '전주·평택·동탄·마계 인천을 모두 거친 당신! 이제 서울의 기존 4대 구역 보스와 최종 흑막을 물리치고 진정한 레전드로 등극할 시간입니다.',
+      choices: [
+        { label: '🔥 전국 영웅 오라 개방! (전체 스탯 강화)', sub: '사이다·인내심 풀회복 · +150P', spFull: true, points: 150, skill: 'combat' },
+      ],
+    },
+  ],
+};

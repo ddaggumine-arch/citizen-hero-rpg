@@ -1,4 +1,5 @@
 import { TIME_SLOTS, ITEMS, TRAITS, VILLAINS, BOSSES, HIDDEN_BOSS, WEATHERS, RANDOM_EVENTS, STORY_MESSAGES } from './data/gameData.js?v=98';
+import { KOREA_ACTS, REGIONAL_GOODS, RUNE_STONES, ACT_VILLAINS, ACT_STORY_EPISODES } from './data/koreaActs.js?v=100';
 import { STORY_CHAPTERS } from './data/storyChapters.js?v=48';
 import { ACTIVITY_CATEGORIES } from './data/activities.js?v=48';
 import { MINI_EVENTS, ENEMY_INTENTS, createFeedForVictory } from './data/liveEvents.js';
@@ -239,6 +240,14 @@ function createNewGameState() {
     houseTier: 0,
     lottoTickets: 0,
     pendingDm: null,
+    currentAct: 'seoul',
+    clearedActs: [],
+    actStoryStep: {},
+    tradeCargo: {},
+    marketRates: null,
+    dispatchedActs: {},
+    ownedRunes: [],
+    socketedRunes: { weapon: null, armor: null, acc: null },
   };
 }
 
@@ -828,6 +837,13 @@ function advanceTime() {
   if (!state.pendingDm && isFeatureUnlocked(state, 'yuki') && Math.random() < 0.16) {
     state.pendingDm = (isFeatureUnlocked(state, 'chloe') && Math.random() < 0.45) ? 'chloe' : 'yuki';
   }
+  // V40.0: 보부상 시세 변동 & 자경단 지부 파견 수익
+  if (typeof rollMarketRates === 'function') rollMarketRates();
+  const dispKeys = Object.keys(state.dispatchedActs || {});
+  if (dispKeys.length > 0) {
+    const dispGain = dispKeys.length * 10;
+    state.points += dispGain;
+  }
   state.chaosLevel = clamp((state.chaosLevel ?? 25) + 4, 0, 100);
   if (state.chaosLevel <= 30) {
     state.points += 5;
@@ -936,6 +952,7 @@ function triggerPartnerCallout(who, text, isUnite = false) {
 function getEnemyById(id) {
   if (id === HIDDEN_BOSS.id) return HIDDEN_BOSS;
   return STORY_BOSSES.find((s) => s.id === id)
+    || ACT_VILLAINS.find((a) => a.id === id)
     || BOSSES.find((b) => b.id === id)
     || GUERRILLA_VILLAINS.find((g) => g.id === id)
     || VILLAINS.find((v) => v.id === id)
@@ -1414,6 +1431,16 @@ function getEquippedBonuses() {
   if ((d.seongsu || 0) >= 100) res.crit += 0.06;
   if ((d.jongno || 0) >= 100) res.def += 3;
   if ((d.mapo || 0) >= 100) res.spRegen += 3;
+  // V40.0: 장비 정령석(룬) 소켓 보너스
+  Object.values(state.socketedRunes || {}).forEach((rId) => {
+    const r = rId ? RUNE_STONES.find((x) => x.id === rId) : null;
+    if (r) {
+      res.atk += r.atk || 0;
+      res.def += r.def || 0;
+      res.crit += r.crit || 0;
+      res.spRegen += r.spRegen || 0;
+    }
+  });
   const setSyn = getGearSetSynergy();
   if (setSyn.spRegen) res.spRegen += setSyn.spRegen;
   if (setSyn.crit) res.crit += setSyn.crit;
@@ -2050,6 +2077,20 @@ function handleEnemyDefeated(enemy) {
   const enemyLv = state.currentEnemyLv || enemy.lv || state.level || 1;
   rollGearDrop(isBossId(enemy.id) || enemy.id === HIDDEN_BOSS.id, enemyLv);
   rollSpiritEncounter(isBossId(enemy.id) || enemy.id === HIDDEN_BOSS.id, enemyLv);
+  if (enemy.isActBoss && enemy.actId) {
+    if (!Array.isArray(state.clearedActs)) state.clearedActs = [];
+    if (!state.clearedActs.includes(enemy.actId)) {
+      state.clearedActs.push(enemy.actId);
+      const rPick = RUNE_STONES.find((x) => x.id === `rune_${enemy.actId}`) || RUNE_STONES[0];
+      if (!Array.isArray(state.ownedRunes)) state.ownedRunes = [];
+      state.ownedRunes.push(rPick.id);
+      if (enemy.actId === 'jeonju') state.maxHp += 20;
+      else if (enemy.actId === 'pyeongtaek') state.bonusDmg += 4;
+      else if (enemy.actId === 'dongtan') state.flatDef = (state.flatDef || 0) + 3;
+      else if (enemy.actId === 'incheon') state.critBonus = (state.critBonus || 0) + 0.08;
+      showToast(`🏆 [지역 제패!!] ${enemy.name} 격파! [${rPick.name}] 획득!`, 'break');
+    }
+  }
   if (enemyLv >= 15 && Math.random() < (enemyLv >= 35 ? 0.65 : 0.40)) {
     const scrapGain = enemyLv >= 35 ? 3 : (enemyLv >= 25 ? 2 : 1);
     state.scrap = (state.scrap || 0) + scrapGain;
@@ -3549,6 +3590,21 @@ function render() {
       }
       elChoicesPanel.appendChild(storyBtn);
     }
+
+    // V40.0: 전국 5대 액트 대장정 (전주 → 평택 → 동탄 → 마계 인천 → 서울) 배너
+    ensureNationalState();
+    const curAct = KOREA_ACTS.find((a) => a.id === (state.currentAct || 'seoul')) || KOREA_ACTS[4];
+    const actBanner = document.createElement('button');
+    actBanner.className = 'choice-btn row-btn';
+    actBanner.style.gridColumn = 'span 2';
+    actBanner.style.background = 'linear-gradient(180deg, #eef2ff 0%, #e0e7ff 100%)';
+    actBanner.style.borderColor = '#4f46e5';
+    actBanner.innerHTML = `<span>🚄 전국 5대 액트 · [${curAct.name}]</span><span class="choice-sub" style="color:#3730a3;">지역이동 · 스토리 · 던전 · 무역 · 지부파견 · 정령석 (${(state.clearedActs || []).length}/5) ▶</span>`;
+    actBanner.addEventListener('click', () => {
+      sfx.click();
+      openKoreaWorldModal();
+    });
+    elChoicesPanel.appendChild(actBanner);
 
     // V36.0: 4대 핵심 허브 (2×2 그리드) + 모달 내 6대 활동/전투 통합
     function openCombatHubModal() {
@@ -9653,6 +9709,332 @@ function openUndergroundPokerModal() {
     }
   });
 })();
+
+// ============================================================
+// V40.0: 전국 5대 액트 대장정 · 보부상 무역 · 미로 던전 · 지부 파견 · 정령석 소켓
+// ============================================================
+function ensureNationalState() {
+  if (!state.currentAct) state.currentAct = 'seoul';
+  if (!Array.isArray(state.clearedActs)) state.clearedActs = [];
+  if (!state.actStoryStep) state.actStoryStep = {};
+  if (!state.tradeCargo) state.tradeCargo = {};
+  if (!state.marketRates) rollMarketRates();
+  if (!state.dispatchedActs) state.dispatchedActs = {};
+  if (!Array.isArray(state.ownedRunes)) state.ownedRunes = [];
+  if (!state.socketedRunes) state.socketedRunes = { weapon: null, armor: null, acc: null };
+}
+
+function rollMarketRates() {
+  const rates = {};
+  KOREA_ACTS.forEach((act) => {
+    rates[act.id] = {};
+    REGIONAL_GOODS.forEach((g) => {
+      const isOrigin = g.origin === act.id;
+      const mult = isOrigin ? (0.7 + Math.random() * 0.25) : (1.25 + Math.random() * 0.65);
+      rates[act.id][g.id] = Math.round(g.basePrice * mult);
+    });
+  });
+  state.marketRates = rates;
+}
+
+function openKoreaWorldModal() {
+  ensureNationalState();
+  const curAct = KOREA_ACTS.find((a) => a.id === state.currentAct) || KOREA_ACTS[4];
+  elActivityModalTitle.textContent = `🚄 전국 5대 액트 · ${curAct.name}`;
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+
+  const banner = document.createElement('div');
+  banner.className = 'oblivion-banner';
+  banner.innerHTML = `<b>${curAct.name}</b> (${curAct.sub})<br>${curAct.desc}<br>🏆 제패 완료: <b>${state.clearedActs.length}/5</b> · 👥 파견 지부: <b>${Object.keys(state.dispatchedActs).length}곳</b>`;
+  elActivityList.appendChild(banner);
+
+  const items = [
+    { t: '🗺️ 전국 지역 이동 (전주 ↔ 평택 ↔ 동탄 ↔ 마계 인천 ↔ 서울)', d: '5대 액트 도시를 자유롭게 오가며 탐험', fn: openActTravelModal },
+    { t: `📖 [${curAct.name}] 액트 스토리 & 지역 보스전`, d: curAct.buffDesc, fn: () => openActStoryModal(curAct.id) },
+    { t: `🕸️ ${curAct.dungeonName} 탐험 (미로 던전)`, d: '앞/좌/우 갈림길을 뚫고 보물·정령석·보스방 공략!', fn: () => startActDungeon(curAct) },
+    { t: '🚚 보부상 특산품 무역 (실시간 시세)', d: '산지에서 싸게 사서 다른 도시에 비싸게 매도!', fn: openTradeModal },
+    { t: '👥 자경단 지부 파견 관리', d: '제패한 지역에 동료를 파견해 매 턴 자동 +10P 수익', fn: openDispatchModal },
+    { t: `💎 장비 정령석(룬) 소켓 각인 (보유 ${state.ownedRunes.length}개)`, d: '무기·방어구·장신구에 지역 정령석 장착!', fn: openRuneSocketModal },
+  ];
+
+  items.forEach((it) => {
+    const btn = document.createElement('button');
+    btn.className = 'activity-item-btn';
+    btn.innerHTML = `<div class="act-title">${it.t}</div><div class="act-desc">${it.d}</div>`;
+    btn.addEventListener('click', () => {
+      sfx.click();
+      it.fn();
+    });
+    elActivityList.appendChild(btn);
+  });
+
+  elActivityModal.classList.remove('hidden');
+}
+
+function openActTravelModal() {
+  ensureNationalState();
+  elActivityModalTitle.textContent = '🚄 대한민국 전국 이동';
+  elActivityList.innerHTML = '';
+
+  KOREA_ACTS.forEach((act) => {
+    const isHere = state.currentAct === act.id;
+    const cleared = state.clearedActs.includes(act.id);
+    const lvOk = (state.level || 1) >= act.minLv || act.id === 'seoul' || act.id === 'jeonju';
+    const btn = document.createElement('button');
+    btn.className = 'activity-item-btn';
+    btn.disabled = isHere || !lvOk;
+    btn.innerHTML = `<div class="act-title">${act.name} ${cleared ? '✅제패' : ''} ${isHere ? '📍현재위치' : ''}</div><div class="act-desc">${act.sub} · ${lvOk ? act.desc : `🔒 Lv.${act.minLv} 이상 해금`}</div>`;
+    btn.addEventListener('click', () => {
+      state.currentAct = act.id;
+      sfx.powerup();
+      showToast(`🚄 [${act.name}] 도착!`, 'good');
+      state.log = `🚄 고속열차를 타고 [${act.name}]에 도착했습니다! (${act.sub})`;
+      advanceTime();
+      saveGame();
+      openKoreaWorldModal();
+    });
+    elActivityList.appendChild(btn);
+  });
+}
+
+function openActStoryModal(actId) {
+  ensureNationalState();
+  const eps = ACT_STORY_EPISODES[actId] || ACT_STORY_EPISODES.seoul;
+  const step = Math.min(state.actStoryStep[actId] || 0, eps.length - 1);
+  const ep = eps[step];
+  elActivityModalTitle.textContent = ep.title;
+  elActivityList.innerHTML = '';
+
+  const banner = document.createElement('div');
+  banner.className = 'oblivion-banner';
+  banner.textContent = ep.text;
+  elActivityList.appendChild(banner);
+
+  if (ep.battleBossId) {
+    const bBtn = document.createElement('button');
+    bBtn.className = 'activity-item-btn';
+    bBtn.innerHTML = `<div class="act-title">⚔️ 지역 보스 결전 돌입!</div><div class="act-desc">승리 시 지역 영구 버프 + 지역 정령석 획득!</div>`;
+    bBtn.addEventListener('click', () => {
+      elActivityModal.classList.add('hidden');
+      startBattle(ep.battleBossId);
+    });
+    elActivityList.appendChild(bBtn);
+  } else if (ep.choices) {
+    ep.choices.forEach((ch) => {
+      const cBtn = document.createElement('button');
+      cBtn.className = 'activity-item-btn';
+      cBtn.innerHTML = `<div class="act-title">${ch.label}</div><div class="act-desc">${ch.sub}</div>`;
+      cBtn.addEventListener('click', () => {
+        if (ch.fame) state.fame = (state.fame || 0) + ch.fame;
+        if (ch.infamy) state.infamy = (state.infamy || 0) + ch.infamy;
+        if (ch.points) state.points += ch.points;
+        if (ch.followers) state.followers = (state.followers || 120) + ch.followers;
+        if (ch.spFull) state.sp = state.maxSp;
+        if (ch.ing) gainIngredient(ch.ing, 1);
+        if (ch.skill) gainSkillXp(ch.skill, 15);
+        state.actStoryStep[actId] = Math.min(eps.length - 1, step + 1);
+        sfx.powerup();
+        saveGame();
+        openActStoryModal(actId);
+      });
+      elActivityList.appendChild(cBtn);
+    });
+  }
+}
+
+function startActDungeon(act, depth = 1) {
+  ensureNationalState();
+  elActivityModalTitle.textContent = `🕸️ ${act.dungeonName} (${depth}/4층)`;
+  elActivityList.innerHTML = '';
+
+  const banner = document.createElement('div');
+  banner.className = 'oblivion-banner';
+  banner.textContent = depth >= 4
+    ? '🚨 던전 최심부 도착! 앞에는 보스방의 기운이 느껴집니다!'
+    : `갈림길 ${depth}층: 어느 통로로 진입할까요? (은신/화술/전투에 따라 보상 변화!)`;
+  elActivityList.appendChild(banner);
+
+  if (depth >= 4) {
+    const bossBtn = document.createElement('button');
+    bossBtn.className = 'activity-item-btn';
+    bossBtn.innerHTML = '<div class="act-title">👑 던전 보스방 돌입!!</div><div class="act-desc">지역 보스 격파 & 정령석 획득 찬스!</div>';
+    bossBtn.addEventListener('click', () => {
+      elActivityModal.classList.add('hidden');
+      startBattle(act.bossId);
+    });
+    elActivityList.appendChild(bossBtn);
+    return;
+  }
+
+  const dirs = [
+    { label: '⬆️ 직진 통로', desc: '빌런 매복 or 보물상자 확률 높음' },
+    { label: '⬅️ 왼쪽 좁은 샛길', desc: '은신·함정 해체로 포인트/재료 파밍' },
+    { label: '➡️ 오른쪽 수상한 네온 골목', desc: '비밀 상인 또는 정령석 발견 찬스' },
+  ];
+  dirs.forEach((d) => {
+    const btn = document.createElement('button');
+    btn.className = 'activity-item-btn';
+    btn.innerHTML = `<div class="act-title">${d.label}</div><div class="act-desc">${d.desc}</div>`;
+    btn.addEventListener('click', () => {
+      const r = Math.random();
+      if (r < 0.35) {
+        const mob = ACT_VILLAINS.find((v) => v.actId === act.id && !v.isActBoss) || VILLAINS[0];
+        elActivityModal.classList.add('hidden');
+        showToast('⚔️ 던전 매복 빌런 출현!', 'warn');
+        startBattle(mob.id, true);
+        return;
+      } else if (r < 0.52) {
+        const rPick = RUNE_STONES.find((x) => x.id === `rune_${act.id}`) || RUNE_STONES[0];
+        state.ownedRunes.push(rPick.id);
+        sfx.victory();
+        showToast(`💎 [${rPick.name}] 발견!!`, 'break');
+      } else {
+        const pGain = 25 + depth * 12;
+        state.points += pGain;
+        gainSkillXp('sneak', 8);
+        sfx.powerup();
+        showToast(`💰 던전 보물상자! +${pGain}P`, 'good');
+      }
+      saveGame();
+      startActDungeon(act, depth + 1);
+    });
+    elActivityList.appendChild(btn);
+  });
+}
+
+function openTradeModal() {
+  ensureNationalState();
+  const actId = state.currentAct || 'seoul';
+  const curAct = KOREA_ACTS.find((a) => a.id === actId) || KOREA_ACTS[4];
+  const rates = state.marketRates[actId] || {};
+  elActivityModalTitle.textContent = `🚚 보부상 무역 — ${curAct.name}`;
+  elActivityList.innerHTML = '';
+
+  const banner = document.createElement('div');
+  banner.className = 'oblivion-banner';
+  banner.textContent = `보유: ${state.points}P | 산지에서는 싸고, 타 도시에서는 비싸게 팔립니다! (시간대 이동 시 시세 갱신)`;
+  elActivityList.appendChild(banner);
+
+  REGIONAL_GOODS.forEach((g) => {
+    const price = rates[g.id] || g.basePrice;
+    const held = state.tradeCargo[g.id] || 0;
+    const isOrigin = g.origin === actId;
+    const row = document.createElement('div');
+    row.className = 'inv-item';
+    row.innerHTML = `<div class="inv-info"><h4>${g.name} (${held}개) ${isOrigin ? '🏷️산지특가' : '📈고수익'}</h4><p>현재 시세: ${price}P · ${g.desc}</p></div>`;
+    const buyBtn = document.createElement('button');
+    buyBtn.className = 'use-btn';
+    buyBtn.textContent = `구매 ${price}P`;
+    buyBtn.disabled = state.points < price;
+    buyBtn.addEventListener('click', () => {
+      state.points -= price;
+      state.tradeCargo[g.id] = (state.tradeCargo[g.id] || 0) + 1;
+      sfx.click();
+      saveGame();
+      openTradeModal();
+    });
+    const sellBtn = document.createElement('button');
+    sellBtn.className = 'use-btn';
+    sellBtn.style.marginLeft = '4px';
+    sellBtn.textContent = `판매 +${price}P`;
+    sellBtn.disabled = held <= 0;
+    sellBtn.addEventListener('click', () => {
+      state.tradeCargo[g.id] -= 1;
+      state.points += price;
+      gainSkillXp('speech', 6);
+      sfx.powerup();
+      saveGame();
+      openTradeModal();
+    });
+    row.appendChild(buyBtn);
+    row.appendChild(sellBtn);
+    elActivityList.appendChild(row);
+  });
+}
+
+function openDispatchModal() {
+  ensureNationalState();
+  elActivityModalTitle.textContent = '👥 자경단 지부 파견 관리';
+  elActivityList.innerHTML = '';
+
+  const banner = document.createElement('div');
+  banner.className = 'oblivion-banner';
+  banner.textContent = '제패한 도시에 자경단 지부를 세워두면 시간이 흐를 때마다 자동으로 +10P씩 수익이 들어옵니다!';
+  elActivityList.appendChild(banner);
+
+  KOREA_ACTS.forEach((act) => {
+    const cleared = state.clearedActs.includes(act.id) || act.id === 'seoul';
+    const active = !!state.dispatchedActs[act.id];
+    const btn = document.createElement('button');
+    btn.className = 'activity-item-btn';
+    btn.disabled = !cleared || active;
+    btn.innerHTML = `<div class="act-title">${act.name} 지부 ${active ? '✅ 파견 가동중 (+10P/턴)' : ''}</div><div class="act-desc">${cleared ? (active ? '자동 치안 유지 및 후원금 수금 중' : '터치해 자경단 지부 파견 시작 (50P)') : '🔒 먼저 해당 액트 보스를 격파하세요'}</div>`;
+    btn.addEventListener('click', () => {
+      if (state.points < 50) { showToast('파견 설치비 50P 필요!', 'warn'); return; }
+      state.points -= 50;
+      state.dispatchedActs[act.id] = true;
+      sfx.victory();
+      showToast(`👥 [${act.name}] 자경단 지부 개설 완료!`, 'good');
+      saveGame();
+      openDispatchModal();
+    });
+    elActivityList.appendChild(btn);
+  });
+}
+
+function openRuneSocketModal() {
+  ensureNationalState();
+  elActivityModalTitle.textContent = '💎 장비 정령석(룬) 소켓 각인';
+  elActivityList.innerHTML = '';
+
+  const slots = [
+    { key: 'weapon', label: '⚔️ 무기 소켓' },
+    { key: 'armor', label: '🛡️ 방어구 소켓' },
+    { key: 'acc', label: '💍 장신구 소켓' },
+  ];
+  const banner = document.createElement('div');
+  banner.className = 'oblivion-banner';
+  banner.innerHTML = slots.map((s) => {
+    const r = RUNE_STONES.find((x) => x.id === state.socketedRunes[s.key]);
+    return `<b>${s.label}:</b> ${r ? `${r.name} (${r.desc})` : '비어있음'}`;
+  }).join('<br>');
+  elActivityList.appendChild(banner);
+
+  if (state.ownedRunes.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'oblivion-banner';
+    empty.textContent = '아직 보유한 정령석이 없습니다! 5대 액트 던전이나 지역 보스 격파로 획득하세요.';
+    elActivityList.appendChild(empty);
+    return;
+  }
+
+  state.ownedRunes.forEach((rId, idx) => {
+    const r = RUNE_STONES.find((x) => x.id === rId);
+    if (!r) return;
+    const row = document.createElement('div');
+    row.className = 'inv-item';
+    row.innerHTML = `<div class="inv-info"><h4>${r.name}</h4><p>${r.desc}</p></div>`;
+    slots.forEach((sl) => {
+      const b = document.createElement('button');
+      b.className = 'use-btn';
+      b.style.marginLeft = '4px';
+      b.textContent = sl.key === 'weapon' ? '무기' : (sl.key === 'armor' ? '방어' : '장신');
+      b.addEventListener('click', () => {
+        const old = state.socketedRunes[sl.key];
+        state.socketedRunes[sl.key] = r.id;
+        state.ownedRunes.splice(idx, 1);
+        if (old) state.ownedRunes.push(old);
+        sfx.powerup();
+        showToast(`💎 [${r.name}] ${sl.label} 각인 완료!`, 'good');
+        saveGame();
+        openRuneSocketModal();
+      });
+      row.appendChild(b);
+    });
+    elActivityList.appendChild(row);
+  });
+}
 
 if (elSeoulMinimap && !elSeoulMinimap.dataset.pinBound) {
   elSeoulMinimap.dataset.pinBound = '1';
