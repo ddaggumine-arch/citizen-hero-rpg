@@ -227,6 +227,15 @@ function createNewGameState() {
     activeRomanceStory: null,
     epilogueIdx: 0,
     epilogueSeen: false,
+    fame: 0,
+    infamy: 0,
+    skills: { sneak: 1, speech: 1, alchemy: 1, combat: 1 },
+    skillXp: { sneak: 0, speech: 0, alchemy: 0, combat: 0 },
+    ingredients: { bacchus: 1, capsaicin: 1, red_ginseng: 0, spirit_dust: 0, cold_brew: 0 },
+    customPotions: [],
+    customSpell: null,
+    rumor: '',
+    sideQuest: { id: null, step: 0, done: [] },
   };
 }
 
@@ -3392,10 +3401,13 @@ function render() {
     animateChibiTo(activeLoc);
 
     if (!state.dailyQuests || state.dailyQuests.day !== state.day) rollDailyQuests();
+    ensureSandboxState();
     const dqLine = state.dailyQuests.claimed
       ? '🎯 오늘의 미션: ✅ 올클리어 완료!'
       : `🎯 오늘의 미션: ${state.dailyQuests.items.map((x) => `${x.label}(${x.cur}/${x.goal})`).join(' · ')}`;
-    elBattleLog.textContent = (state.log || '서울 시내 지도입니다. 미션을 달성해 스토리를 해금하고 자유행동으로 이동하세요!') + `\n${dqLine}`;
+    const repLine = `🏅 명성 ${state.fame || 0} · 😈 악명 ${state.infamy || 0} | 🤫은신${state.skills.sneak} 🗣️화술${state.skills.speech} 🧪연금${state.skills.alchemy} 🥊격투${state.skills.combat}`;
+    const rumorLine = state.rumor ? `\n📰 [서울 소문] ${state.rumor}` : '';
+    elBattleLog.textContent = (state.log || '서울 시내 지도입니다. 위 미니맵 핀을 직접 눌러 장소별 자유행동을 선택해보세요!') + `\n${repLine}\n${dqLine}${rumorLine}`;
 
     elChoicesPanel.className = 'choices-panel grid-2';
 
@@ -3559,6 +3571,15 @@ function render() {
       const gearUnlocked = isFeatureUnlocked(state, 'gear');
       const petTxt = state.pet?.adopted ? `🐶Lv.${state.pet.level}` : '🐶미입양';
       const carTxt = (state.carLevel || 0) >= 1 ? `🚗T${state.carLevel}` : '🚗뚜벅이';
+      const obBtn = document.createElement('button');
+      obBtn.className = 'activity-item-btn';
+      obBtn.innerHTML = `<div class="act-title">📜 자유도 시트 · 연금술 · 필살기 제작</div><div class="act-desc">은신/화술/연금/격투 숙련도 · 명성(${state.fame || 0})/악명(${state.infamy || 0}) · 조합소</div>`;
+      obBtn.addEventListener('click', () => {
+        sfx.click();
+        openOblivionSheetModal();
+      });
+      elActivityList.appendChild(obBtn);
+
       const lifeItem = document.createElement('button');
       lifeItem.className = 'activity-item-btn';
       lifeItem.innerHTML = gearUnlocked
@@ -6234,6 +6255,51 @@ function render() {
     elQuoteBubble.classList.add('hidden');
     elBattleLog.textContent = (state.quote ? `💬 ${state.quote}\n` : '') + (state.log || '');
     elChoicesPanel.className = 'choices-panel grid-2 is-combat-grid';
+    ensureSandboxState();
+
+    // V37.0: 오블리비언식 무혈 외교 (첫 턴 & 최종 보스 제외)
+    if (state.isFirstTurn && !enemy.isFinal && !state.towerFloor && !state.nightmareFloor) {
+      const dipBtn = document.createElement('button');
+      dipBtn.className = 'choice-btn row-btn';
+      dipBtn.style.gridColumn = 'span 2';
+      dipBtn.style.background = 'linear-gradient(180deg, #f0f9ff 0%, #dbeafe 100%)';
+      dipBtn.style.borderColor = '#3b82f6';
+      dipBtn.innerHTML = `<span>🗣️ [오블리비언 외교] 말로 설득 · 협박 · 매수</span><span class="choice-sub" style="color:#1e40af;">화술 Lv.${state.skills.speech} · 악명 ${state.infamy} · 무혈 제압 시도</span>`;
+      dipBtn.addEventListener('click', () => {
+        sfx.click();
+        openDiplomacyModal(enemy);
+      });
+      elChoicesPanel.appendChild(dipBtn);
+    }
+
+    // V37.0: 나만의 커스텀 필살기
+    if (state.customSpell) {
+      const sp = state.customSpell;
+      const csBtn = document.createElement('button');
+      csBtn.className = 'choice-btn';
+      csBtn.disabled = state.sp < 25;
+      csBtn.style.background = 'linear-gradient(180deg, #faf5ff 0%, #f3e8ff 100%)';
+      csBtn.style.borderColor = '#9333ea';
+      csBtn.innerHTML = `<span>✨ ${sp.name}</span><span class="choice-sub" style="color:#6b21a8;">${state.sp >= 25 ? `SP 25 · ${sp.desc}` : `SP 부족 (${state.sp}/25)`}</span>`;
+      csBtn.addEventListener('click', () => {
+        useCustomSpellInCombat(enemy);
+      });
+      elChoicesPanel.appendChild(csBtn);
+    }
+
+    // V37.0: 자취방 연금 커스텀 포션
+    if ((state.customPotions?.length || 0) > 0) {
+      const pot = state.customPotions[0];
+      const cpBtn = document.createElement('button');
+      cpBtn.className = 'choice-btn';
+      cpBtn.style.background = 'linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%)';
+      cpBtn.style.borderColor = '#10b981';
+      cpBtn.innerHTML = `<span>🧪 ${pot.name} (${state.customPotions.length})</span><span class="choice-sub" style="color:#065f46;">턴 소모 없음 · ${pot.desc}</span>`;
+      cpBtn.addEventListener('click', () => {
+        useCustomPotionInCombat(enemy);
+      });
+      elChoicesPanel.appendChild(cpBtn);
+    }
 
     // V26.2 막타 사이다 피니셔 (적 HP 25% 이하)
     if (state.enemyHp > 0 && state.enemyHp <= Math.ceil(state.enemyMaxHp * 0.25)) {
@@ -8698,6 +8764,542 @@ function executeActivity(act, cat) {
 
   saveGame();
   render();
+}
+
+// ============================================================
+// V37.0: 오블리비언 스타일 초고자유도 샌드박스 & 6대 미니맵 핀 인터랙션
+// ============================================================
+const INGREDIENT_META = {
+  bacchus: { name: '⚡ 박카스 원액', desc: '피로회복 베이스' },
+  capsaicin: { name: '🌶️ 캡사이신 소스', desc: '매운맛 극대화' },
+  red_ginseng: { name: '🫚 홍삼 엑기스', desc: '고농축 기력' },
+  spirit_dust: { name: '✨ 정령의 가루', desc: '신비한 촉매' },
+  cold_brew: { name: '☕ 심야 콜드브루', desc: '각성 카페인' },
+};
+
+function ensureSandboxState() {
+  if (typeof state.fame !== 'number') state.fame = 0;
+  if (typeof state.infamy !== 'number') state.infamy = 0;
+  if (!state.skills) state.skills = { sneak: 1, speech: 1, alchemy: 1, combat: 1 };
+  if (!state.skillXp) state.skillXp = { sneak: 0, speech: 0, alchemy: 0, combat: 0 };
+  if (!state.ingredients) state.ingredients = { bacchus: 1, capsaicin: 1, red_ginseng: 0, spirit_dust: 0, cold_brew: 0 };
+  if (!Array.isArray(state.customPotions)) state.customPotions = [];
+  if (!state.sideQuest) state.sideQuest = { id: null, step: 0, done: [] };
+}
+
+function gainSkillXp(skillKey, amount = 10) {
+  ensureSandboxState();
+  const names = { sneak: '🤫 은신', speech: '🗣️ 화술', alchemy: '🧪 연금', combat: '🥊 격투' };
+  state.skillXp[skillKey] = (state.skillXp[skillKey] || 0) + amount;
+  let lv = state.skills[skillKey] || 1;
+  let need = lv * 25;
+  while (state.skillXp[skillKey] >= need) {
+    state.skillXp[skillKey] -= need;
+    lv += 1;
+    state.skills[skillKey] = lv;
+    need = lv * 25;
+    sfx.powerup();
+    showToast(`📈 [숙련도 UP!] ${names[skillKey] || skillKey} Lv.${lv} 달성!`, 'good');
+  }
+}
+
+function gainIngredient(id, count = 1) {
+  ensureSandboxState();
+  state.ingredients[id] = (state.ingredients[id] || 0) + count;
+}
+
+function setRumor(txt) {
+  state.rumor = txt;
+}
+
+function openOblivionSheetModal() {
+  ensureSandboxState();
+  elActivityModalTitle.textContent = '📜 자유도 시트 · 오블리비언 샌드박스';
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+
+  const info = document.createElement('div');
+  info.className = 'oblivion-banner';
+  const ingText = Object.entries(INGREDIENT_META)
+    .map(([k, v]) => `${v.name.split(' ')[0]} ${state.ingredients[k] || 0}`)
+    .join(' · ');
+  info.innerHTML = `
+    <div><b>🏅 명성:</b> ${state.fame} &nbsp;|&nbsp; <b>😈 악명:</b> ${state.infamy} ${(state.infamy >= 5) ? '(🕶️ 암시장 해금!)' : '(악명 5+ 시 암시장)'}</div>
+    <div style="margin-top:4px;"><b>📈 숙련도:</b> 🤫은신 Lv.${state.skills.sneak} · 🗣️화술 Lv.${state.skills.speech} · 🧪연금 Lv.${state.skills.alchemy} · 🥊격투 Lv.${state.skills.combat}</div>
+    <div style="margin-top:4px;"><b>🎒 재료:</b> ${ingText}</div>
+    <div style="margin-top:4px;"><b>✨ 커스텀 필살기:</b> ${state.customSpell ? `${state.customSpell.name} (${state.customSpell.desc})` : '미제작'}</div>
+    <div style="margin-top:4px;"><b>🧪 보유 포션:</b> ${state.customPotions.length}개</div>
+  `;
+  elActivityList.appendChild(info);
+
+  const alchBtn = document.createElement('button');
+  alchBtn.className = 'activity-item-btn';
+  alchBtn.innerHTML = '<div class="act-title">🧪 자취방 연금·요리 조합소</div><div class="act-desc">재료 2개를 자유롭게 섞어 나만의 포션/투척물 제작!</div>';
+  alchBtn.addEventListener('click', () => { sfx.click(); openAlchemyModal(); });
+  elActivityList.appendChild(alchBtn);
+
+  const spellBtn = document.createElement('button');
+  spellBtn.className = 'activity-item-btn';
+  spellBtn.innerHTML = '<div class="act-title">✨ 나만의 필살기 제작소 (60P)</div><div class="act-desc">효과와 이름을 직접 조합해 세상에 하나뿐인 필살기 창조!</div>';
+  spellBtn.addEventListener('click', () => { sfx.click(); openSpellmakingModal(); });
+  elActivityList.appendChild(spellBtn);
+
+  elActivityModal.classList.remove('hidden');
+}
+
+function openAlchemyModal(firstPick = null) {
+  ensureSandboxState();
+  elActivityModalTitle.textContent = firstPick
+    ? `🧪 두 번째 재료 선택 (1차: ${INGREDIENT_META[firstPick].name})`
+    : '🧪 자취방 연금·요리 조합소 (재료 2개 선택)';
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+
+  const banner = document.createElement('div');
+  banner.className = 'oblivion-banner';
+  banner.textContent = `연금 숙련도 Lv.${state.skills.alchemy} (보유 커스텀 포션: ${state.customPotions.length}/5) — 아무 재료나 2개 조합해보세요!`;
+  elActivityList.appendChild(banner);
+
+  Object.entries(INGREDIENT_META).forEach(([key, meta]) => {
+    const qty = state.ingredients[key] || 0;
+    const needed = firstPick === key ? 2 : 1;
+    const btn = document.createElement('button');
+    btn.className = 'activity-item-btn';
+    btn.disabled = qty < needed || state.customPotions.length >= 5;
+    btn.innerHTML = `<div class="act-title">${meta.name} (보유 ${qty}개)</div><div class="act-desc">${meta.desc}${state.customPotions.length >= 5 ? ' · 포션 가방 가득 참(최대 5개)' : ''}</div>`;
+    btn.addEventListener('click', () => {
+      if (!firstPick) {
+        sfx.click();
+        openAlchemyModal(key);
+        return;
+      }
+      state.ingredients[firstPick] -= 1;
+      state.ingredients[key] -= 1;
+      gainSkillXp('alchemy', 14);
+      const alchLv = state.skills.alchemy;
+      const isOffensive = firstPick === 'capsaicin' || key === 'capsaicin';
+      const isMystic = firstPick === 'spirit_dust' || key === 'spirit_dust';
+      const power = 25 + alchLv * 12 + (isMystic ? 18 : 0);
+      const potion = isOffensive
+        ? { name: `🔥 불지옥 ${meta.name.split(' ')[1]} 폭탄`, type: 'bomb', power, desc: `적 멘탈 -${power} & 기절` }
+        : { name: `🧪 특제 ${INGREDIENT_META[firstPick].name.split(' ')[1]} 엘릭서`, type: 'heal', power, desc: `인내심 +${power} · 사이다 +25` };
+      state.customPotions.push(potion);
+      sfx.victory();
+      showToast(`🧪 [${potion.name}] 조합 성공!`, 'good');
+      setRumor(`자취방에서 수상한 비법 물약을 제조 중이라는 소문`);
+      saveGame();
+      openOblivionSheetModal();
+    });
+    elActivityList.appendChild(btn);
+  });
+
+  elActivityModal.classList.remove('hidden');
+}
+
+function openSpellmakingModal() {
+  ensureSandboxState();
+  elActivityModalTitle.textContent = '✨ 나만의 필살기 제작소 (Spellmaking)';
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+
+  const styles = [
+    { id: 'burst', title: '⚡ 사이다 벼락 (단타 극딜)', desc: '단일 적에게 엄청난 멘탈 피해 + 방어 파괴', mult: 1.55, prefix: '초고압' },
+    { id: 'vamp', title: '🩸 정의의 흡혈 (피해 + 회복)', desc: '적에게 피해 + 내 인내심 40% 회복', mult: 1.15, prefix: '불굴의' },
+    { id: 'stun', title: '💫 참교육 스턴 (피해 + 기절)', desc: '적에게 피해 + 1턴 확정 기절', mult: 1.1, prefix: '뇌정' },
+    { id: 'combo', title: '🌪️ 무한 콤보 연타 (3연타)', desc: '콤보 게이지 대폭 충전 + 3회 타격', mult: 1.35, prefix: '질풍' },
+  ];
+
+  const banner = document.createElement('div');
+  banner.className = 'oblivion-banner';
+  banner.textContent = `제작 비용: 60P (보유 ${state.points}P). 원하는 스타일을 고르면 직접 이름을 붙일 수 있습니다!`;
+  elActivityList.appendChild(banner);
+
+  styles.forEach((st) => {
+    const btn = document.createElement('button');
+    btn.className = 'activity-item-btn';
+    btn.disabled = state.points < 60;
+    btn.innerHTML = `<div class="act-title">${st.title}</div><div class="act-desc">${st.desc}</div>`;
+    btn.addEventListener('click', () => {
+      const customName = window.prompt('새 필살기의 이름을 지어주세요!', `${st.prefix} 노란완장 펀치`);
+      if (!customName || !customName.trim()) return;
+      state.points -= 60;
+      state.customSpell = {
+        name: customName.trim().slice(0, 18),
+        style: st.id,
+        mult: st.mult,
+        desc: st.desc,
+      };
+      gainSkillXp('combat', 12);
+      sfx.victory();
+      showToast(`✨ 나만의 필살기 [${state.customSpell.name}] 완성!`, 'break');
+      setRumor(`시민영웅이 독창적인 필살기 '${state.customSpell.name}'을(를) 창시했다는 소문`);
+      elActivityModal.classList.add('hidden');
+      saveGame();
+      render();
+    });
+    elActivityList.appendChild(btn);
+  });
+
+  elActivityModal.classList.remove('hidden');
+}
+
+function useCustomSpellInCombat(enemy) {
+  if (!state.customSpell || state.sp < 25) return;
+  const sp = state.customSpell;
+  state.sp -= 25;
+  gainSkillXp('combat', 12);
+  playHeroAnim('attack');
+  sfx.hit(true);
+  const base = 26 + (state.skills?.combat || 1) * 4 + (state.stats?.guts || 5) * 1.6 + state.bonusDmg;
+  const dmg = Math.round(base * (sp.mult || 1.3));
+  state.enemyHp = clamp(state.enemyHp - dmg, 0, state.enemyMaxHp);
+  let extra = '';
+  if (sp.style === 'vamp') {
+    const heal = Math.round(dmg * 0.4);
+    state.hp = clamp(state.hp + heal, 1, state.maxHp);
+    extra = ` · 인내심 +${heal}`;
+  } else if (sp.style === 'stun') {
+    state.enemyStunned = true;
+    extra = ' · 적 기절!';
+  } else if (sp.style === 'burst') {
+    state.enemyGuardShield = 0;
+    extra = ' · 가드 완파!';
+  } else if (sp.style === 'combo') {
+    addFever(25);
+    extra = ' · 피버 +25%';
+  }
+  state.log = `✨ [${sp.name}!!] 나만의 필살기 작렬! (멘탈 -${dmg}${extra})`;
+  triggerEnemyHit(dmg, true);
+  if (state.enemyHp <= 0) handleEnemyDefeated(enemy);
+  else enemyCounterTurn(enemy, false);
+}
+
+function useCustomPotionInCombat(enemy) {
+  if (!state.customPotions || state.customPotions.length === 0) return;
+  const pot = state.customPotions.shift();
+  sfx.powerup();
+  if (pot.type === 'bomb') {
+    state.enemyHp = clamp(state.enemyHp - pot.power, 0, state.enemyMaxHp);
+    state.enemyStunned = true;
+    state.log = `🧪 [${pot.name}] 투척!! 적 멘탈 -${pot.power} & 기절! (턴 소모 없음)`;
+    triggerEnemyHit(pot.power, true);
+    if (state.enemyHp <= 0) { handleEnemyDefeated(enemy); return; }
+  } else {
+    state.hp = clamp(state.hp + pot.power, 1, state.maxHp);
+    state.sp = clamp(state.sp + 25, 0, state.maxSp);
+    state.log = `🧪 [${pot.name}] 원샷! 인내심 +${pot.power} · 사이다 +25! (턴 소모 없음)`;
+  }
+  showToast(`🧪 ${pot.name} 사용!`, 'good');
+  saveGame();
+  render();
+}
+
+function openDiplomacyModal(enemy) {
+  ensureSandboxState();
+  elActivityModalTitle.textContent = `🗣️ 오블리비언 외교 — ${enemy.name}`;
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+
+  const speechChance = clamp(35 + state.skills.speech * 10 + (state.stats.speech || 5) * 2, 35, 92);
+  const intimChance = clamp(30 + state.infamy * 6 + (state.stats.guts || 5) * 2, 30, 90);
+
+  const pBtn = document.createElement('button');
+  pBtn.className = 'activity-item-btn';
+  pBtn.innerHTML = `<div class="act-title">🗣️ 논리적 설득 (성공률 ${speechChance}%)</div><div class="act-desc">화술 Lv.${state.skills.speech} 판정 · 성공 시 무혈 제압 + 명성 +2</div>`;
+  pBtn.addEventListener('click', () => {
+    elActivityModal.classList.add('hidden');
+    gainSkillXp('speech', 14);
+    if (Math.random() * 100 < speechChance) {
+      state.fame += 2;
+      state.enemyHp = 0;
+      setRumor(`${enemy.name}을(를) 말 한마디로 회개시켰다는 전설`);
+      sfx.victory();
+      showToast('🗣️ 설득 대성공! 무혈 제압 + 명성 +2!', 'good');
+      state.log = `🗣️ 진심 어린 설득에 [${enemy.name}]이(가) 고개를 숙이고 스스로 물러났습니다!`;
+      handleEnemyDefeated(enemy);
+    } else {
+      sfx.damage();
+      showToast('💦 설득 실패! 적의 반격!', 'warn');
+      state.log = `🗣️ 말로 타일러 보려 했으나 [${enemy.name}]이(가) 코웃음 칩니다!`;
+      enemyCounterTurn(enemy, false);
+    }
+  });
+  elActivityList.appendChild(pBtn);
+
+  const iBtn = document.createElement('button');
+  iBtn.className = 'activity-item-btn';
+  iBtn.innerHTML = `<div class="act-title">😈 노란 완장 협박 (성공률 ${intimChance}%)</div><div class="act-desc">악명(${state.infamy})·깡 판정 · 성공 시 적 도주 + 포인트 강탈 (악명 +2)</div>`;
+  iBtn.addEventListener('click', () => {
+    elActivityModal.classList.add('hidden');
+    gainSkillXp('combat', 10);
+    if (Math.random() * 100 < intimChance) {
+      state.infamy += 2;
+      state.points += 30;
+      state.enemyHp = 0;
+      setRumor(`무서운 노란 완장이 거리를 공포로 제압하고 다닌다는 소문`);
+      sfx.powerup();
+      showToast('😈 협박 성공! +30P & 악명 +2!', 'warn');
+      state.log = `😈 서늘한 눈빛에 [${enemy.name}]이(가) 지갑을 떨어뜨리고 도망쳤습니다! (+30P · 악명 +2)`;
+      handleEnemyDefeated(enemy);
+    } else {
+      sfx.damage();
+      state.infamy += 1;
+      showToast('💢 협박 실패! 적이 분노했습니다!', 'warn');
+      state.log = `😈 협박이 안 먹혔습니다! [${enemy.name}]이(가) 덤벼듭니다!`;
+      enemyCounterTurn(enemy, false);
+    }
+  });
+  elActivityList.appendChild(iBtn);
+
+  const bBtn = document.createElement('button');
+  bBtn.className = 'activity-item-btn';
+  bBtn.disabled = state.points < 50;
+  bBtn.innerHTML = `<div class="act-title">💰 조용히 매수하기 (50P)</div><div class="act-desc">50P로 정보원으로 포섭 · 즉시 클리어 + 랜덤 재료 1개</div>`;
+  bBtn.addEventListener('click', () => {
+    elActivityModal.classList.add('hidden');
+    state.points -= 50;
+    gainSkillXp('speech', 10);
+    const keys = Object.keys(INGREDIENT_META);
+    const pickIng = keys[Math.floor(Math.random() * keys.length)];
+    gainIngredient(pickIng, 1);
+    state.enemyHp = 0;
+    sfx.powerup();
+    showToast(`💰 매수 성공! ${INGREDIENT_META[pickIng].name} 획득!`, 'good');
+    state.log = `💰 50P를 쥐여주자 [${enemy.name}]이(가) 정보원이 되어 조용히 사라졌습니다!`;
+    handleEnemyDefeated(enemy);
+  });
+  elActivityList.appendChild(bBtn);
+
+  elActivityModal.classList.remove('hidden');
+}
+
+function openLocationMenu(locId) {
+  ensureSandboxState();
+  state.mapLoc = locId;
+  const cat = ACTIVITY_CATEGORIES.find((c) => c.id === locId);
+  const timeName = TIME_SLOTS[state.timeIndex || 0] || TIME_SLOTS[0];
+  const locNames = {
+    patrol: '🚓 골목순찰 인터랙션',
+    work: '💼 알바터 인터랙션',
+    train: '🏋️ 철봉공원 인터랙션',
+    heal: '🏠 우리집 인터랙션',
+    shop: '🏪 24시 편의점 인터랙션',
+    luck: '🕹️ 오락실 인터랙션',
+  };
+  elActivityModalTitle.textContent = locNames[locId] || '📍 장소 메뉴';
+  if (elActivityModalImg) {
+    if (cat?.image) {
+      elActivityModalImg.src = cat.image;
+      elActivityModalImg.classList.remove('hidden');
+    } else {
+      elActivityModalImg.classList.add('hidden');
+    }
+  }
+  elActivityList.innerHTML = '';
+
+  const banner = document.createElement('div');
+  banner.className = 'oblivion-banner';
+  banner.innerHTML = `<b>🕒 ${timeName}</b> · 🏅명성 ${state.fame} · 😈악명 ${state.infamy}${state.rumor ? `<br>📰 ${state.rumor}` : ''}`;
+  elActivityList.appendChild(banner);
+
+  const addAction = (title, desc, fn, disabled = false) => {
+    const btn = document.createElement('button');
+    btn.className = 'activity-item-btn';
+    btn.disabled = !!disabled;
+    btn.innerHTML = `<div class="act-title">${title}</div><div class="act-desc">${desc}</div>`;
+    btn.addEventListener('click', () => {
+      elActivityModal.classList.add('hidden');
+      fn();
+    });
+    elActivityList.appendChild(btn);
+  };
+
+  if (locId === 'patrol') {
+    addAction('🕵️ 골목 잠복 수색 (은신↑)', `은신 Lv.${state.skills.sneak} · 희귀 재료 수색 or 선제 기습!`, () => {
+      gainSkillXp('sneak', 14);
+      const keys = Object.keys(INGREDIENT_META);
+      const got = keys[Math.floor(Math.random() * keys.length)];
+      gainIngredient(got, 1);
+      if (state.sideQuest.id === null && Math.random() < 0.4) {
+        state.sideQuest = { id: 'lost_wallet', step: 1, done: [] };
+        state.log = `🕵️ 골목 잠복 중 떨어져 있는 [고급 가죽 지갑]을 발견했습니다! (히든 퀘스트 시작 · 편의점이나 경찰서에 문의해보세요)`;
+      } else {
+        state.points += 18;
+        state.log = `🕵️ 은밀히 골목을 수색해 [${INGREDIENT_META[got].name}] 1개와 +18P를 확보했습니다! (은신 XP +14)`;
+      }
+      advanceTime();
+      saveGame();
+      render();
+    });
+    addAction('💬 시민 탐문 & 제보 받기 (화술↑ · 명성↑)', `화술 Lv.${state.skills.speech} · 동네 소문 수집 & 명성 +2`, () => {
+      gainSkillXp('speech', 12);
+      state.fame += 2;
+      state.points += 15;
+      if (state.sideQuest.id === 'lost_wallet' && state.sideQuest.step === 1) {
+        state.sideQuest.step = 2;
+        state.points += 120;
+        state.fame += 5;
+        state.sideQuest.id = null;
+        state.sideQuest.done.push('lost_wallet');
+        setRumor('잃어버린 회장님 지갑을 돌려준 청렴한 시민영웅 미담 확산');
+        state.log = '💼 [히든 퀘스트 완료!!] 지갑 주인이 대기업 회장이었습니다! 사례금 +120P & 명성 +5!';
+        showToast('🎉 히든 퀘스트 클리어! +120P!', 'break');
+      } else {
+        setRumor('친절한 노란 완장이 주민들과 다정히 소통하고 있다는 미담');
+        state.log = '💬 동네 주민들과 수다를 떨며 민원을 해결했습니다! (+15P · 명성 +2 · 화술 XP +12)';
+      }
+      advanceTime();
+      saveGame();
+      render();
+    });
+    addAction('😈 뒷골목 불심검문 · 삥뜯기 (악명+3)', '권력 남용으로 돈과 재료를 뜯어냅니다 (명성 -1 · 악명 +3)', () => {
+      state.infamy += 3;
+      state.fame = Math.max(0, state.fame - 1);
+      state.points += 45;
+      gainIngredient('capsaicin', 1);
+      gainSkillXp('combat', 10);
+      setRumor('밤길 노란 완장이 양아치들 주머니를 털고 다닌다는 흉흉한 소문');
+      sfx.damage();
+      state.log = '😈 골목 불량배들을 험악하게 제압해 용돈을 뜯었습니다! (+45P · 캡사이신 +1 · 악명 +3)';
+      advanceTime();
+      saveGame();
+      render();
+    });
+  } else if (locId === 'work') {
+    addAction('🤝 사장님과 시급 협상 (화술↑)', `화술 Lv.${state.skills.speech} · 말빨로 특별 보너스 수당 획득!`, () => {
+      gainSkillXp('speech', 14);
+      const bonus = 25 + state.skills.speech * 8;
+      state.points += bonus;
+      state.log = `🤝 "사장님, 제가 요즘 동네 치안까지 챙기잖아요~" 협상 성공! (+${bonus}P · 화술 XP +14)`;
+      sfx.powerup();
+      advanceTime();
+      saveGame();
+      render();
+    });
+    addAction('🤫 몰래 농땡이 & 탕비실 털기 (은신↑)', '체력 소모 없이 탕비실 재료(박카스/콜드브루) 챙기기!', () => {
+      gainSkillXp('sneak', 12);
+      const got = Math.random() < 0.5 ? 'bacchus' : 'cold_brew';
+      gainIngredient(got, 1);
+      state.sp = clamp(state.sp + 15, 0, state.maxSp);
+      state.log = `🤫 사장님 눈을 피해 탕비실에서 [${INGREDIENT_META[got].name}] 1개를 슬쩍했습니다! (사이다 +15 · 은신 XP +12)`;
+      advanceTime();
+      saveGame();
+      render();
+    });
+  } else if (locId === 'train') {
+    addAction('👴 동네 어르신과 장기 한 판 (화술/인내↑)', '인생 지혜를 배우며 최대 인내심 +5 & 명성 +1', () => {
+      gainSkillXp('speech', 10);
+      state.maxHp += 5;
+      state.hp = clamp(state.hp + 15, 1, state.maxHp);
+      state.fame += 1;
+      state.log = '👴 "자네, 완장 찼다고 급하게 덤비지 말게." 장군 멍군! (최대 인내심 +5 · 명성 +1)';
+      sfx.powerup();
+      advanceTime();
+      saveGame();
+      render();
+    });
+    addAction('🌙 철봉 비밀 특훈 (격투↑)', `격투 Lv.${state.skills.combat} · 빡센 철봉 루틴으로 전투 숙련도 대폭 상승!`, () => {
+      gainSkillXp('combat', 18);
+      state.bonusDmg += 1;
+      state.hp = clamp(state.hp - 8, 1, state.maxHp);
+      state.log = '🥊 손바닥에 굳은살이 박히도록 특훈했습니다! (공격력 +1 · 격투 XP +18 · 인내심 -8)';
+      advanceTime();
+      saveGame();
+      render();
+    });
+  } else if (locId === 'heal') {
+    addAction('🧪 자취방 연금·요리 조합소', `보유 재료로 커스텀 포션/폭탄 제작 (연금 Lv.${state.skills.alchemy})`, () => {
+      openAlchemyModal();
+    });
+    addAction('✨ 나만의 필살기 제작소 (60P)', '효과와 이름을 직접 정하는 커스텀 필살기 창조', () => {
+      openSpellmakingModal();
+    });
+    addAction('📜 내 숙련도 · 명성/악명 시트', '오블리비언식 자유도 스탯 및 소문 확인', () => {
+      openOblivionSheetModal();
+    });
+  } else if (locId === 'shop') {
+    addAction('🍱 폐기 도시락 눈치껏 얻기 (화술/은신↑)', '알바생과 친분으로 공짜 회복 + 재료 획득!', () => {
+      gainSkillXp('speech', 10);
+      state.hp = clamp(state.hp + 25, 1, state.maxHp);
+      gainIngredient('cold_brew', 1);
+      state.log = '🍱 알바생이 "영웅님 드세요!" 하며 폐기 도시락과 콜드브루를 챙겨줬습니다! (HP +25 · 콜드브루 +1)';
+      sfx.powerup();
+      advanceTime();
+      saveGame();
+      render();
+    });
+    addAction('🗯️ 진상 손님 말빨 참교육 (화술↑ · 명성+2)', '주먹 없이 논리로 진상 손님을 퇴치합니다!', () => {
+      gainSkillXp('speech', 15);
+      state.fame += 2;
+      state.points += 28;
+      setRumor('편의점 진상을 3단 논법으로 울려서 보냈다는 목격담');
+      state.log = '🗯️ 영수증과 소비자법을 읊어주자 진상이 꼬리를 말고 도망쳤습니다! (+28P · 명성 +2)';
+      sfx.victory();
+      advanceTime();
+      saveGame();
+      render();
+    });
+    if (state.infamy >= 5 || state.timeIndex >= 2) {
+      addAction('🕶️ 뒷문 암시장 거래 (40P → 정령가루+홍삼)', '심야 또는 악명 5+ 전용 비밀 상인!', () => {
+        if (state.points < 40) { showToast('40P가 필요합니다!', 'warn'); return; }
+        state.points -= 40;
+        gainIngredient('spirit_dust', 1);
+        gainIngredient('red_ginseng', 1);
+        state.infamy += 1;
+        state.log = '🕶️ 검은 후드 상인에게서 [정령의 가루]와 [홍삼 엑기스]를 밀수했습니다! (악명 +1)';
+        sfx.powerup();
+        saveGame();
+        render();
+      });
+    }
+  } else if (locId === 'luck') {
+    addAction('🏆 오락실 고수 도장깨기 (격투/명성↑)', '철권/리듬게임 고수를 꺾고 상금 획득!', () => {
+      gainSkillXp('combat', 12);
+      if (Math.random() < 0.65) {
+        state.points += 35;
+        state.fame += 1;
+        setRumor('오락실 30연승 기록을 갈아치운 정체불명의 노란 완장');
+        state.log = '🏆 완벽한 프레임 싸움으로 오락실 1위를 탈환했습니다! (+35P · 명성 +1)';
+        sfx.victory();
+      } else {
+        state.points = Math.max(0, state.points - 10);
+        state.log = '😭 동네 초딩 고수에게 퍼펙트 KO 당했습니다... (-10P)';
+        sfx.damage();
+      }
+      advanceTime();
+      saveGame();
+      render();
+    });
+    addAction('🔍 고장난 기계 뒤적거리기 (은신/연금↑)', '동전 떨어짐 & 수상한 부품(재료) 회수!', () => {
+      gainSkillXp('sneak', 10);
+      gainSkillXp('alchemy', 8);
+      gainIngredient('spirit_dust', 1);
+      state.points += 15;
+      state.log = '🔍 오락실 구석에서 [정령의 가루] 1개와 동전 15P를 주웠습니다!';
+      advanceTime();
+      saveGame();
+      render();
+    });
+  }
+
+  if (cat) {
+    addAction(`📋 기존 [${cat.title.replace(/^[^\s]+\s*/, '')}] 활동 목록 열기`, cat.sub, () => {
+      openActivityModal(cat);
+    });
+  }
+  elActivityModal.classList.remove('hidden');
+}
+
+if (elSeoulMinimap && !elSeoulMinimap.dataset.pinBound) {
+  elSeoulMinimap.dataset.pinBound = '1';
+  elSeoulMinimap.addEventListener('click', (e) => {
+    const pin = e.target.closest('.map-pin');
+    if (!pin) return;
+    const locId = pin.dataset.loc;
+    if (!locId) return;
+    sfx.click();
+    openLocationMenu(locId);
+  });
 }
 
 render();
