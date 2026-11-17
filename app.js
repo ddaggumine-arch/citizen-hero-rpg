@@ -3477,32 +3477,170 @@ function render() {
       elChoicesPanel.appendChild(storyBtn);
     }
 
-    ACTIVITY_CATEGORIES.forEach((cat) => {
-      const btn = document.createElement('button');
-      btn.className = 'choice-btn';
-      const catIconMap = { patrol: 'pin_patrol', work: 'pin_work', train: 'pin_train', heal: 'pin_home', shop: 'pin_shop', luck: 'pin_arcade' };
-      const catIcon = catIconMap[cat.id] ? uiImg(catIconMap[cat.id]) : '';
-      const catLabel = catIcon ? `${catIcon}${cat.title.replace(/^[^\s]+\s*/, '')}` : cat.title;
-      btn.innerHTML = `<span>${catLabel}</span><span class="choice-sub">${cat.sub}</span>`;
-      btn.addEventListener('click', () => {
-        sfx.click();
-        openActivityModal(cat);
-      });
-      elChoicesPanel.appendChild(btn);
-    });
+    // V36.0: 4대 핵심 허브 (2×2 그리드) + 모달 내 6대 활동/전투 통합
+    function openCombatHubModal() {
+      elActivityModalTitle.textContent = '⚔️ 출동 · 전투 허브';
+      if (elActivityModalImg) elActivityModalImg.innerHTML = uiImg('pin_patrol');
+      elActivityList.innerHTML = '';
 
+      const patrolCat = ACTIVITY_CATEGORIES.find((c) => c.id === 'patrol');
+      if (patrolCat) {
+        const pBtn = document.createElement('button');
+        pBtn.className = 'activity-item-btn';
+        pBtn.innerHTML = `<div class="act-title">${uiImg('pin_patrol')} 서울 순찰 출동</div><div class="act-desc">${patrolCat.sub} · 빌런 제압 & 치안 회복</div>`;
+        pBtn.addEventListener('click', () => {
+          sfx.click();
+          openActivityModal(patrolCat);
+        });
+        elActivityList.appendChild(pBtn);
+      }
+
+      const distCleared = getClearedDistrictCount(state);
+      const dBtn = document.createElement('button');
+      dBtn.className = 'activity-item-btn';
+      dBtn.innerHTML = `<div class="act-title">${uiImg('menu_districts')} 서울 5대 구역 치안 (${distCleared}/5)</div><div class="act-desc">평화구역 영구 버프 & 시민 후원 확인</div>`;
+      dBtn.addEventListener('click', () => {
+        sfx.click();
+        elActivityModal.classList.add('hidden');
+        openDistrictsModal();
+      });
+      elActivityList.appendChild(dBtn);
+
+      const towerUnlocked = isFeatureUnlocked(state, 'foundation');
+      const tBtn = document.createElement('button');
+      tBtn.className = 'activity-item-btn';
+      tBtn.innerHTML = towerUnlocked
+        ? `<div class="act-title">${uiImg('menu_tower')} 배틀타워 (최고 ${state.bestTowerFloor || 0}층)</div><div class="act-desc" style="color:#9e2a2b;">무한 연승 도전 ▶</div>`
+        : `<div class="act-title">🔒 배틀타워 (24화 해금)</div><div class="act-desc">4부 총력전 이후 개방</div>`;
+      tBtn.addEventListener('click', () => {
+        if (!towerUnlocked) {
+          sfx.damage();
+          showToast('🔒 제24화 이후 배틀타워가 개방됩니다!', 'warn');
+          return;
+        }
+        sfx.powerup();
+        elActivityModal.classList.add('hidden');
+        state.towerFloor = 1;
+        const pool = [...VILLAINS, ...GUERRILLA_VILLAINS];
+        const pick = pool[Math.floor(Math.random() * pool.length)];
+        startBattle(pick.id);
+      });
+      elActivityList.appendChild(tBtn);
+
+      const nmUnlocked = isFeatureUnlocked(state, 'nightmare');
+      const nBtn = document.createElement('button');
+      nBtn.className = 'activity-item-btn';
+      nBtn.innerHTML = nmUnlocked
+        ? `<div class="act-title">${uiImg('menu_nightmare')} 심야 마계 보스 러시 (최고 ${state.bestNightmareFloor || 0}층)</div><div class="act-desc" style="color:#7e22ce;">보스 연속 격파 · 유니크 드랍↑ ▶</div>`
+        : `<div class="act-title">🔒 심야 마계 보스 러시 (25화 해금)</div><div class="act-desc">5부 잠입작전 돌입 시 개방</div>`;
+      nBtn.addEventListener('click', () => {
+        if (!nmUnlocked) {
+          sfx.damage();
+          showToast('🔒 제25화 진입 시 심야 마계 보스 러시가 해금됩니다!', 'warn');
+          return;
+        }
+        sfx.powerup();
+        elActivityModal.classList.add('hidden');
+        state.nightmareFloor = 1;
+        const bossPool = [...BOSSES, HIDDEN_BOSS];
+        const pick = bossPool[Math.floor(Math.random() * bossPool.length)];
+        startBattle(pick.id);
+      });
+      elActivityList.appendChild(nBtn);
+
+      elActivityModal.classList.remove('hidden');
+    }
+
+    function openDailyHubModal() {
+      elActivityModalTitle.textContent = '🏠 일상 · 성장 허브';
+      if (elActivityModalImg) elActivityModalImg.innerHTML = uiImg('pin_home');
+      elActivityList.innerHTML = '';
+
+      const gearUnlocked = isFeatureUnlocked(state, 'gear');
+      const petTxt = state.pet?.adopted ? `🐶Lv.${state.pet.level}` : '🐶미입양';
+      const carTxt = (state.carLevel || 0) >= 1 ? `🚗T${state.carLevel}` : '🚗뚜벅이';
+      const lifeItem = document.createElement('button');
+      lifeItem.className = 'activity-item-btn';
+      lifeItem.innerHTML = gearUnlocked
+        ? `<div class="act-title">${uiImg('menu_pet_garage')} 펫 · 차고 · 공방 · 주식</div><div class="act-desc" style="color:#37611a;">${petTxt} · ${carTxt} · 장비 강화 & 자취방 관리</div>`
+        : `<div class="act-title">🔒 공방 · 라이프 (3화 해금)</div><div class="act-desc">제3화 클리어 시 개방</div>`;
+      lifeItem.addEventListener('click', () => {
+        if (!gearUnlocked) {
+          sfx.damage();
+          showToast('🔒 제3화 클리어 후 공방·라이프가 개방됩니다!', 'warn');
+          return;
+        }
+        sfx.click();
+        elActivityModal.classList.add('hidden');
+        state.phase = 'lifestyle';
+        state.lifeTab = 'main';
+        state.log = '반려견 콩이·차고·강화·자취방·주식을 관리하세요!';
+        render();
+      });
+      elActivityList.appendChild(lifeItem);
+
+      const dailyIconMap = { work: 'pin_work', train: 'pin_train', heal: 'pin_home', shop: 'pin_shop', luck: 'pin_arcade' };
+      ACTIVITY_CATEGORIES.filter((c) => c.id !== 'patrol').forEach((cat) => {
+        const cBtn = document.createElement('button');
+        cBtn.className = 'activity-item-btn';
+        const cIcon = dailyIconMap[cat.id] ? uiImg(dailyIconMap[cat.id]) : '';
+        const cTitle = cIcon ? `${cIcon} ${cat.title.replace(/^[^\s]+\s*/, '')}` : cat.title;
+        cBtn.innerHTML = `<div class="act-title">${cTitle}</div><div class="act-desc">${cat.sub}</div>`;
+        cBtn.addEventListener('click', () => {
+          sfx.click();
+          openActivityModal(cat);
+        });
+        elActivityList.appendChild(cBtn);
+      });
+
+      elActivityModal.classList.remove('hidden');
+    }
+
+    // 1) ⚔️ 출동 · 전투
+    const combatHubBtn = document.createElement('button');
+    combatHubBtn.className = 'choice-btn';
+    combatHubBtn.style.position = 'relative';
+    combatHubBtn.style.background = 'linear-gradient(180deg, #fff1f0 0%, #ffe0dc 100%)';
+    combatHubBtn.style.borderColor = '#c53030';
+    const towerUnlocked = isFeatureUnlocked(state, 'foundation');
+    const nmUnlocked = isFeatureUnlocked(state, 'nightmare');
+    const combatBadge = nmUnlocked ? '🔥 마계' : (towerUnlocked ? '🏰 타워' : '출동');
+    combatHubBtn.innerHTML = `<span>${uiImg('pin_patrol')}출동 · 전투 <span class="hub-live-badge">${combatBadge}</span></span><span class="choice-sub" style="color:#9b2c2c;">순찰 · 치안 · 타워</span>`;
+    combatHubBtn.addEventListener('click', () => {
+      sfx.click();
+      openCombatHubModal();
+    });
+    elChoicesPanel.appendChild(combatHubBtn);
+
+    // 2) 🏠 일상 · 성장
+    const dailyHubBtn = document.createElement('button');
+    dailyHubBtn.className = 'choice-btn';
+    dailyHubBtn.style.position = 'relative';
+    dailyHubBtn.style.background = 'linear-gradient(180deg, #f3fbe9 0%, #dff2cc 100%)';
+    dailyHubBtn.style.borderColor = '#5b8c38';
+    const gearUnlocked = isFeatureUnlocked(state, 'gear');
+    const dailyBadge = gearUnlocked ? '펫·알바' : '5대활동';
+    dailyHubBtn.innerHTML = `<span>${uiImg('menu_pet_garage')}일상 · 성장 <span class="hub-live-badge">${dailyBadge}</span></span><span class="choice-sub" style="color:#37611a;">알바·수련·휴식·상점·펫</span>`;
+    dailyHubBtn.addEventListener('click', () => {
+      sfx.click();
+      openDailyHubModal();
+    });
+    elChoicesPanel.appendChild(dailyHubBtn);
+
+    // 3) 💕 연애 · 어학
     const yukiLove = state.love?.yuki || 0;
     const chloeLove = state.love?.chloe || 0;
     const romanceUnlocked = isFeatureUnlocked(state, 'yuki');
     const romanceBtn = document.createElement('button');
     romanceBtn.className = 'choice-btn';
+    romanceBtn.style.position = 'relative';
     romanceBtn.style.background = romanceUnlocked
       ? 'linear-gradient(180deg, #fff0f5 0%, #ffe0ec 100%)'
       : 'linear-gradient(180deg, #f3f0ea 0%, #e5dfd3 100%)';
     romanceBtn.style.borderColor = romanceUnlocked ? '#d46a92' : '#9c8f7a';
     romanceBtn.innerHTML = romanceUnlocked
-      ? `<span>${uiImg('menu_romance')}연애·어학</span><span class="choice-sub" style="color:#9d2d57;">🇯🇵${yukiLove} · 🇺🇸${chloeLove}</span>`
-      : `<span>🔒 연애·어학 (15화 해금)</span><span class="choice-sub">유키 합류 시 개방</span>`;
+      ? `<span>${uiImg('menu_romance')}연애 · 어학 <span class="hub-live-badge">💌 데이트</span></span><span class="choice-sub" style="color:#9d2d57;">🇯🇵${yukiLove} · 🇺🇸${chloeLove}</span>`
+      : `<span>🔒 연애 · 어학 (15화 해금)</span><span class="choice-sub">유키 합류 시 개방</span>`;
     romanceBtn.addEventListener('click', () => {
       if (!romanceUnlocked) {
         sfx.damage();
@@ -3518,115 +3656,21 @@ function render() {
     });
     elChoicesPanel.appendChild(romanceBtn);
 
-    const petTxt = state.pet?.adopted ? `🐶Lv.${state.pet.level}` : '🐶미입양';
-    const carTxt = (state.carLevel || 0) >= 1 ? `🚗T${state.carLevel}` : '🚗뚜벅이';
-    const gearUnlocked = isFeatureUnlocked(state, 'gear');
-    const lifeBtn = document.createElement('button');
-    lifeBtn.className = 'choice-btn';
-    lifeBtn.style.background = gearUnlocked
-      ? 'linear-gradient(180deg, #f3fbe9 0%, #dff2cc 100%)'
-      : 'linear-gradient(180deg, #f3f0ea 0%, #e5dfd3 100%)';
-    lifeBtn.style.borderColor = gearUnlocked ? '#5b8c38' : '#9c8f7a';
-    lifeBtn.innerHTML = gearUnlocked
-      ? `<span>${uiImg('menu_pet_garage')}펫·차고·강화</span><span class="choice-sub" style="color:#37611a;">${petTxt} · ${carTxt}</span>`
-      : `<span>🔒 공방·라이프 (3화 해금)</span><span class="choice-sub">제3화 클리어 시 개방</span>`;
-    lifeBtn.addEventListener('click', () => {
-      if (!gearUnlocked) {
-        sfx.damage();
-        showToast('🔒 제3화 클리어 후 공방·라이프가 개방됩니다!', 'warn');
-        state.log = '🔒 공방·라이프 허브는 제3화 이후 이용할 수 있습니다.';
-        render();
-        return;
-      }
-      sfx.click();
-      state.phase = 'lifestyle';
-      state.lifeTab = 'main';
-      state.log = '반려견 콩이·차고·강화·자취방·주식을 관리하세요!';
-      render();
-    });
-    elChoicesPanel.appendChild(lifeBtn);
-
-    const towerUnlocked = isFeatureUnlocked(state, 'foundation');
-    const towerBtn = document.createElement('button');
-    towerBtn.className = 'choice-btn';
-    towerBtn.style.background = towerUnlocked
-      ? 'linear-gradient(180deg, #f9ecec 0%, #f1d4d4 100%)'
-      : 'linear-gradient(180deg, #f3f0ea 0%, #e5dfd3 100%)';
-    towerBtn.style.borderColor = towerUnlocked ? '#9e2a2b' : '#9c8f7a';
-    towerBtn.innerHTML = towerUnlocked
-      ? `<span>${uiImg('menu_tower')}배틀타워 (최고 ${state.bestTowerFloor || 0}층)</span><span class="choice-sub" style="color:#9e2a2b;">무한 연승 도전 ▶</span>`
-      : `<span>🔒 배틀타워 (24화 해금)</span><span class="choice-sub">4부 총력전 이후 개방</span>`;
-    towerBtn.addEventListener('click', () => {
-      if (!towerUnlocked) {
-        sfx.damage();
-        showToast('🔒 제24화 이후 배틀타워가 개방됩니다!', 'warn');
-        state.log = '🔒 서울 빌런 배틀타워는 제24화 이후 도전할 수 있습니다.';
-        render();
-        return;
-      }
-      sfx.powerup();
-      state.towerFloor = 1;
-      const pool = [...VILLAINS, ...GUERRILLA_VILLAINS];
-      const pick = pool[Math.floor(Math.random() * pool.length)];
-      startBattle(pick.id);
-    });
-    elChoicesPanel.appendChild(towerBtn);
-
-    // V32.0 보이지 않는 5속성 예절 수호정령 (N/50)
+    // 4) 👻 수호정령
     const spiritCount = Object.keys(state.spirits || {}).filter((k) => (state.spirits[k] || 0) > 0).length;
     const eqSp = getSpiritBonuses().spirit;
     const spBtn = document.createElement('button');
     spBtn.className = 'choice-btn';
+    spBtn.style.position = 'relative';
     spBtn.style.background = 'linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%)';
     spBtn.style.borderColor = '#3b82f6';
-    spBtn.innerHTML = `<span>${uiImg('menu_spirit')}수호정령 (${spiritCount}/${SPIRITS_50.length})</span><span class="choice-sub" style="color:#1e40af;">${eqSp ? `${getSpiritDisplayName(eqSp)} 장착중` : '소환·장착·도감'}</span>`;
+    const spBadge = spiritCount === 0 ? '무료소환' : `${spiritCount}/${SPIRITS_50.length}`;
+    spBtn.innerHTML = `<span>${uiImg('menu_spirit')}수호정령 <span class="hub-live-badge">${spBadge}</span></span><span class="choice-sub" style="color:#1e40af;">${eqSp ? `${getSpiritDisplayName(eqSp)} 장착중` : '소환·장착·도감'}</span>`;
     spBtn.addEventListener('click', () => {
       sfx.click();
       openSpiritModal();
     });
     elChoicesPanel.appendChild(spBtn);
-
-    // V26.0 서울 5대 구역 치안 현황
-    const distCleared = getClearedDistrictCount(state);
-    const distBtn = document.createElement('button');
-    distBtn.className = 'choice-btn';
-    distBtn.style.background = 'linear-gradient(180deg, #edf6ff 0%, #d8ecff 100%)';
-    distBtn.style.borderColor = '#2b6cb0';
-    distBtn.innerHTML = `<span>${uiImg('menu_districts')}서울 5대 구역 치안 (${distCleared}/5)</span><span class="choice-sub" style="color:#1e4e8c;">평화구역 영구 버프 & 후원</span>`;
-    distBtn.addEventListener('click', () => {
-      sfx.click();
-      openDistrictsModal();
-    });
-    elChoicesPanel.appendChild(distBtn);
-
-    // V26.0 심야 마계 보스 러시 (25화 해금)
-    const nmUnlocked = isFeatureUnlocked(state, 'nightmare');
-    const nmBtn = document.createElement('button');
-    nmBtn.className = 'choice-btn row-btn';
-    nmBtn.style.gridColumn = 'span 2';
-    nmBtn.style.background = nmUnlocked
-      ? 'linear-gradient(180deg, #2d1b3d 0%, #1d1128 100%)'
-      : 'linear-gradient(180deg, #f3f0ea 0%, #e5dfd3 100%)';
-    nmBtn.style.borderColor = nmUnlocked ? '#a855f7' : '#9c8f7a';
-    if (nmUnlocked) nmBtn.style.color = '#f3e8ff';
-    nmBtn.innerHTML = nmUnlocked
-      ? `<span>${uiImg('menu_nightmare')}심야 마계 보스 러시 (최고 ${state.bestNightmareFloor || 0}층)</span><span class="choice-sub" style="color:#d8b4fe;">보스 연속 격파 · 유니크 드랍↑ ▶</span>`
-      : `<span>🔒 심야 마계 보스 러시 (25화 해금)</span><span class="choice-sub">5부 잠입작전 돌입 시 개방</span>`;
-    nmBtn.addEventListener('click', () => {
-      if (!nmUnlocked) {
-        sfx.damage();
-        showToast('🔒 제25화 진입 시 심야 마계 보스 러시가 해금됩니다!', 'warn');
-        state.log = '🔒 심야 마계 보스 러시는 제25화 이후 개방됩니다.';
-        render();
-        return;
-      }
-      sfx.powerup();
-      state.nightmareFloor = 1;
-      const bossPool = [...BOSSES, HIDDEN_BOSS];
-      const pick = bossPool[Math.floor(Math.random() * bossPool.length)];
-      startBattle(pick.id);
-    });
-    elChoicesPanel.appendChild(nmBtn);
     return;
   }
 

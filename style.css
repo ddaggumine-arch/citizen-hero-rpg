@@ -2402,3 +2402,21 @@ body[data-time="midnight"] .illustration-frame {
   text-align: left;
   cursor: pointer;
 }
+
+/* V36.0 심플 4대 메뉴 허브 라이브 배지 */
+.hub-live-badge {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 0.65rem;
+  font-weight: 900;
+  vertical-align: middle;
+  animation: pulseBadge 1.6s ease-in-out infinite;
+}
+@keyframes pulseBadge {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.07); }
+}
