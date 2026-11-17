@@ -3489,10 +3489,13 @@ function render() {
   if (state.phase === 'map') {
     const rep = getReputationInfo();
     const fObj = DAILY_FORTUNES.find((f) => f.id === (state.dailyFortune || 'gold')) || DAILY_FORTUNES[0];
-    elLocation.textContent = `DAY ${state.day} · ${timeLabel} · ${fObj.icon}${fObj.short}`;
-    elSceneTag.textContent = '서울 맵';
+    const curActIdHud = state.currentAct || 'seoul';
+    const actShortMap = { jeonju: '🍲 전주', pyeongtaek: '🚆 평택', dongtan: '🏙️ 동탄', incheon: '😈 마계 인천', seoul: '👑 서울' };
+    const actShortLbl = actShortMap[curActIdHud] || '👑 서울';
+    elLocation.textContent = `DAY ${state.day} · 📍${actShortLbl} · ${timeLabel}`;
+    elSceneTag.textContent = `${actShortLbl} 맵`;
     elSceneTag.className = 'scene-tag event';
-    elSceneTitle.textContent = `어디로 이동할까요? (${rep.label})`;
+    elSceneTitle.textContent = `📍 현재 위치: ${actShortLbl} (${rep.label})`;
     elWeaknessPill.classList.add('hidden');
     elEnemyHpWrap.classList.add('hidden');
     elQuoteBubble.classList.add('hidden');
@@ -3659,11 +3662,11 @@ function render() {
     ensureNationalState();
     const curAct = KOREA_ACTS.find((a) => a.id === (state.currentAct || 'seoul')) || KOREA_ACTS[4];
     const actBanner = document.createElement('button');
-    actBanner.className = 'choice-btn row-btn';
-    actBanner.style.gridColumn = 'span 2';
+    actBanner.className = 'choice-btn';
+    actBanner.style.gridColumn = '';
     actBanner.style.background = 'linear-gradient(180deg, #eef2ff 0%, #e0e7ff 100%)';
     actBanner.style.borderColor = '#4f46e5';
-    actBanner.innerHTML = `<span>🚄 전국 5대 액트 · [${curAct.name}]</span><span class="choice-sub" style="color:#3730a3;">지역이동 · 스토리 · 던전 · 무역 · 지부파견 · 정령석 (${(state.clearedActs || []).length}/5) ▶</span>`;
+    actBanner.innerHTML = `<span>🚄 ${curAct.name}</span><span class="choice-sub" style="color:#3730a3;">지역이동 · 던전 · 무역 (${(state.clearedActs || []).length}/5) ▶</span>`;
     actBanner.addEventListener('click', () => {
       sfx.click();
       openKoreaWorldModal();
@@ -3679,7 +3682,9 @@ function render() {
       gBtn.style.gridColumn = 'span 2';
       gBtn.style.background = 'linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%)';
       gBtn.style.borderColor = '#d97706';
-      gBtn.innerHTML = `<span>📌 [다음 목표] ${guideAct.name} ${guideEp.ep || 1}/${guideEps.length}화</span><span class="choice-sub" style="color:#b45309;">추천 Lv.${guideEp.recLv || 1} (내 Lv.${state.level || 1}) · 진행 ▶</span>`;
+      gBtn.className = 'choice-btn';
+      gBtn.style.gridColumn = '';
+      gBtn.innerHTML = `<span>📌 ${guideAct.name} ${guideEp.ep || 1}/${guideEps.length}화</span><span class="choice-sub" style="color:#b45309;">추천 Lv.${guideEp.recLv || 1} (내 Lv.${state.level || 1}) ▶</span>`;
       gBtn.addEventListener('click', () => {
         sfx.click();
         state.currentAct = guideAct.id;
@@ -9822,37 +9827,68 @@ function rollMarketRates() {
 function openKoreaWorldModal() {
   ensureNationalState();
   const curAct = KOREA_ACTS.find((a) => a.id === state.currentAct) || KOREA_ACTS[4];
-  elActivityModalTitle.textContent = `🚄 전국 5대 액트 · ${curAct.name}`;
+  elActivityModalTitle.textContent = `📍 현재 위치: ${curAct.name}`;
+  if (elActivityModalImg && curAct.bg) { elActivityModalImg.src = curAct.bg; elActivityModalImg.classList.remove('hidden'); }
   if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
   elActivityList.innerHTML = '';
 
   const banner = document.createElement('div');
   banner.className = 'oblivion-banner';
-  banner.innerHTML = `<b>${curAct.name}</b> (${curAct.sub})<br>${curAct.desc}<br>🏆 제패 완료: <b>${state.clearedActs.length}/5</b> · 👥 파견 지부: <b>${Object.keys(state.dispatchedActs).length}곳</b>`;
+  banner.innerHTML = `<b>${curAct.name}</b> · ${curAct.recLvRange || ''}<br>🏆 제패 <b>${state.clearedActs.length}/5</b> · 👥 지부 <b>${Object.keys(state.dispatchedActs).length}곳</b> · 💎 룬 <b>${state.ownedRunes.length}개</b>`;
   elActivityList.appendChild(banner);
 
+  const curEps = ACT_STORY_EPISODES[curAct.id] || [];
+  const curStep = Math.min(state.actStoryStep?.[curAct.id] || 0, Math.max(0, curEps.length - 1));
   const items = [
-    { t: '🗺️ 전국 지역 이동 (전주 ↔ 평택 ↔ 동탄 ↔ 마계 인천 ↔ 서울)', d: '5대 액트 도시를 자유롭게 오가며 탐험', fn: openActTravelModal },
-    { t: `📖 [${curAct.name}] 액트 스토리 & 지역 보스전`, d: curAct.buffDesc, fn: () => openActStoryModal(curAct.id) },
-    { t: `🕸️ ${curAct.dungeonName} 탐험 (미로 던전)`, d: '앞/좌/우 갈림길을 뚫고 보물·정령석·보스방 공략!', fn: () => startActDungeon(curAct) },
-    { t: '🚚 보부상 특산품 무역 (실시간 시세)', d: '산지에서 싸게 사서 다른 도시에 비싸게 매도!', fn: openTradeModal },
-    { t: '🔗 도시 간 릴레이 의뢰 (나비효과)', d: '전주↔인천↔평택↔동탄↔서울 연결 특급 의뢰!', fn: openRelayModal },
-    { t: '👥 자경단 지부 파견 관리', d: '제패한 지역에 동료를 파견해 매 턴 자동 +10P 수익', fn: openDispatchModal },
-    { t: `💎 장비 정령석(룬) 소켓 각인 (보유 ${state.ownedRunes.length}개)`, d: '무기·방어구·장신구에 지역 정령석 장착!', fn: openRuneSocketModal },
+    { t: `📖 스토리 진행 (${curStep + 1}/${curEps.length}화) ▶`, d: curAct.buffDesc, fn: () => openActStoryModal(curAct.id), full: true },
+    { t: '🗺️ 지역 이동', d: '5대 도시 열차/차량', fn: openActTravelModal },
+    { t: '🕸️ 미로 던전', d: '4층 탐험 & 정령석', fn: () => startActDungeon(curAct) },
+    { t: '🚚 무역 · 릴레이', d: '시세차익 · 도시의뢰', fn: openTradeAndRelayHub },
+    { t: '💎 지부 · 정령석', d: '지부파견 · 룬각인', fn: openDispatchAndRuneHub },
   ];
-
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;';
   items.forEach((it) => {
     const btn = document.createElement('button');
     btn.className = 'activity-item-btn';
-    btn.innerHTML = `<div class="act-title">${it.t}</div><div class="act-desc">${it.d}</div>`;
-    btn.addEventListener('click', () => {
-      sfx.click();
-      it.fn();
-    });
-    elActivityList.appendChild(btn);
+    btn.style.margin = '0';
+    if (it.full) { btn.style.gridColumn = 'span 2'; btn.style.background = 'linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%)'; btn.style.borderColor = '#d97706'; }
+    btn.innerHTML = `<div class="act-title" style="font-size:0.86rem;">${it.t}</div><div class="act-desc" style="font-size:0.74rem;">${it.d}</div>`;
+    btn.addEventListener('click', () => { sfx.click(); it.fn(); });
+    grid.appendChild(btn);
   });
-
+  elActivityList.appendChild(grid);
   elActivityModal.classList.remove('hidden');
+}
+
+function openTradeAndRelayHub() {
+  elActivityModalTitle.textContent = '🚚 보부상 무역 · 도시 릴레이';
+  elActivityList.innerHTML = '';
+  const tBtn = document.createElement('button');
+  tBtn.className = 'activity-item-btn';
+  tBtn.innerHTML = '<div class="act-title">🚚 보부상 특산품 무역</div><div class="act-desc">도시별 실시간 시세로 싸게 사서 비싸게 매도</div>';
+  tBtn.addEventListener('click', () => { sfx.click(); openTradeModal(); });
+  elActivityList.appendChild(tBtn);
+  const rBtn = document.createElement('button');
+  rBtn.className = 'activity-item-btn';
+  rBtn.innerHTML = '<div class="act-title">🔗 도시 간 릴레이 의뢰</div><div class="act-desc">전주↔인천↔평택↔동탄↔서울 연결 특급 의뢰</div>';
+  rBtn.addEventListener('click', () => { sfx.click(); openRelayModal(); });
+  elActivityList.appendChild(rBtn);
+}
+
+function openDispatchAndRuneHub() {
+  elActivityModalTitle.textContent = '💎 자경단 지부 · 정령석 소켓';
+  elActivityList.innerHTML = '';
+  const dBtn = document.createElement('button');
+  dBtn.className = 'activity-item-btn';
+  dBtn.innerHTML = '<div class="act-title">👥 자경단 지부 파견</div><div class="act-desc">제패한 도시에 지부 개설 시 턴당 자동 +10P</div>';
+  dBtn.addEventListener('click', () => { sfx.click(); openDispatchModal(); });
+  elActivityList.appendChild(dBtn);
+  const sBtn = document.createElement('button');
+  sBtn.className = 'activity-item-btn';
+  sBtn.innerHTML = `<div class="act-title">💎 장비 정령석(룬) 소켓 (보유 ${state.ownedRunes.length}개)</div><div class="act-desc">무기·방어구·장신구에 정령석 각인</div>`;
+  sBtn.addEventListener('click', () => { sfx.click(); openRuneSocketModal(); });
+  elActivityList.appendChild(sBtn);
 }
 
 function openActTravelModal() {
