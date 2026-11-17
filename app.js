@@ -1513,16 +1513,16 @@ function gainSpiritExp(spiritId, amount) {
   return { leveledUp, lv: prog.lv };
 }
 
-function getSpiritBonuses() {
-  const id = state.equippedSpirit;
+function getSpiritBonuses(spiritIdOverride = null) {
+  const id = spiritIdOverride || state.equippedSpirit;
   if (!id) return { atk: 0, spRegen: 0, crit: 0, element: null, elemBoost: 0, perkId: null, spirit: null, lv: 0, growthLv: 0 };
   const sp = SPIRITS_50.find((x) => x.id === id);
   const lv = state.spirits?.[id] || 0;
   if (!sp || lv <= 0) return { atk: 0, spRegen: 0, crit: 0, element: null, elemBoost: 0, perkId: null, spirit: null, lv: 0, growthLv: 0 };
   const growthLv = getSpiritProgress(id).lv;
-  const lvMult = (1 + (lv - 1) * 0.20) * (1 + (growthLv - 1) * 0.045);
+  const lvMult = (1 + (lv - 1) * 0.22) * (1 + (growthLv - 1) * 0.07);
   return {
-    atk: Math.round(sp.atk * lvMult),
+    atk: Math.round(sp.atk * lvMult) + (growthLv - 1),
     spRegen: Math.round(sp.spRegen * lvMult),
     crit: Number((sp.crit * lvMult).toFixed(3)),
     element: sp.element,
@@ -1819,6 +1819,11 @@ function startBattle(enemyId, isRandomEncounter = false) {
     state.enemyHp = Math.max(1, Math.round(state.enemyHp * (1 - state.activeActStory.preDamagePct)));
   }
   state.activeActStory = null;
+  state.diplomacyUsed = false;
+  if (getSpiritBonuses().growthLv >= 10) {
+    state.sp = clamp((state.sp || 0) + 15, 0, state.maxSp);
+    extraLog += '\n👻 [정령 Lv.10+ 각성] 전투 시작 사이다 +15 충전!';
+  }
   state.enemyMaxHp = enemy.maxHp;
   state.enemyStunned = false;
   state.enemyExcuseShield = false;
@@ -1941,8 +1946,10 @@ function enemyCounterTurn(enemy, isGuarding = false) {
   }
 
   const spBonTurn = getSpiritBonuses();
-  if (spBonTurn.spirit && Math.random() < (spBonTurn.perkId === 'overdrive' ? 1.0 : 0.45)) {
-    const spHit = 8 + Math.round(spBonTurn.atk * 0.7) + Math.round((spBonTurn.growthLv || 1) * 1.2);
+  const spChance = spBonTurn.perkId === 'overdrive' ? 1.0 : ((spBonTurn.growthLv || 1) >= 5 ? 0.55 : 0.45);
+  if (spBonTurn.spirit && Math.random() < spChance) {
+    const lv20Mult = (spBonTurn.growthLv || 1) >= 20 ? 1.5 : 1.0;
+    const spHit = Math.round((8 + Math.round(spBonTurn.atk * 0.7) + Math.round((spBonTurn.growthLv || 1) * 1.2)) * lv20Mult);
     state.enemyHp = clamp(state.enemyHp - spHit, 0, state.enemyMaxHp);
     state.log += `\n👻 [${spBonTurn.spirit.name} Lv.${spBonTurn.growthLv || 1} 협공!] 수호정령의 기운이 빌런을 강타! (멘탈 -${spHit})`;
     if (elSpiritSprite) {
@@ -6469,13 +6476,13 @@ function render() {
     ensureSandboxState();
 
     // V37.0: 오블리비언식 무혈 외교 (첫 턴 & 최종 보스 제외)
-    if (state.isFirstTurn && !enemy.isFinal && !state.towerFloor && !state.nightmareFloor) {
+    if (state.isFirstTurn && !state.diplomacyUsed && !enemy.isFinal && !state.towerFloor && !state.nightmareFloor) {
       const dipBtn = document.createElement('button');
       dipBtn.className = 'choice-btn row-btn';
       dipBtn.style.gridColumn = 'span 2';
       dipBtn.style.background = 'linear-gradient(180deg, #f0f9ff 0%, #dbeafe 100%)';
       dipBtn.style.borderColor = '#3b82f6';
-      dipBtn.innerHTML = `<span>🗣️ [현장 교섭] 말로 설득 · 협박 · 매수</span><span class="choice-sub" style="color:#1e40af;">화술 Lv.${state.skills.speech} · 악명 ${state.infamy} · 무혈 제압 시도</span>`;
+      dipBtn.innerHTML = `<span>🗣️ [현장 교섭] 기선제압 시도 (설득 · 협박 · 매수)</span><span class="choice-sub" style="color:#1e40af;">전투당 1회 · 성공 시 적 멘탈/가드 대폭 약화</span>`;
       dipBtn.addEventListener('click', () => {
         sfx.click();
         openDiplomacyModal(enemy);
@@ -8499,11 +8506,13 @@ function openSpiritModal(filterEl = 'all') {
     if (lv > 0) {
       const prog = getSpiritProgress(sp.id);
       const expPct = prog.lv >= 20 ? 100 : Math.min(100, Math.round((prog.exp / prog.maxExp) * 100));
+      const spLive = getSpiritBonuses(sp.id);
+      const spMs = prog.lv >= 20 ? '🌟만렙각성(협공1.5배)' : (prog.lv >= 10 ? '⚡시작SP+15' : (prog.lv >= 5 ? '💥협공률+10%' : 'Lv.5 협공↑'));
       card.innerHTML = `
         <img src="${sp.img}?v=72" alt="${sp.name}" class="item-thumb" style="width:44px;height:44px;object-fit:contain;" />
         <div class="inv-info">
           <h4 style="color:${rInfo.color};">[${rInfo.short}] ${getSpiritDisplayName(sp)} <span style="color:#0369a1;">Lv.${prog.lv}/20</span> · ★${lv}/5 ${isEq ? '✅동행중' : ''}</h4>
-          <p>${sp.desc}<br/><span style="color:#1e40af;font-size:0.68rem;">📍 출몰: ${sp.zoneHint}</span><br/><span style="color:#695544;font-style:italic;">"${sp.greet}"</span></p>
+          <p><b style="color:#0f766e;">⚡ 현재 버프: 공격 +${spLive.atk}${spLive.spRegen ? ` · 사이다+${spLive.spRegen}` : ''}${spLive.crit ? ` · 치명+${(spLive.crit * 100).toFixed(1)}%` : ''} · 속성+${Math.round(spLive.elemBoost * 100)}%</b> <span style="font-size:0.68rem;color:#b45309;">[${spMs}]</span><br/>${sp.desc}<br/><span style="color:#1e40af;font-size:0.68rem;">📍 출몰: ${sp.zoneHint}</span></p>
           <div class="spirit-exp-track"><div class="spirit-exp-fill" style="width:${expPct}%"></div></div>
         </div>
       `;
@@ -9338,27 +9347,31 @@ function useCustomPotionInCombat(enemy) {
 
 function openDiplomacyModal(enemy) {
   ensureSandboxState();
-  elActivityModalTitle.textContent = `🗣️ 현장 교섭 — ${enemy.name}`;
+  elActivityModalTitle.textContent = `🗣️ 현장 교섭 (기선제압) — ${enemy.name}`;
   if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
   elActivityList.innerHTML = '';
 
-  const speechChance = clamp(35 + state.skills.speech * 10 + (state.stats.speech || 5) * 2, 35, 92);
-  const intimChance = clamp(30 + state.infamy * 6 + (state.stats.guts || 5) * 2, 30, 90);
+  const speechChance = clamp(25 + state.skills.speech * 6 + Math.floor((state.stats.speech || 5) * 0.8), 25, 65);
+  const intimChance = clamp(20 + state.infamy * 4 + Math.floor((state.stats.guts || 5) * 0.8), 20, 60);
 
   const pBtn = document.createElement('button');
   pBtn.className = 'activity-item-btn';
-  pBtn.innerHTML = `<div class="act-title">🗣️ 논리적 설득 (성공률 ${speechChance}%)</div><div class="act-desc">화술 Lv.${state.skills.speech} 판정 · 성공 시 무혈 제압 + 명성 +2</div>`;
+  pBtn.innerHTML = `<div class="act-title">🗣️ 논리적 설득 (성공률 ${speechChance}%)</div><div class="act-desc">화술 Lv.${state.skills.speech} · 성공 시 적 멘탈 -30% + 가드 1칸 파쇄 + 명성 +1</div>`;
   pBtn.addEventListener('click', () => {
     elActivityModal.classList.add('hidden');
+    state.diplomacyUsed = true;
     gainSkillXp('speech', 14);
     if (Math.random() * 100 < speechChance) {
-      state.fame += 2;
-      state.enemyHp = 0;
-      setRumor(`${enemy.name}을(를) 말 한마디로 회개시켰다는 전설`);
+      const dmg = Math.max(15, Math.round((state.enemyMaxHp || 100) * 0.30));
+      state.fame += 1;
+      state.enemyHp = Math.max(1, state.enemyHp - dmg);
+      state.enemyGuardShield = Math.max(0, (state.enemyGuardShield ?? 3) - 1);
       sfx.victory();
-      showToast('🗣️ 설득 대성공! 무혈 제압 + 명성 +2!', 'good');
-      state.log = `🗣️ 진심 어린 설득에 [${enemy.name}]이(가) 고개를 숙이고 스스로 물러났습니다!`;
-      handleEnemyDefeated(enemy);
+      showToast(`🗣️ 설득 성공! 적 멘탈 -${dmg} & 가드 1칸 파쇄!`, 'good');
+      state.log = `🗣️ 정곡을 찌르는 논리에 [${enemy.name}]의 멘탈이 크게 흔들렸습니다! (멘탈 -${dmg} · 가드-1 · 명성+1)`;
+      triggerEnemyHit(dmg, true);
+      saveGame();
+      render();
     } else {
       sfx.damage();
       showToast('💦 설득 실패! 적의 반격!', 'warn');
@@ -9370,19 +9383,22 @@ function openDiplomacyModal(enemy) {
 
   const iBtn = document.createElement('button');
   iBtn.className = 'activity-item-btn';
-  iBtn.innerHTML = `<div class="act-title">😈 노란 완장 협박 (성공률 ${intimChance}%)</div><div class="act-desc">악명(${state.infamy})·깡 판정 · 성공 시 적 도주 + 포인트 강탈 (악명 +2)</div>`;
+  iBtn.innerHTML = `<div class="act-title">😈 노란 완장 협박 (성공률 ${intimChance}%)</div><div class="act-desc">악명(${state.infamy})·깡 · 성공 시 적 멘탈 -20% + 1턴 기절 (악명 +1)</div>`;
   iBtn.addEventListener('click', () => {
     elActivityModal.classList.add('hidden');
+    state.diplomacyUsed = true;
     gainSkillXp('combat', 10);
     if (Math.random() * 100 < intimChance) {
-      state.infamy += 2;
-      state.points += 30;
-      state.enemyHp = 0;
-      setRumor(`무서운 노란 완장이 거리를 공포로 제압하고 다닌다는 소문`);
+      const dmg = Math.max(12, Math.round((state.enemyMaxHp || 100) * 0.20));
+      state.infamy += 1;
+      state.enemyHp = Math.max(1, state.enemyHp - dmg);
+      state.enemyStunned = true;
       sfx.powerup();
-      showToast('😈 협박 성공! +30P & 악명 +2!', 'warn');
-      state.log = `😈 서늘한 눈빛에 [${enemy.name}]이(가) 지갑을 떨어뜨리고 도망쳤습니다! (+30P · 악명 +2)`;
-      handleEnemyDefeated(enemy);
+      showToast(`😈 협박 성공! 적 멘탈 -${dmg} & 1턴 기절!`, 'warn');
+      state.log = `😈 서늘한 눈빛에 [${enemy.name}]이(가) 얼어붙었습니다! (멘탈 -${dmg} · 1턴 기절 · 악명+1)`;
+      triggerEnemyHit(dmg, true);
+      saveGame();
+      render();
     } else {
       sfx.damage();
       state.infamy += 1;
@@ -9395,20 +9411,25 @@ function openDiplomacyModal(enemy) {
 
   const bBtn = document.createElement('button');
   bBtn.className = 'activity-item-btn';
-  bBtn.disabled = state.points < 50;
-  bBtn.innerHTML = `<div class="act-title">💰 조용히 매수하기 (50P)</div><div class="act-desc">50P로 정보원으로 포섭 · 즉시 클리어 + 랜덤 재료 1개</div>`;
+  bBtn.disabled = state.points < 150;
+  bBtn.innerHTML = `<div class="act-title">💰 뒷거래 약화 (150P)</div><div class="act-desc">적 멘탈 -40% + 공격력 20% 약화 + 랜덤 재료 1개</div>`;
   bBtn.addEventListener('click', () => {
     elActivityModal.classList.add('hidden');
-    state.points -= 50;
+    state.diplomacyUsed = true;
+    state.points -= 150;
     gainSkillXp('speech', 10);
+    const dmg = Math.max(20, Math.round((state.enemyMaxHp || 100) * 0.40));
+    state.enemyHp = Math.max(1, state.enemyHp - dmg);
+    state.currentEnemyAtk = Math.max(5, Math.round((state.currentEnemyAtk || enemy.atk || 14) * 0.8));
     const keys = Object.keys(INGREDIENT_META);
     const pickIng = keys[Math.floor(Math.random() * keys.length)];
     gainIngredient(pickIng, 1);
-    state.enemyHp = 0;
     sfx.powerup();
-    showToast(`💰 매수 성공! ${INGREDIENT_META[pickIng].name} 획득!`, 'good');
-    state.log = `💰 50P를 쥐여주자 [${enemy.name}]이(가) 정보원이 되어 조용히 사라졌습니다!`;
-    handleEnemyDefeated(enemy);
+    showToast(`💰 거래 성사! 적 멘탈 -${dmg} · 공격력 약화 · ${INGREDIENT_META[pickIng].name}!`, 'good');
+    state.log = `💰 150P를 찔러주자 [${enemy.name}]이(가) 살살 싸우기로 했습니다! (멘탈 -${dmg} · 공격력 20%↓)`;
+    triggerEnemyHit(dmg, false);
+    saveGame();
+    render();
   });
   elActivityList.appendChild(bBtn);
 
