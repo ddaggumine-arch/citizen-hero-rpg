@@ -13,6 +13,7 @@ import { KISS_SCENES, LOVER_ACTIONS, KISS_SCENE_CHOICES } from './data/v25Romanc
 import { SPIRITS_50, SPIRIT_ELEMENTS } from './data/spirits50.js?v=76';
 import { UNLOCK_MILESTONES, isFeatureUnlocked, SEOUL_DISTRICTS, getDistrictIdForEnemy, getClearedDistrictCount } from './data/v26World.js?v=48';
 import { STORY_BOSSES } from './data/storyBosses.js?v=45';
+import { STORY_AFTERMATHS } from './data/storyAftermath.js?v=81';
 import { sfx } from './sound.js';
 
 const SAVE_KEY = 'citizen_hero_gta_save_v4';
@@ -217,6 +218,7 @@ function createNewGameState() {
     equippedSpirit: null,
     pendingSpiritEncounter: null,
     spiritCaptureResult: null,
+    pendingStoryAftermath: null,
     epilogueIdx: 0,
     epilogueSeen: false,
   };
@@ -2098,6 +2100,9 @@ function handleEnemyDefeated(enemy) {
   if (currentCh && currentCh.bossId === enemy.id) {
     state.chapterIndex += 1;
     state.storySceneIndex = 0;
+    if (prevCh < STORY_AFTERMATHS.length) {
+      state.pendingStoryAftermath = prevCh;
+    }
     if (state.chapterIndex < STORY_CHAPTERS.length) {
       state.unreadMessages += 1;
     }
@@ -6171,7 +6176,9 @@ function render() {
         sfx.powerup();
         vibrate([25, 25, 50]);
         const msg = applyDraftReward(opt);
-        state.phase = 'map';
+        state.phase = (state.pendingStoryAftermath !== null && state.pendingStoryAftermath !== undefined)
+          ? 'story_aftermath'
+          : 'map';
         state.log = `${msg} (상단 📱 버튼으로 톡 알림/안전신문고를 확인해 보세요)`;
         saveGame();
         render();
@@ -6186,6 +6193,50 @@ function render() {
   elWeaknessPill.classList.add('hidden');
   elEnemyHpWrap.classList.add('hidden');
   elQuoteBubble.classList.add('hidden');
+
+  if (state.phase === 'story_aftermath') {
+    const chIdx = state.pendingStoryAftermath ?? Math.max(0, (state.chapterIndex || 1) - 1);
+    const chObj = STORY_CHAPTERS[chIdx] || { title: `제${chIdx + 1}화` };
+    const aft = STORY_AFTERMATHS[chIdx] || STORY_AFTERMATHS[0];
+    elLocation.textContent = `📖 제${chIdx + 1}화 완결 · EPISODE AFTERMATH`;
+    elSceneTag.textContent = '후일담';
+    elSceneTag.className = 'scene-tag event';
+    elSceneTitle.textContent = `🎬 제${chIdx + 1}화 [${chObj.title || ''}] 완결!`;
+    if (elFrame) elFrame.classList.add('combat-stage');
+    setStageBg(`bg_${state.activeDistrict || 'mapo'}.jpg`);
+    elHeroSprite.classList.remove('hidden');
+    const hasYuki = !!state.lovers?.includes('yuki') && !state.sulky?.yuki;
+    const hasChloe = !!state.lovers?.includes('chloe') && !state.sulky?.chloe;
+    const hasPet = !!state.pet?.adopted;
+    elHeroSprite.classList.toggle('with-yuki', hasYuki);
+    if (elYukiSprite) elYukiSprite.classList.toggle('hidden', !hasYuki);
+    if (elChloeSprite) {
+      elChloeSprite.classList.toggle('hidden', !hasChloe);
+      elChloeSprite.classList.toggle('with-yuki', hasYuki);
+    }
+    if (elKongiSprite) elKongiSprite.classList.toggle('hidden', !hasPet);
+
+    elBattleLog.textContent =
+      `📌 [사건 뒷이야기]\n${aft.epilogue}\n\n` +
+      `💬 [동료 반응]\n${aft.partner}\n\n` +
+      `📺 [다음 화 예고]\n${aft.teaser}`;
+
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'choice-btn primary';
+    nextBtn.innerHTML = `<span class="choice-title">✨ 제${chIdx + 1}화 완결 보너스 받기 (+${aft.bonusP}P · 사이다 +20) ▶</span><span class="choice-sub">다음 이야기가 서울 맵에서 기다리고 있습니다!</span>`;
+    nextBtn.addEventListener('click', () => {
+      sfx.victory?.();
+      state.points += aft.bonusP;
+      state.sp = clamp(state.sp + 20, 0, state.maxSp);
+      state.pendingStoryAftermath = null;
+      state.phase = 'map';
+      state.log = `📖 제${chIdx + 1}화 완결! (+${aft.bonusP}P · 사이다 +20) ${aft.teaser}`;
+      saveGame();
+      render();
+    });
+    elChoicesPanel.appendChild(nextBtn);
+    return;
+  }
 
   if (state.phase === 'epilogue') {
     const spCnt = Object.keys(state.spirits || {}).filter((k) => (state.spirits[k] || 0) > 0).length;
