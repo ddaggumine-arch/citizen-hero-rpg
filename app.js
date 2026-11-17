@@ -398,6 +398,8 @@ const elEnemyHpLabel = document.getElementById('enemy-hp-label');
 const elEnemyHpText = document.getElementById('enemy-hp-text');
 const elEnemyHpBar = document.getElementById('enemy-hp-bar');
 const elFrame = document.getElementById('illustration-frame');
+const elRomMgOverlay = document.getElementById('rom-mg-overlay');
+const elRomMgPanel = document.getElementById('rom-mg-panel');
 const elWildSpiritSprite = document.getElementById('wild-spirit-sprite');
 const elCaptureStamp = document.getElementById('capture-stamp');
 const elSceneImage = document.getElementById('scene-image');
@@ -2599,6 +2601,7 @@ function render() {
     elWildSpiritSprite.className = 'wild-spirit-sprite hidden';
   }
   if (elCaptureStamp) elCaptureStamp.classList.add('hidden');
+  if (elRomMgOverlay) elRomMgOverlay.classList.add('hidden');
   elHeroSprite.classList.add('hidden');
   elHeroSprite.classList.remove('with-yuki', 'couple-left');
   if (elYukiSprite) {
@@ -4863,17 +4866,22 @@ function render() {
       }
     };
 
-    // 화별 미니게임 처리
-    if (sc.minigame && !ars.mgDone) {
+    // 화별 미니게임 처리 — V35.3 대형 집중 오버레이 무대 (스크롤 제로!)
+    if (sc.minigame && !ars.mgDone && elRomMgOverlay && elRomMgPanel) {
       const mg = sc.minigame;
+      elBattleLog.textContent = sc.text;
+      elRomMgOverlay.classList.remove('hidden');
+      const headerHtml = `
+        <div style="font-size:11.5px;color:#fde047;font-weight:800;margin-bottom:4px;">🎮 ${epObj.title}</div>
+        <div style="font-weight:900;font-size:17px;margin-bottom:4px;">${mg.title}</div>
+        <div style="font-size:12.5px;opacity:0.95;line-height:1.45;">${mg.question ? `❓ ${mg.question}` : mg.desc}</div>
+      `;
+
       if (mg.type === 'timing' || mg.type === 'shutter') {
-        elBattleLog.innerHTML = `
-          <div class="romance-mg-box">
-            <div style="font-weight:800;font-size:13px;">${mg.title}</div>
-            <div style="font-size:11.5px;opacity:0.92;margin-top:2px;">${mg.desc}</div>
-            <div class="romance-heart-track"><div class="romance-heart-cursor" id="rom-mg-cursor" style="left:50%"></div></div>
-          </div>
-          <div style="font-size:12.5px;line-height:1.5;">${sc.text}</div>
+        elRomMgPanel.innerHTML = `
+          ${headerHtml}
+          <div class="romance-heart-track"><div class="romance-heart-cursor" id="rom-mg-cursor" style="left:50%"></div></div>
+          <button class="rom-mg-big-btn" id="rom-mg-go">${mg.type === 'shutter' ? '📸 지금 셔터 누르기!!' : '💗 지금 타이밍 맞추기!!'}</button>
         `;
         let pos = 12;
         let dir = 1;
@@ -4891,10 +4899,7 @@ function render() {
         if (window._romMgRaf) cancelAnimationFrame(window._romMgRaf);
         window._romMgRaf = requestAnimationFrame(step);
 
-        const actBtn = document.createElement('button');
-        actBtn.className = 'choice-btn primary';
-        actBtn.innerHTML = `<span class="choice-title">${mg.type === 'shutter' ? '📸 지금 셔터 누르기!!' : '💗 지금 타이밍 맞추기!!'}</span><span class="choice-sub">중앙 골드존 적중 시 호감도 +6 보너스!</span>`;
-        actBtn.onclick = () => {
+        document.getElementById('rom-mg-go').onclick = () => {
           if (window._romMgRaf) { cancelAnimationFrame(window._romMgRaf); window._romMgRaf = null; }
           let loveAdd = 3;
           let resTxt = mg.missText;
@@ -4916,18 +4921,14 @@ function render() {
           state.activeRomanceStory = { ...ars, mgDone: true, mgResultText: resTxt };
           render();
         };
-        elChoicesPanel.appendChild(actBtn);
         return;
       }
 
       if (mg.type === 'mash') {
-        elBattleLog.innerHTML = `
-          <div class="romance-mg-box">
-            <div style="font-weight:800;font-size:13px;">${mg.title}</div>
-            <div style="font-size:11.5px;opacity:0.92;margin-top:2px;">${mg.desc}</div>
-            <div class="romance-mash-track"><div class="romance-mash-fill" id="rom-mash-fill"></div></div>
-          </div>
-          <div style="font-size:12.5px;line-height:1.5;">${sc.text}</div>
+        elRomMgPanel.innerHTML = `
+          ${headerHtml}
+          <div class="romance-mash-track"><div class="romance-mash-fill" id="rom-mash-fill"></div></div>
+          <button class="rom-mg-big-btn" id="rom-mg-mash">⚡ 가볍게 톡톡 연타하기!!</button>
         `;
         let pct = 15;
         let finished = false;
@@ -4935,7 +4936,7 @@ function render() {
           if (finished) return;
           finished = true;
           clearTimeout(timer);
-          const loveAdd = isPerfect ? 6 : (pct >= 55 ? 4 : 2);
+          const loveAdd = isPerfect ? 6 : (pct >= 55 ? 4 : 3);
           const resTxt = isPerfect ? mg.perfectText : (pct >= 55 ? mg.goodText : mg.missText);
           if (isPerfect) { sfx.victory(); showToast('🔥 100% 성공!! 호감도 +6!', 'break'); }
           else { sfx.powerup(); showToast(`💕 호감도 +${loveAdd}!`, 'good'); }
@@ -4948,10 +4949,7 @@ function render() {
           if (state.phase === 'romance_story' && !finished) finishMash(false);
         }, 4200);
 
-        const mashBtn = document.createElement('button');
-        mashBtn.className = 'choice-btn primary';
-        mashBtn.innerHTML = `<span class="choice-title">⚡ 가볍게 톡톡 연타하기!!</span><span class="choice-sub">4.2초 안에 게이지를 채우세요!</span>`;
-        mashBtn.onclick = () => {
+        document.getElementById('rom-mg-mash').onclick = () => {
           if (finished) return;
           sfx.click();
           pct = Math.min(100, pct + 16);
@@ -4959,22 +4957,18 @@ function render() {
           if (fill) fill.style.width = `${pct}%`;
           if (pct >= 100) finishMash(true);
         };
-        elChoicesPanel.appendChild(mashBtn);
         return;
       }
 
-      // NEW 1: 반짝 타겟 톡톡 터치 (tap_targets)
       if (mg.type === 'tap_targets') {
         const icons = mg.icons || ['🌸', '💕', '✨', '🎀'];
         let caught = 0;
         let doneTap = false;
-        elBattleLog.innerHTML = `
-          <div class="romance-mg-box">
-            <div style="font-weight:800;font-size:13px;">${mg.title} (<span id="rom-tap-cnt">0</span>/${icons.length})</div>
-            <div style="font-size:11.5px;opacity:0.92;margin-top:2px;">${mg.desc}</div>
-            <div class="rom-tap-arena" id="rom-tap-arena"></div>
-          </div>
-          <div style="font-size:12.5px;line-height:1.5;">${sc.text}</div>
+        elRomMgPanel.innerHTML = `
+          <div style="font-size:11.5px;color:#fde047;font-weight:800;margin-bottom:4px;">🎮 ${epObj.title}</div>
+          <div style="font-weight:900;font-size:17px;margin-bottom:4px;">${mg.title} (<span id="rom-tap-cnt">0</span>/${icons.length})</div>
+          <div style="font-size:12.5px;opacity:0.95;">${mg.desc}</div>
+          <div class="rom-tap-arena" id="rom-tap-arena"></div>
         `;
         const arena = document.getElementById('rom-tap-arena');
         const finishTap = (isPerfect) => {
@@ -4992,14 +4986,20 @@ function render() {
         };
         const tapTimer = setTimeout(() => {
           if (state.phase === 'romance_story' && !doneTap) finishTap(false);
-        }, 6000);
+        }, 6500);
 
+        const coords = [
+          { l: '12%', t: '32px' },
+          { l: '64%', t: '28px' },
+          { l: '24%', t: '138px' },
+          { l: '68%', t: '142px' },
+        ];
         icons.forEach((sym, i) => {
           const btn = document.createElement('button');
           btn.className = 'rom-tap-target';
           btn.textContent = sym;
-          btn.style.left = `${8 + i * 21}%`;
-          btn.style.top = `${16 + (i % 2) * 28}px`;
+          btn.style.left = coords[i % coords.length].l;
+          btn.style.top = coords[i % coords.length].t;
           btn.onclick = () => {
             if (doneTap || btn.dataset.hit) return;
             btn.dataset.hit = '1';
@@ -5013,27 +5013,19 @@ function render() {
           };
           if (arena) arena.appendChild(btn);
         });
-        const skipInfo = document.createElement('button');
-        skipInfo.className = 'choice-btn';
-        skipInfo.disabled = true;
-        skipInfo.innerHTML = `<span class="choice-title">👆 위 상자 안의 아이콘 ${icons.length}개를 톡톡 눌러주세요!</span><span class="choice-sub">6초 안에 모두 누르면 보너스 +6!</span>`;
-        elChoicesPanel.appendChild(skipInfo);
         return;
       }
 
-      // NEW 2: 순간 기억력 카드 터치 (memory)
       if (mg.type === 'memory') {
         const seq = mg.seq || ['🍵', '📖', '🧁'];
         const shuffled = [...seq].sort(() => Math.random() - 0.5);
         let stepIdx = 0;
         let revealed = true;
-        elBattleLog.innerHTML = `
-          <div class="romance-mg-box">
-            <div style="font-weight:800;font-size:13px;">${mg.title}</div>
-            <div style="font-size:11.5px;opacity:0.95;margin-top:2px;" id="rom-mem-hint">👀 2초 동안 순서를 기억하세요: ${seq.join(' → ')}</div>
-            <div class="rom-mem-row" id="rom-mem-row"></div>
-          </div>
-          <div style="font-size:12.5px;line-height:1.5;">${sc.text}</div>
+        elRomMgPanel.innerHTML = `
+          <div style="font-size:11.5px;color:#fde047;font-weight:800;margin-bottom:4px;">🎮 ${epObj.title}</div>
+          <div style="font-weight:900;font-size:17px;margin-bottom:4px;">${mg.title}</div>
+          <div style="font-size:12.5px;color:#fde047;font-weight:700;" id="rom-mem-hint">👀 2초 동안 순서를 기억하세요: ${seq.join(' → ')}</div>
+          <div class="rom-mem-row" id="rom-mem-row"></div>
         `;
         const row = document.getElementById('rom-mem-row');
         const cards = shuffled.map((sym) => {
@@ -5079,32 +5071,20 @@ function render() {
             c.disabled = false;
           });
         }, 2000);
-        const waitMem = document.createElement('button');
-        waitMem.className = 'choice-btn';
-        waitMem.disabled = true;
-        waitMem.innerHTML = `<span class="choice-title">🧠 2초 후 카드가 가려지면 순서대로 누르세요!</span><span class="choice-sub">순서: ${seq.join(' → ')}</span>`;
-        elChoicesPanel.appendChild(waitMem);
         return;
       }
 
-      // NEW 3: 히로인과 가위바위보 (rps)
       if (mg.type === 'rps') {
-        elBattleLog.innerHTML = `
-          <div class="romance-mg-box">
-            <div style="font-weight:800;font-size:13px;">${mg.title}</div>
-            <div style="font-size:11.5px;opacity:0.92;margin-top:2px;">${mg.desc}</div>
-          </div>
-          <div style="font-size:12.5px;line-height:1.5;">${sc.text}</div>
-        `;
+        elRomMgPanel.innerHTML = headerHtml;
         const rpsOpts = [
-          { id: 'r', label: '✊ 바위', beats: 's' },
-          { id: 's', label: '✌️ 가위', beats: 'p' },
-          { id: 'p', label: '✋ 보', beats: 'r' },
+          { id: 'r', label: '✊ 바위 내기!', beats: 's' },
+          { id: 's', label: '✌️ 가위 내기!', beats: 'p' },
+          { id: 'p', label: '✋ 보 내기!', beats: 'r' },
         ];
         rpsOpts.forEach((opt) => {
           const rb = document.createElement('button');
-          rb.className = 'choice-btn';
-          rb.innerHTML = `<span class="choice-title">${opt.label} 내기!</span><span class="choice-sub">${hName}와(과) 가위바위보 한 판 승부!</span>`;
+          rb.className = 'rom-mg-choice-btn';
+          rb.textContent = opt.label;
           rb.onclick = () => {
             const ai = rpsOpts[Math.floor(Math.random() * 3)];
             let loveAdd = 3;
@@ -5112,51 +5092,45 @@ function render() {
             if (opt.beats === ai.id) {
               loveAdd = 6;
               sfx.victory();
-              showToast(`✌️ 승리 (${ai.label} 격파)! 호감도 +6!`, 'break');
-              resTxt = `${mg.perfectText} (${hName}: ${ai.label}!)`;
+              showToast(`✌️ 승리! 호감도 +6!`, 'break');
+              resTxt = `${mg.perfectText} (${hName}: ${ai.label})`;
             } else if (opt.id === ai.id) {
               loveAdd = 4;
               sfx.powerup();
-              showToast(`🤝 무승부 (${ai.label})! 호감도 +4!`, 'good');
-              resTxt = `${mg.goodText} (둘 다 ${ai.label}를 내고 마주 보며 웃었다!)`;
+              showToast(`🤝 무승부! 호감도 +4!`, 'good');
+              resTxt = `${mg.goodText}`;
             } else {
               loveAdd = 2;
               sfx.click();
-              showToast(`😆 아쉽게 패배 (${ai.label})! 호감도 +2!`, 'good');
-              resTxt = `${mg.missText} (${hName}: ${ai.label}로 신나게 승리!)`;
+              showToast(`😆 아쉽게 패배! 호감도 +2!`, 'good');
+              resTxt = `${mg.missText}`;
             }
             if (!state.love) state.love = { yuki: 0, chloe: 0 };
             state.love[hKey] = clamp((state.love[hKey] || 0) + loveAdd, 0, 200);
             state.activeRomanceStory = { ...ars, mgDone: true, mgResultText: resTxt };
             render();
           };
-          elChoicesPanel.appendChild(rb);
+          elRomMgPanel.appendChild(rb);
         });
         return;
       }
 
       if (mg.type === 'quiz' || mg.type === 'counter' || mg.type === 'phrase') {
-        elBattleLog.innerHTML = `
-          <div class="romance-mg-box">
-            <div style="font-weight:800;font-size:13px;">${mg.title}</div>
-            <div style="font-size:12px;margin-top:3px;color:#fde047;">❓ ${mg.question}</div>
-          </div>
-          <div style="font-size:12.5px;line-height:1.5;">${sc.text}</div>
-        `;
+        elRomMgPanel.innerHTML = headerHtml;
         mg.options.forEach((opt) => {
           const ob = document.createElement('button');
-          ob.className = 'choice-btn';
-          ob.innerHTML = `<span class="choice-title">${opt.text}</span><span class="choice-sub">${mg.type === 'counter' ? '결정적 카운터 선택' : '센스 답변 선택'}</span>`;
+          ob.className = 'rom-mg-choice-btn';
+          ob.textContent = opt.text;
           ob.onclick = () => {
-            const loveAdd = opt.correct ? 6 : 2;
+            const loveAdd = opt.correct ? 6 : 3;
             if (opt.correct) { sfx.victory(); showToast('🎯 대성공!! 호감도 +6!', 'break'); }
-            else { sfx.click(); showToast('💕 호감도 +2!', 'good'); }
+            else { sfx.click(); showToast('💕 호감도 +3!', 'good'); }
             if (!state.love) state.love = { yuki: 0, chloe: 0 };
             state.love[hKey] = clamp((state.love[hKey] || 0) + loveAdd, 0, 200);
             state.activeRomanceStory = { ...ars, mgDone: true, mgResultText: opt.reply };
             render();
           };
-          elChoicesPanel.appendChild(ob);
+          elRomMgPanel.appendChild(ob);
         });
         return;
       }

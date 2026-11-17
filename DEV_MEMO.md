@@ -5,7 +5,9 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V35.2
+## 현재 최신 버전: V35.3
+- **V35.3**:
+  - **미니게임 전용 대형 집중 오버레이(`#rom-mg-overlay`, `#rom-mg-panel`) 도입 (`index.html`, `style.css`, `app.js`)**: 미니게임 시작 시 다른 UI에 가려 작아지던 문제를 해결해 화면 중앙을 꽉 채우는 큼직한 전용 오버레이 무대(`230px` 넓은 터치 아레나, `52px` 타겟 버튼, `96×76px` 기억력 카드, `1rem` 굵은 엄지 버튼)로 전환해 모바일 스크롤 제로 조작 구현 (`?v=93`)
 - **V35.2**:
   - **신규 미니게임 3종(`tap_targets` 타겟 톡톡 · `memory` 순간 기억력 · `rps` 가위바위보) 추가 & 이지 난이도 튜닝 (`app.js`, `style.css`, `romanceStoryYuki.js`, `romanceStoryChloe.js`)**: 기존 바/연타/퀴즈와 함께 조작감이 완전히 다른 6종 미니게임으로 다채롭게 배치 + 넓은 골드존(`32~68%`)·넉넉한 제한 시간(4.2~6초)으로 스트레스 없이 즐기는 캐주얼 난이도 적용
   - **스토리 모드 하루 1화 제한 (`lastMainStoryDay`, `lastRomanceEpDay`)**: 메인 스토리 1일 1화 + 연애 스토리(유키·클로이 각) 1일 1화 제한으로 하루하루 다음 화를 기다리며 순찰·정령·일상을 함께 즐기는 호흡 구현 (완결 후 회상은 무제한, `?v=92`)
