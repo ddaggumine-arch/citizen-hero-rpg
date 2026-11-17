@@ -847,7 +847,7 @@ function triggerPlayerDamage(dmg) {
 }
 
 function uiImg(name, cls = 'ui-icon-btn') {
-  return `<img src="assets/images/ui/${name}.png?v=85" class="${cls}" alt="" />`;
+  return `<img src="assets/images/ui/${name}.png?v=86" class="${cls}" alt="" />`;
 }
 
 function getHeroRankInfo() {
@@ -3467,7 +3467,8 @@ function render() {
     ACTIVITY_CATEGORIES.forEach((cat) => {
       const btn = document.createElement('button');
       btn.className = 'choice-btn';
-      const catIcon = cat.id === 'shop' ? uiImg('pin_shop') : (cat.id === 'luck' ? uiImg('pin_arcade') : '');
+      const catIconMap = { patrol: 'pin_patrol', work: 'pin_work', train: 'pin_train', heal: 'pin_home', shop: 'pin_shop', luck: 'pin_arcade' };
+      const catIcon = catIconMap[cat.id] ? uiImg(catIconMap[cat.id]) : '';
       const catLabel = catIcon ? `${catIcon}${cat.title.replace(/^[^\s]+\s*/, '')}` : cat.title;
       btn.innerHTML = `<span>${catLabel}</span><span class="choice-sub">${cat.sub}</span>`;
       btn.addEventListener('click', () => {
