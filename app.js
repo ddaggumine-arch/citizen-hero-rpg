@@ -2503,8 +2503,7 @@ function render() {
   elChoicesPanel.classList.toggle('is-combat-grid', state.phase === 'combat');
   elWantedPoster.classList.add('hidden');
   elSceneCard.classList.add('hidden');
-  elSceneImage.classList.add('hidden');
-  elSceneImage.className = '';
+  elSceneImage.className = 'hidden';
   setStageBg(null);
   if (elFrame) elFrame.classList.remove('combat-stage', 'couple-stage', 'story-stage', 'spirit-capture-stage', 'spirit-caught-holo');
   if (elWildSpiritSprite) {
@@ -3478,7 +3477,7 @@ function render() {
     spBtn.className = 'choice-btn';
     spBtn.style.background = 'linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%)';
     spBtn.style.borderColor = '#3b82f6';
-    spBtn.innerHTML = `<span>👻 수호정령 (${spiritCount}/50)</span><span class="choice-sub" style="color:#1e40af;">${eqSp ? `${eqSp.name} 장착중` : '소환·장착·도감'}</span>`;
+    spBtn.innerHTML = `<span>👻 수호정령 (${spiritCount}/${SPIRITS_50.length})</span><span class="choice-sub" style="color:#1e40af;">${eqSp ? `${getSpiritDisplayName(eqSp)} 장착중` : '소환·장착·도감'}</span>`;
     spBtn.addEventListener('click', () => {
       sfx.click();
       openSpiritModal();
@@ -6143,7 +6142,7 @@ function render() {
           `🛡️ 시민영웅 레벨: Lv.${state.level || 1} (${getHeroRankTitle(state.level || 1)})\n` +
           `📅 클리어 일수: DAY ${state.day} · 팔로워 ${(state.followers || 120).toLocaleString()}명\n` +
           `🥊 참교육 횟수: ${state.winCount || 0}회 · 평화구역 ${getClearedDistrictCount(state)}/5\n` +
-          `👻 수집 수호정령: ${spCnt}/50종 · 💖 연인: ${(state.lovers || []).length}명\n` +
+          `👻 수집 수호정령: ${spCnt}/${SPIRITS_50.length}종 · 💖 연인: ${(state.lovers || []).length}명\n` +
           `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
           `제작·기획: 마이프렌 × Antigravity · 플레이해주셔서 감사합니다!`,
       },

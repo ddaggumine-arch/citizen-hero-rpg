@@ -5,7 +5,9 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V32.7
+## 현재 최신 버전: V32.8
+- **V32.8**:
+  - **수호정령 `/100` 표기 통일 & 스포트라이트 배경 잔상 버그 수정 (`app.js`)**: 서울 맵 버튼 및 명예의 전당 엔딩 크레딧의 `/50` 표기를 `/100` (`SPIRITS_50.length`) + 커스텀 별명 표시로 통일하고, `render()` 상단 `elSceneImage.className = ''`가 `.hidden`을 지워 정령 포획·소환 무대 뒤에 이전 전투/맵 이미지가 비치던 버그를 `elSceneImage.className = 'hidden'`으로 완전 수정 (`?v=79`)
 - **V32.7**:
   - **노멀 난이도 화력 연동 동적 스케일링 & 빌런 전술(`철벽 변명 태세`) 도입 (`startBattle`, `performAttack`, `enemyCounterTurn`)**: `coScaledHp`에 각성/초월 배율(`evoScale`: 1.38~1.75x) 및 장착 정령 공격력을 100% 반영하고 `Lv.7+` 적 공격력 하한을 상향(`14~18% maxHp`)해 고스펙에서도 4~9턴 공방전 유지! 빌런이 24% 확률로 `🛡️ 철벽 변명 태세`(일반 공격 50% 반감 · 법전/필살기로 파쇄 시 +20%) 사용
   - **아침 일출 모달 [오늘의 서울 특명] & 파트너 응원·서울 소식 (`handleNewDayRollover`, `rollDailyQuests`, `elMorningSummaryBody`)**: 날이 밝을 때마다 `빌런 참교육(2) · 정령 동행 승리(2) · 어학/연애/휴식 케어(1)` 일일 특명 및 완수 보상(`+250P·강화석+3·청심환+1`)을 일출 모달에 즉시 표기 + 동행 정령/파트너 아침 응원(사이다+15) 및 내일 예고 표시 (`?v=78`)
