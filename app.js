@@ -14,8 +14,8 @@ import { SPIRITS_50, SPIRIT_ELEMENTS } from './data/spirits50.js?v=76';
 import { UNLOCK_MILESTONES, isFeatureUnlocked, SEOUL_DISTRICTS, getDistrictIdForEnemy, getClearedDistrictCount } from './data/v26World.js?v=48';
 import { STORY_BOSSES } from './data/storyBosses.js?v=45';
 import { STORY_AFTERMATHS } from './data/storyAftermath.js?v=81';
-import { YUKI_ROMANCE_STORY } from './data/romanceStoryYuki.js?v=89';
-import { CHLOE_ROMANCE_STORY } from './data/romanceStoryChloe.js?v=89';
+import { YUKI_ROMANCE_STORY } from './data/romanceStoryYuki.js?v=90';
+import { CHLOE_ROMANCE_STORY } from './data/romanceStoryChloe.js?v=90';
 import { sfx } from './sound.js';
 
 const SAVE_KEY = 'citizen_hero_gta_save_v4';
