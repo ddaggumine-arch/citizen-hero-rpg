@@ -749,6 +749,15 @@ function handleNewDayRollover() {
   }
 
   const finalMaxDay = GOLDEN_TIME_DAYS + (state.extendedGoldenTime ? 30 : 0);
+  const eqSp = getSpiritBonuses().spirit;
+  const cheerWho = eqSp ? getSpiritDisplayName(eqSp) : (state.lovers?.length ? '연인 & 콩이' : '김순경');
+  const teasers = [
+    '여의도·강남 일대에 고등급 수호정령 기운이 감지되고 있습니다!',
+    '서울 시민 지지율이 오르고 있습니다. 오늘 특명을 완수해보세요!',
+    '단골 진상 빌런들이 새로운 철벽 변명 전술을 준비 중입니다!',
+    '정령과 동행해 전투하면 정령 레벨업과 협공이 발동됩니다!',
+  ];
+  state.sp = clamp(state.sp + 15, 0, state.maxSp);
   state.pendingMorningSummary = {
     day: state.day,
     weatherLabel: wPick.label,
@@ -759,6 +768,8 @@ function handleNewDayRollover() {
     distBonus,
     breakingText: state.breakingNews ? `${state.breakingNews.districtName} '${state.breakingNews.enemyName}'` : null,
     remainingDays: (state.storyCleared || state.freePlayMode) ? null : Math.max(0, finalMaxDay - state.day + 1),
+    cheerMsg: `☀️ [${cheerWho}] "좋은 아침이야! 오늘도 같이 서울을 지키자!" (아침 사이다 +15)`,
+    teaserMsg: teasers[state.day % teasers.length],
   };
   state.dailyStats = { wins: 0, loveGain: 0 };
 }
@@ -995,6 +1006,7 @@ function rollDailyQuests() {
     claimed: false,
     items: [
       { id: 'win', label: '🥊 빌런 참교육', cur: 0, goal: 2 },
+      { id: 'spirit_win', label: '👻 정령 동행 승리', cur: 0, goal: 2 },
       { id: 'care', label: '💖 어학·연애·휴식 케어', cur: 0, goal: 1 },
     ],
   };
@@ -1008,11 +1020,11 @@ function advanceDailyQuest(qId, amt = 1) {
   item.cur = Math.min(item.goal, item.cur + amt);
   if (dq.claimed === false && dq.items.every((x) => x.cur >= x.goal)) {
     dq.claimed = true;
-    state.points += 120;
+    state.points += 250;
     state.scrap = (state.scrap || 0) + 3;
     if (!state.inventory) state.inventory = [];
     state.inventory.push('cheongsimhwan');
-    showToast('🎯 [일일 퀘스트 올클리어!!] +120P · 강화석 +3 · 청심환 +1!', 'break');
+    showToast('🎯 [오늘의 특명 올클리어!!] +250P · 강화석 +3 · 청심환 +1!', 'break');
   }
 }
 
@@ -1645,16 +1657,18 @@ function startBattle(enemyId, isRandomEncounter = false) {
   const modAtkMult = mod ? mod.atkMult : 1;
   const modRewardMult = mod ? mod.rewardMult : 1;
 
-  // V27.2/V29.0 주인공 현재 화력·최대체력 연동 보정: 고스펙이어도 긴장감 있는 공방!
+  // V32.7 주인공 실제 화력(각성/초월 + 정령 + 장비) 100% 연동 동적 스케일링
   const avgStat = ((state.stats?.speech || 2) + (state.stats?.guts || 2) + (state.stats?.law || 2)) / 3;
+  const evoScale = avgStat >= 50 ? 1.75 : (avgStat >= 25 ? 1.38 : 1.0);
   const eqAtk = getEquippedBonuses().atk || 0;
-  const estHeroHit = Math.round((22 + avgStat * 4.2 + (state.bonusDmg || 0) + eqAtk) * 1.28);
-  const targetTurns = isBossEnemy ? 7.5 : 5.0;
+  const spAtkEst = getSpiritBonuses().atk || 0;
+  const estHeroHit = Math.round((22 + avgStat * 4.5 + (state.bonusDmg || 0) + eqAtk + spAtkEst) * 1.32 * evoScale);
+  const targetTurns = isBossEnemy ? 8.5 : (enemyLv >= 7 ? 5.6 : 4.2);
   const coScaledHp = Math.round(estHeroHit * targetTurns * (enemyLv > heroLv ? 1 + (enemyLv - heroLv) * 0.04 : 1) * modHpMult);
 
   const rawFormulaHp = Math.round(baseEnemy.maxHp * lvScale * bossHpBoost * modHpMult);
   const baseScaledHp = Math.max(rawFormulaHp, coScaledHp);
-  const minThreatAtk = Math.round((state.maxHp || 100) * (isBossEnemy ? 0.14 : 0.10));
+  const minThreatAtk = Math.round((state.maxHp || 100) * (isBossEnemy ? 0.18 : (enemyLv >= 7 ? 0.14 : 0.10)));
   const baseScaledAtk = Math.max(Math.round(baseEnemy.atk * atkScale * bossAtkBoost * modAtkMult), minThreatAtk);
   const rawMaxHp = nmFloor > 0
     ? baseScaledHp + nmFloor * 52
@@ -1693,6 +1707,7 @@ function startBattle(enemyId, isRandomEncounter = false) {
   state.enemyHp = startHp;
   state.enemyMaxHp = enemy.maxHp;
   state.enemyStunned = false;
+  state.enemyExcuseShield = false;
   state.enemyIntent = 'normal';
   state.weakCombo = 0;
   state.skillChain = [];
@@ -1921,6 +1936,11 @@ function enemyCounterTurn(enemy, isGuarding = false) {
 
   rollNextIntent();
 
+  if (!state.enemyStunned && state.enemyHp > 0 && !state.enemyExcuseShield && Math.random() < 0.24) {
+    state.enemyExcuseShield = true;
+    state.log += `\n🛡️ [빌런 전술!] 빌런이 "철벽 변명 태세"에 돌입! (다음 일반 공격 50% 반감 · 법전/필살기로 파쇄!)`;
+  }
+
   if (state.hp <= 0) {
     state.phase = 'gameover';
     state.log = `혈압이 한계치를 돌파했습니다... (${enemy.name}에게 패배)`;
@@ -1977,6 +1997,7 @@ function handleEnemyDefeated(enemy) {
   }
   state.winCount = (state.winCount || 0) + 1;
   advanceDailyQuest('win', 1);
+  if (state.equippedSpirit) advanceDailyQuest('spirit_win', 1);
   if (!state.villainWins) state.villainWins = {};
   state.villainWins[enemy.id] = (state.villainWins[enemy.id] || 0) + 1;
   state.enemyBroken = false;
@@ -2357,6 +2378,16 @@ function performAttack(type) {
     state.hp = clamp(state.hp + vampHeal, 1, state.maxHp);
     state.log += `\n🩸 [${spBonAtk.spirit.name}] 기운 흡수 +${vampHeal} HP`;
   }
+  if (state.enemyExcuseShield) {
+    state.enemyExcuseShield = false;
+    if (type === 'law' || type === 'special') {
+      dmg = Math.round(dmg * 1.2);
+      state.log += `\n💥 [철벽 변명 파쇄!!] 방어 태세를 깨뜨려 피해 +20%!`;
+    } else {
+      dmg = Math.max(1, Math.round(dmg * 0.5));
+      state.log += `\n🛡️ [빌런 철벽 변명!] 귀를 막아 피해 50% 감소!`;
+    }
+  }
 
   // V27.0: 사이다 필살기(special) 제외, 일반 공격으로는 풀피 적을 한 방에 처치 불가 (최소 2턴 이상 공방 보장)
   if (type !== 'special' && state.enemyHp >= state.enemyMaxHp && dmg >= state.enemyHp) {
@@ -2542,12 +2573,16 @@ function render() {
     if (ms && !['title', 'gameover', 'victory'].includes(state.phase)) {
       if (elMorningTitle) elMorningTitle.textContent = `🌅 DAY ${ms.day} — 새로운 아침이 되었습니다!`;
       if (elMorningSummaryBody) {
+        if (!state.dailyQuests || state.dailyQuests.day !== state.day) rollDailyQuests();
+        const dqList = (state.dailyQuests?.items || []).map((x) => `• ${x.label} (${x.cur}/${x.goal})`).join('\n');
         const lines = [
-          `🌤️ 오늘 날씨: ${ms.weatherLabel}`,
-          `${ms.fortuneIcon} 오늘의 운세: ${ms.fortuneShort}`,
-          `📊 어제 결산: 참교육 ${ms.prevWins}회 · 호감 +${ms.prevLoveGain}${ms.distBonus > 0 ? ` · 평화구역 후원 +${ms.distBonus}P` : ''}`,
+          `🌤️ 오늘 날씨: ${ms.weatherLabel} | ${ms.fortuneIcon} ${ms.fortuneShort}`,
+          `📊 어제 결산: 참교육 ${ms.prevWins}회 · 호감 +${ms.prevLoveGain}${ms.distBonus > 0 ? ` · 후원 +${ms.distBonus}P` : ''}`,
         ];
+        if (ms.cheerMsg) lines.push(ms.cheerMsg);
+        lines.push(`\n📋 [오늘의 서울 특명 · 완수 시 +250P·강화석+3·청심환+1]\n${dqList}`);
         if (ms.breakingText) lines.push(`🔴 112 긴급 속보: ${ms.breakingText} 출몰 중!`);
+        if (ms.teaserMsg) lines.push(`📰 서울 소식: ${ms.teaserMsg}`);
         lines.push(ms.remainingDays !== null ? `⏳ 서울 골든타임: 결전까지 D-${ms.remainingDays}` : '♾️ 포스트게임 무한 자유모드 진행 중');
         elMorningSummaryBody.textContent = lines.join('\n');
       }
