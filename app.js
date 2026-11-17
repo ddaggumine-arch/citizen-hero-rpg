@@ -4005,7 +4005,7 @@ function render() {
     const backBtn = document.createElement('button');
       backBtn.className = 'choice-btn row-btn';
       backBtn.style.gridColumn = 'span 2';
-      backBtn.innerHTML = '<span>◀ 서울 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
+      backBtn.innerHTML = '<span>◀ 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
       backBtn.addEventListener('click', () => { sfx.click(); state.phase = 'map'; render(); });
       elChoicesPanel.appendChild(backBtn);
       return;
@@ -4032,7 +4032,7 @@ function render() {
     const backBtn = document.createElement('button');
       backBtn.className = 'choice-btn row-btn';
       backBtn.style.gridColumn = 'span 2';
-      backBtn.innerHTML = '<span>◀ 서울 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
+      backBtn.innerHTML = '<span>◀ 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
       backBtn.addEventListener('click', () => { sfx.click(); state.phase = 'map'; render(); });
       elChoicesPanel.appendChild(backBtn);
       return;
@@ -4113,7 +4113,7 @@ function render() {
     const backBtn = document.createElement('button');
       backBtn.className = 'choice-btn row-btn';
       backBtn.style.gridColumn = 'span 2';
-      backBtn.innerHTML = '<span>◀ 서울 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
+      backBtn.innerHTML = '<span>◀ 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
       backBtn.addEventListener('click', () => { sfx.click(); state.phase = 'map'; render(); });
       elChoicesPanel.appendChild(backBtn);
       return;
@@ -4140,7 +4140,7 @@ function render() {
       const backBtn = document.createElement('button');
       backBtn.className = 'choice-btn row-btn';
       backBtn.style.gridColumn = 'span 2';
-      backBtn.innerHTML = '<span>◀ 서울 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
+      backBtn.innerHTML = '<span>◀ 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
       backBtn.addEventListener('click', () => { sfx.click(); state.phase = 'map'; render(); });
       elChoicesPanel.appendChild(backBtn);
       return;
@@ -4188,7 +4188,7 @@ function render() {
       const backBtn = document.createElement('button');
       backBtn.className = 'choice-btn row-btn';
       backBtn.style.gridColumn = 'span 2';
-      backBtn.innerHTML = '<span>◀ 서울 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
+      backBtn.innerHTML = '<span>◀ 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
       backBtn.addEventListener('click', () => { sfx.click(); state.phase = 'map'; render(); });
       elChoicesPanel.appendChild(backBtn);
       return;
@@ -4343,7 +4343,7 @@ function render() {
 
     const backBtn = document.createElement('button');
     backBtn.className = 'choice-btn';
-    backBtn.innerHTML = '<span>◀ 서울 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
+    backBtn.innerHTML = '<span>◀ 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
     backBtn.addEventListener('click', () => {
       sfx.click();
       state.phase = 'map';
@@ -4706,7 +4706,7 @@ function render() {
     const backBtn = document.createElement('button');
     backBtn.className = 'choice-btn row-btn';
     backBtn.style.gridColumn = 'span 2';
-    backBtn.innerHTML = '<span>◀ 서울 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
+    backBtn.innerHTML = '<span>◀ 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
     backBtn.addEventListener('click', () => {
       sfx.click();
       state.phase = 'map';
@@ -4936,7 +4936,7 @@ function render() {
 
     const mapBtn = document.createElement('button');
     mapBtn.className = 'choice-btn row-btn';
-    mapBtn.innerHTML = '<span>🗺️ 서울 지도로 돌아가기</span><span class="choice-sub">완료</span>';
+    mapBtn.innerHTML = '<span>🗺️ 지도로 돌아가기</span><span class="choice-sub">완료</span>';
     mapBtn.addEventListener('click', () => { sfx.click(); state.phase = 'map'; render(); });
     elChoicesPanel.appendChild(mapBtn);
     return;
@@ -6133,7 +6133,7 @@ function render() {
 
     const backBtn = document.createElement('button');
     backBtn.className = 'choice-btn row-btn';
-    backBtn.innerHTML = '<span>◀ 서울 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
+    backBtn.innerHTML = '<span>◀ 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
     backBtn.addEventListener('click', () => {
       sfx.click();
       state.phase = 'map';
@@ -6189,7 +6189,7 @@ function render() {
 
     const backBtn = document.createElement('button');
     backBtn.className = 'choice-btn row-btn';
-    backBtn.innerHTML = '<span>◀ 서울 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
+    backBtn.innerHTML = '<span>◀ 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
     backBtn.addEventListener('click', () => {
       sfx.click();
       state.phase = 'map';
@@ -6228,7 +6228,7 @@ function render() {
 
     const backBtn = document.createElement('button');
     backBtn.className = 'choice-btn row-btn';
-    backBtn.innerHTML = '<span>◀ 서울 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
+    backBtn.innerHTML = '<span>◀ 지도로 돌아가기</span><span class="choice-sub">뒤로</span>';
     backBtn.addEventListener('click', () => {
       sfx.click();
       state.phase = 'map';
@@ -6866,7 +6866,7 @@ function render() {
 
     const exitNm = document.createElement('button');
     exitNm.className = 'choice-btn row-btn';
-    exitNm.innerHTML = '<span>🏙️ 보상 챙기고 안전 귀환</span><span class="choice-sub">서울 지도로 복귀</span>';
+    exitNm.innerHTML = '<span>🏙️ 보상 챙기고 안전 귀환</span><span class="choice-sub">지도로 복귀</span>';
     exitNm.addEventListener('click', () => {
       sfx.click();
       state.nightmareFloor = 0;
@@ -6914,7 +6914,7 @@ function render() {
 
     const exitBtn = document.createElement('button');
     exitBtn.className = 'choice-btn row-btn';
-    exitBtn.innerHTML = '<span>🏠 보상 챙기고 서울 지도로 복귀</span><span class="choice-sub">안전 귀환</span>';
+    exitBtn.innerHTML = '<span>🏠 보상 챙기고 지도로 복귀</span><span class="choice-sub">안전 귀환</span>';
     exitBtn.addEventListener('click', () => {
       sfx.click();
       state.towerFloor = 0;
