@@ -952,8 +952,8 @@ function gainHeroExp(amount) {
     state.level += 1;
     ups += 1;
     state.skillPoints = (state.skillPoints || 0) + 2;
-    state.maxHp += 5;
-    state.hp = Math.min(state.maxHp, state.hp + 14);
+    state.maxHp += 12;
+    state.hp = Math.min(state.maxHp, state.hp + 25);
     state.maxSp += 1;
     state.bonusDmg += 1;
     if (state.level % 5 === 0) {
@@ -1665,16 +1665,21 @@ function startBattle(enemyId, isRandomEncounter = false) {
 
   // V32.7 주인공 실제 화력(각성/초월 + 정령 + 장비) 100% 연동 동적 스케일링
   const avgStat = ((state.stats?.speech || 2) + (state.stats?.guts || 2) + (state.stats?.law || 2)) / 3;
+  if (!state.v34HpBoosted) {
+    state.v34HpBoosted = true;
+    state.maxHp = Math.max(140, Math.round((state.maxHp || 100) * 1.35));
+    state.hp = Math.min(state.maxHp, Math.round((state.hp || 100) * 1.35));
+  }
   const evoScale = avgStat >= 50 ? 1.75 : (avgStat >= 25 ? 1.38 : 1.0);
   const eqAtk = getEquippedBonuses().atk || 0;
   const spAtkEst = getSpiritBonuses().atk || 0;
-  const estHeroHit = Math.round((22 + avgStat * 4.5 + (state.bonusDmg || 0) + eqAtk + spAtkEst) * 1.32 * evoScale);
-  const targetTurns = isBossEnemy ? 8.5 : (enemyLv >= 7 ? 5.6 : 4.2);
+  const estHeroHit = Math.round((24 + avgStat * 4.8 + (state.bonusDmg || 0) + eqAtk + spAtkEst) * 1.38 * evoScale);
+  const targetTurns = isBossEnemy ? 11.5 : (enemyLv >= 7 ? 7.2 : 5.0);
   const coScaledHp = Math.round(estHeroHit * targetTurns * (enemyLv > heroLv ? 1 + (enemyLv - heroLv) * 0.04 : 1) * modHpMult);
 
   const rawFormulaHp = Math.round(baseEnemy.maxHp * lvScale * bossHpBoost * modHpMult);
   const baseScaledHp = Math.max(rawFormulaHp, coScaledHp);
-  const minThreatAtk = Math.round((state.maxHp || 100) * (isBossEnemy ? 0.18 : (enemyLv >= 7 ? 0.14 : 0.10)));
+  const minThreatAtk = Math.round((state.maxHp || 140) * (isBossEnemy ? 0.13 : (enemyLv >= 7 ? 0.11 : 0.09)));
   const baseScaledAtk = Math.max(Math.round(baseEnemy.atk * atkScale * bossAtkBoost * modAtkMult), minThreatAtk);
   const rawMaxHp = nmFloor > 0
     ? baseScaledHp + nmFloor * 52
@@ -1717,6 +1722,7 @@ function startBattle(enemyId, isRandomEncounter = false) {
   state.enemyGuardShield = 3;
   state.combatChain = 0;
   state.nextGuaranteedCrit = false;
+  state.snapExposed = false;
   state.enemyIntent = 'normal';
   state.weakCombo = 0;
   state.skillChain = [];
@@ -1792,11 +1798,12 @@ function enemyCounterTurn(enemy, isGuarding = false) {
     return;
   }
 
-  // 보스/강적 50% 이하 2페이즈 각성
+  // 보스/강적 50% 이하 2페이즈 각성 + 가드 실드 재정비
   if (!state.bossPhase2 && state.enemyHp <= Math.round(state.enemyMaxHp * 0.5)) {
     state.bossPhase2 = true;
     state.enemyIntent = 'heavy';
-    state.log += `\n🔥 [${enemy.name}] 2페이즈 광폭화!! 다음 턴 강공격을 준비합니다!`;
+    state.enemyGuardShield = 3;
+    state.log += `\n🔥 [${enemy.name}] 2페이즈 각성!! 가드 3칸 재정비 + 다음 턴 강공격을 준비합니다!`;
   }
 
   if (state.enemyStunned) {
@@ -2325,13 +2332,15 @@ function performAttack(type) {
   } else if (type === 'special') {
     if (state.sp < spCost) return;
     state.sp -= spCost;
-    dmg = Math.round((45 + state.spDmgBonus + state.bonusDmg + (state.stats.speech + state.stats.guts + state.stats.law) * 2) * (evo.dmgMult || 1) * matchup.mult);
+    const specBase = 62 + state.spDmgBonus + state.bonusDmg + eqBonus.atk + (state.stats.speech + state.stats.guts + state.stats.law) * 2.8;
+    const specMatch = Math.max(1.35, matchup.mult);
+    dmg = Math.round(specBase * (evo.dmgMult || 1) * specMatch * 1.5);
     isCrit = true;
     hitWeakness = true;
     state.enemyStunned = true;
     state.lawful += 8;
     if (evo.healPct) state.hp = clamp(state.hp + Math.round(state.maxHp * evo.healPct), 1, state.maxHp);
-    state.log = `${evo.title}! 112·보건소 신고 + 공개 참교육!! (멘탈 -${dmg}${matchup.tag ? ` · ${matchup.tag}` : ''} & 기절!)`;
+    state.log = `${evo.title}! 112·보건소 신고 + 공개 참교육!! (멘탈 -${dmg} · 상성무시 치명 & 기절!)`;
   }
   const setAtkMult = 1 + (getGearSetSynergy().atkPct || 0);
   const spBonAtk = getSpiritBonuses();
@@ -2363,6 +2372,11 @@ function performAttack(type) {
     isCrit = true;
     state.enemyBroken = false;
     state.log += `\n💥 [멘붕 브레이크 추격!!] 1.5배 폭딜 적중!`;
+  }
+  if (state.snapExposed) {
+    dmg = Math.round(dmg * 1.4);
+    state.snapExposed = false;
+    state.log += `\n📸 [채증 약점 노출!!] 피해 1.4배 추가 관통!`;
   }
 
   if (hitWeakness) {
@@ -2436,13 +2450,14 @@ function performAttack(type) {
 
   let gotBreakBonusTurn = false;
   if (hitWeakness && state.enemyHp > 0) {
-    state.enemyGuardShield = Math.max(0, (state.enemyGuardShield ?? 3) - 1);
+    const shieldDmg = type === 'special' ? 2 : 1;
+    state.enemyGuardShield = Math.max(0, (state.enemyGuardShield ?? 3) - shieldDmg);
     if (state.enemyGuardShield <= 0) {
       state.enemyBroken = true;
       state.enemyStunned = true;
       state.enemyGuardShield = 3;
       gotBreakBonusTurn = true;
-      state.log += `\n💥 [MENTAL BREAK!!] 가드 3칸 완파! 빌런 기절 + 공짜 보너스 1턴 획득!!`;
+      state.log += `\n💥 [MENTAL BREAK!!] 가드 완파! 빌런 기절 + 공짜 보너스 1턴 획득!!`;
       showToast('💥 MENTAL BREAK!! 공짜 보너스 1턴 획득!!', 'break');
     }
   }
@@ -5674,6 +5689,7 @@ function render() {
       const gShield = state.enemyGuardShield ?? 3;
       activeBadges.push({ cls: 'is-combo', txt: `🛡️ 가드 ${'◆'.repeat(gShield)}${'◇'.repeat(Math.max(0, 3 - gShield))}` });
       if (state.nextGuaranteedCrit) activeBadges.push({ cls: 'is-break', txt: '📺 다음 타 확정치명!' });
+      if (state.snapExposed) activeBadges.push({ cls: 'is-break', txt: '📸 약점노출 1.4배!' });
       if (state.bossGimmick === 'shield' && (state.bossShield || 0) > 0) activeBadges.push({ cls: 'is-break', txt: `🛡️ 보스실드 ${state.bossShield}겹` });
       if (state.bossGimmick === 'countdown') activeBadges.push({ cls: 'is-break', txt: `⏰ 광폭까지 ${state.bossCountdown || 3}턴` });
       if (state.enemyBroken) activeBadges.push({ cls: 'is-break', txt: '💥 멘붕 1.5배!' });
@@ -5901,20 +5917,24 @@ function render() {
         const enemy = getEnemyById(state.currentEnemyId);
         const snapMu = getMatchupInfo(enemy, 'snap').mult;
         const spSnap = getSpiritBonuses();
+        const evoSnap = getSkillEvolution('law');
+        const eqAtkSnap = getEquippedBonuses().atk || 0;
         const snapSpMult = spSnap.element === 'snap' ? (1 + (spSnap.elemBoost || 0)) : 1;
         const rawSnap = isPerfect
-          ? Math.round((20 + state.stats.law * 4 + state.bonusDmg) * 1.8)
-          : (12 + state.stats.law * 2 + state.bonusDmg);
+          ? Math.round((28 + state.stats.law * 4.5 + state.bonusDmg + eqAtkSnap + (spSnap.atk || 0)) * (evoSnap.dmgMult || 1) * 1.65)
+          : Math.round((15 + state.stats.law * 2.5 + state.bonusDmg + eqAtkSnap) * (evoSnap.dmgMult || 1));
         const dmg = Math.round(rawSnap * snapMu * snapSpMult);
         state.enemyHp = clamp(state.enemyHp - dmg, 0, state.enemyMaxHp);
         if (isPerfect) {
           state.pendingReports += 2;
-          state.sp = clamp(state.sp + 20, 0, state.maxSp);
+          state.sp = clamp(state.sp + 25, 0, state.maxSp);
           state.perfectSnaps = (state.perfectSnaps || 0) + 1;
-          if (state.bossGimmick === 'shield' && (state.bossShield || 0) > 0) state.bossShield -= 1;
-          state.enemyGuardShield = Math.max(0, (state.enemyGuardShield ?? 3) - 1);
+          state.enemyExcuseShield = false;
+          state.snapExposed = true;
+          if (state.bossGimmick === 'shield' && (state.bossShield || 0) > 0) state.bossShield = Math.max(0, state.bossShield - 2);
+          state.enemyGuardShield = Math.max(0, (state.enemyGuardShield ?? 3) - 2);
           addFever(35);
-          state.log = `📸 [PERFECT 채증!!] 결정적 순간 포착! (멘탈 -${dmg} · 채증+2 · 사이다+20)`;
+          state.log = `📸 [PERFECT 채증!!] 가드 2칸 파쇄 + 약점 노출(다음 타 1.4배)! (멘탈 -${dmg} · 사이다+25)`;
           checkAchievements();
         } else {
           state.pendingReports += 1;
@@ -7807,9 +7827,20 @@ function performTagSkill() {
   const meta = getTagSkillMeta();
   state.sp = clamp(state.sp - tagCost, 0, state.maxSp);
 
-  const baseDmg = 45 + (state.stats.speech + state.stats.guts + state.stats.law) * 3 + state.bonusDmg;
+  const evoTag = getSkillEvolution('speech');
+  const eqAtkTag = getEquippedBonuses().atk || 0;
+  const spTag = getSpiritBonuses();
+  const baseDmg = (70 + (state.stats.speech + state.stats.guts + state.stats.law) * 3.6 + state.bonusDmg + eqAtkTag + (spTag.atk || 0)) * (evoTag.dmgMult || 1);
   const tagMu = getMatchupInfo(enemy, 'tag');
-  const dmg = Math.round(baseDmg * (meta.mult || 1) * tagMu.mult);
+  const chainMultTag = (state.combatChain || 0) >= 2 ? (1 + Math.min(0.5, (state.combatChain - 1) * 0.1)) : 1;
+  const breakMultTag = state.enemyBroken ? 1.5 : 1;
+  const exposeMultTag = state.snapExposed ? 1.4 : 1;
+  state.enemyBroken = true;
+  state.snapExposed = false;
+  state.enemyExcuseShield = false;
+  state.enemyGuardShield = 3;
+  if (state.bossGimmick === 'shield' && (state.bossShield || 0) > 0) state.bossShield = 0;
+  const dmg = Math.round(baseDmg * (meta.mult || 1) * Math.max(1.25, tagMu.mult) * chainMultTag * breakMultTag * exposeMultTag);
   state.enemyHp = clamp(state.enemyHp - dmg, 0, state.enemyMaxHp);
   state.enemyStunned = true;
 
@@ -7834,14 +7865,18 @@ function performTagSkill() {
   }
 
   state.quote = meta.quote;
-  state.log = `${meta.logPrefix} 완벽한 호흡으로 빌런을 제압했습니다! (멘탈 -${dmg} · 확정 기절!${extraEffects.length ? ` · ${extraEffects.join(' · ')}` : ''})`;
+  state.log = `${meta.logPrefix} 가드 일격 완파 + 초극딜 합동 궁극기!! (멘탈 -${dmg} · 확정 기절 + 공짜 보너스 1턴!${extraEffects.length ? ` · ${extraEffects.join(' · ')}` : ''})`;
+  showToast('🌟 합동 궁극기!! 가드 일격 완파 + 보너스 1턴!!', 'break');
   if (meta.hasYuki) triggerPartnerCallout('yuki', '합동 필살기!! 💖', true);
   if (meta.hasChloe) triggerPartnerCallout('chloe', 'Combo Finisher!! ⚡', true);
   if (meta.hasPet) triggerPartnerCallout('kongi', '왕! 필살 발목 물기! 🐾', true);
   playHeroAnim('attack');
   triggerEnemyHit(dmg, true);
   if (state.enemyHp <= 0) handleEnemyDefeated(enemy);
-  else enemyCounterTurn(enemy, false);
+  else {
+    saveGame();
+    render();
+  }
 }
 
 btnOpenSlots.addEventListener('click', () => {
