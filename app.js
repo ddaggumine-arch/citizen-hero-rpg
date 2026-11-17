@@ -14,8 +14,8 @@ import { SPIRITS_50, SPIRIT_ELEMENTS } from './data/spirits50.js?v=76';
 import { UNLOCK_MILESTONES, isFeatureUnlocked, SEOUL_DISTRICTS, getDistrictIdForEnemy, getClearedDistrictCount } from './data/v26World.js?v=48';
 import { STORY_BOSSES } from './data/storyBosses.js?v=45';
 import { STORY_AFTERMATHS } from './data/storyAftermath.js?v=81';
-import { YUKI_ROMANCE_STORY } from './data/romanceStoryYuki.js?v=90';
-import { CHLOE_ROMANCE_STORY } from './data/romanceStoryChloe.js?v=90';
+import { YUKI_ROMANCE_STORY } from './data/romanceStoryYuki.js?v=92';
+import { CHLOE_ROMANCE_STORY } from './data/romanceStoryChloe.js?v=92';
 import { sfx } from './sound.js';
 
 const SAVE_KEY = 'citizen_hero_gta_save_v4';
@@ -221,6 +221,8 @@ function createNewGameState() {
     pendingSpiritEncounter: null,
     spiritCaptureResult: null,
     pendingStoryAftermath: null,
+    lastMainStoryDay: 0,
+    lastRomanceEpDay: { yuki: 0, chloe: 0 },
     romanceStory: { yuki: { ep: 0, cleared: false }, chloe: { ep: 0, cleared: false } },
     activeRomanceStory: null,
     epilogueIdx: 0,
@@ -2115,6 +2117,7 @@ function handleEnemyDefeated(enemy) {
   if (currentCh && currentCh.bossId === enemy.id) {
     state.chapterIndex += 1;
     state.storySceneIndex = 0;
+    state.lastMainStoryDay = state.day;
     if (prevCh < STORY_AFTERMATHS.length) {
       state.pendingStoryAftermath = prevCh;
     }
@@ -3442,7 +3445,14 @@ function render() {
       const mState = checkChapterMission(currentCh.mission);
       const storyBtn = document.createElement('button');
       storyBtn.style.gridColumn = 'span 2';
-      if (mState.done) {
+      if (mState.done && state.lastMainStoryDay === state.day) {
+        storyBtn.className = 'choice-btn row-btn story-locked-btn';
+        storyBtn.innerHTML = `<span>⏳ [제${currentCh.chapterNum}화] ${currentCh.title}</span><span class="choice-sub">오늘 스토리 완료 · 내일(DAY ${state.day + 1}) 개방!</span>`;
+        storyBtn.addEventListener('click', () => {
+          sfx.click();
+          showToast(`📅 메인 스토리는 하루 1화씩! 내일(DAY ${state.day + 1})에 이어집니다.`, 'warn');
+        });
+      } else if (mState.done) {
         storyBtn.className = 'choice-btn row-btn story-main-btn';
         storyBtn.innerHTML = `<span>📖 [제${currentCh.chapterNum}화] ${currentCh.title}</span><span class="choice-sub" style="color:#6e480f;">✨ 해금됨! 진행 ▶</span>`;
         storyBtn.addEventListener('click', () => {
@@ -4175,6 +4185,15 @@ function render() {
 
     const startRomanceStory = (hKey) => {
       const st = state.romanceStory[hKey] || { ep: 0, cleared: false };
+      if (!state.lastRomanceEpDay) state.lastRomanceEpDay = { yuki: 0, chloe: 0 };
+      if (!st.cleared && state.lastRomanceEpDay[hKey] === state.day) {
+        const hNm = hKey === 'yuki' ? '유키' : '클로이';
+        sfx.damage();
+        showToast(`📅 ${hNm} 연애 스토리는 하루 1화씩! 내일(DAY ${state.day + 1}) 다음 화가 열립니다.`, 'warn');
+        state.log = `⏳ 오늘 ${hNm} 연애 스토리를 이미 감상했습니다! 내일(DAY ${state.day + 1}) 다시 만나보세요.`;
+        render();
+        return;
+      }
       const arr = hKey === 'yuki' ? YUKI_ROMANCE_STORY : CHLOE_ROMANCE_STORY;
       const targetEp = st.ep >= arr.length ? 0 : st.ep;
       sfx.powerup();
@@ -4183,15 +4202,17 @@ function render() {
       render();
     };
 
+    const yDoneToday = !ySt.cleared && state.lastRomanceEpDay?.yuki === state.day;
+    const cDoneToday = !cSt.cleared && state.lastRomanceEpDay?.chloe === state.day;
     const rActions = [
       {
-        title: ySt.cleared ? '📖 유키 연애 스토리 (20/20 완결 ✅)' : `📖 유키 연애 스토리 (제${ySt.ep + 1}/20화)`,
-        sub: ySt.cleared ? '완결! 1화부터 다시 감상 가능' : '기·승·전·결 스토리 완결 시 정식 연인 & 자유 데이트 해금!',
+        title: ySt.cleared ? '📖 유키 연애 스토리 (20/20 완결 ✅)' : (yDoneToday ? `⏳ 유키 연애 스토리 (${ySt.ep}/20 · 오늘 완료)` : `📖 유키 연애 스토리 (제${ySt.ep + 1}/20화)`),
+        sub: ySt.cleared ? '완결! 1화부터 다시 감상 가능' : (yDoneToday ? `내일(DAY ${state.day + 1}) 다음 화 개방!` : '하루 1화 · 미니게임 & 기승전결 스토리!'),
         run: () => startRomanceStory('yuki'),
       },
       {
-        title: !chloeUnlocked ? '🔒 클로이 연애 스토리 (17화 해금)' : (cSt.cleared ? '📖 클로이 연애 스토리 (20/20 완결 ✅)' : `📖 클로이 연애 스토리 (제${cSt.ep + 1}/20화)`),
-        sub: !chloeUnlocked ? '제17화 클로이 합류(또는 2회차) 시 해금' : (cSt.cleared ? '완결! 1화부터 다시 감상 가능' : '기·승·전·결 스토리 완결 시 정식 연인 & 자유 데이트 해금!'),
+        title: !chloeUnlocked ? '🔒 클로이 연애 스토리 (17화 해금)' : (cSt.cleared ? '📖 클로이 연애 스토리 (20/20 완결 ✅)' : (cDoneToday ? `⏳ 클로이 연애 스토리 (${cSt.ep}/20 · 오늘 완료)` : `📖 클로이 연애 스토리 (제${cSt.ep + 1}/20화)`)),
+        sub: !chloeUnlocked ? '제17화 클로이 합류(또는 2회차) 시 해금' : (cSt.cleared ? '완결! 1화부터 다시 감상 가능' : (cDoneToday ? `내일(DAY ${state.day + 1}) 다음 화 개방!` : '하루 1화 · 미니게임 & 기승전결 스토리!')),
         run: () => {
           if (!chloeUnlocked) {
             sfx.damage();
@@ -4860,7 +4881,7 @@ function render() {
           if (state.phase !== 'romance_story' || state.activeRomanceStory?.mgDone) return;
           const dt = Math.min(40, now - (step.last || now));
           step.last = now;
-          pos += dir * dt * 0.145;
+          pos += dir * dt * 0.115;
           if (pos >= 96) { pos = 96; dir = -1; }
           else if (pos <= 4) { pos = 4; dir = 1; }
           const cur = document.getElementById('rom-mg-cursor');
@@ -4872,17 +4893,17 @@ function render() {
 
         const actBtn = document.createElement('button');
         actBtn.className = 'choice-btn primary';
-        actBtn.innerHTML = `<span class="choice-title">${mg.type === 'shutter' ? '📸 지금 셔터 누르기!!' : '💗 지금 타이밍 맞추기!!'}</span><span class="choice-sub">골드존 적중 시 호감도 +6 보너스!</span>`;
+        actBtn.innerHTML = `<span class="choice-title">${mg.type === 'shutter' ? '📸 지금 셔터 누르기!!' : '💗 지금 타이밍 맞추기!!'}</span><span class="choice-sub">중앙 골드존 적중 시 호감도 +6 보너스!</span>`;
         actBtn.onclick = () => {
           if (window._romMgRaf) { cancelAnimationFrame(window._romMgRaf); window._romMgRaf = null; }
-          let loveAdd = 2;
+          let loveAdd = 3;
           let resTxt = mg.missText;
-          if (pos >= 37 && pos <= 63) {
+          if (pos >= 32 && pos <= 68) {
             loveAdd = 6;
             resTxt = mg.perfectText;
             sfx.victory();
             showToast(`✨ PERFECT!! 호감도 +6!`, 'break');
-          } else if (pos >= 21 && pos <= 79) {
+          } else if (pos >= 18 && pos <= 82) {
             loveAdd = 4;
             resTxt = mg.goodText;
             sfx.powerup();
@@ -4925,20 +4946,192 @@ function render() {
         };
         const timer = setTimeout(() => {
           if (state.phase === 'romance_story' && !finished) finishMash(false);
-        }, 3800);
+        }, 4200);
 
         const mashBtn = document.createElement('button');
         mashBtn.className = 'choice-btn primary';
-        mashBtn.innerHTML = `<span class="choice-title">⚡ 빠르게 연타하기!! (터치/클릭!)</span><span class="choice-sub">3.8초 안에 게이지를 100%로 채우세요!</span>`;
+        mashBtn.innerHTML = `<span class="choice-title">⚡ 가볍게 톡톡 연타하기!!</span><span class="choice-sub">4.2초 안에 게이지를 채우세요!</span>`;
         mashBtn.onclick = () => {
           if (finished) return;
           sfx.click();
-          pct = Math.min(100, pct + 13);
+          pct = Math.min(100, pct + 16);
           const fill = document.getElementById('rom-mash-fill');
           if (fill) fill.style.width = `${pct}%`;
           if (pct >= 100) finishMash(true);
         };
         elChoicesPanel.appendChild(mashBtn);
+        return;
+      }
+
+      // NEW 1: 반짝 타겟 톡톡 터치 (tap_targets)
+      if (mg.type === 'tap_targets') {
+        const icons = mg.icons || ['🌸', '💕', '✨', '🎀'];
+        let caught = 0;
+        let doneTap = false;
+        elBattleLog.innerHTML = `
+          <div class="romance-mg-box">
+            <div style="font-weight:800;font-size:13px;">${mg.title} (<span id="rom-tap-cnt">0</span>/${icons.length})</div>
+            <div style="font-size:11.5px;opacity:0.92;margin-top:2px;">${mg.desc}</div>
+            <div class="rom-tap-arena" id="rom-tap-arena"></div>
+          </div>
+          <div style="font-size:12.5px;line-height:1.5;">${sc.text}</div>
+        `;
+        const arena = document.getElementById('rom-tap-arena');
+        const finishTap = (isPerfect) => {
+          if (doneTap) return;
+          doneTap = true;
+          clearTimeout(tapTimer);
+          const loveAdd = isPerfect ? 6 : (caught >= 2 ? 4 : 3);
+          const resTxt = isPerfect ? mg.perfectText : (caught >= 2 ? mg.goodText : mg.missText);
+          if (isPerfect) { sfx.victory(); showToast('🎯 전부 캐치!! 호감도 +6!', 'break'); }
+          else { sfx.powerup(); showToast(`💕 호감도 +${loveAdd}!`, 'good'); }
+          if (!state.love) state.love = { yuki: 0, chloe: 0 };
+          state.love[hKey] = clamp((state.love[hKey] || 0) + loveAdd, 0, 200);
+          state.activeRomanceStory = { ...ars, mgDone: true, mgResultText: resTxt };
+          render();
+        };
+        const tapTimer = setTimeout(() => {
+          if (state.phase === 'romance_story' && !doneTap) finishTap(false);
+        }, 6000);
+
+        icons.forEach((sym, i) => {
+          const btn = document.createElement('button');
+          btn.className = 'rom-tap-target';
+          btn.textContent = sym;
+          btn.style.left = `${8 + i * 21}%`;
+          btn.style.top = `${16 + (i % 2) * 28}px`;
+          btn.onclick = () => {
+            if (doneTap || btn.dataset.hit) return;
+            btn.dataset.hit = '1';
+            btn.style.opacity = '0.2';
+            btn.style.transform = 'scale(1.25)';
+            sfx.powerup();
+            caught += 1;
+            const cntEl = document.getElementById('rom-tap-cnt');
+            if (cntEl) cntEl.textContent = String(caught);
+            if (caught >= icons.length) finishTap(true);
+          };
+          if (arena) arena.appendChild(btn);
+        });
+        const skipInfo = document.createElement('button');
+        skipInfo.className = 'choice-btn';
+        skipInfo.disabled = true;
+        skipInfo.innerHTML = `<span class="choice-title">👆 위 상자 안의 아이콘 ${icons.length}개를 톡톡 눌러주세요!</span><span class="choice-sub">6초 안에 모두 누르면 보너스 +6!</span>`;
+        elChoicesPanel.appendChild(skipInfo);
+        return;
+      }
+
+      // NEW 2: 순간 기억력 카드 터치 (memory)
+      if (mg.type === 'memory') {
+        const seq = mg.seq || ['🍵', '📖', '🧁'];
+        const shuffled = [...seq].sort(() => Math.random() - 0.5);
+        let stepIdx = 0;
+        let revealed = true;
+        elBattleLog.innerHTML = `
+          <div class="romance-mg-box">
+            <div style="font-weight:800;font-size:13px;">${mg.title}</div>
+            <div style="font-size:11.5px;opacity:0.95;margin-top:2px;" id="rom-mem-hint">👀 2초 동안 순서를 기억하세요: ${seq.join(' → ')}</div>
+            <div class="rom-mem-row" id="rom-mem-row"></div>
+          </div>
+          <div style="font-size:12.5px;line-height:1.5;">${sc.text}</div>
+        `;
+        const row = document.getElementById('rom-mem-row');
+        const cards = shuffled.map((sym) => {
+          const c = document.createElement('button');
+          c.className = 'rom-mem-card';
+          c.textContent = sym;
+          c.disabled = true;
+          c.onclick = () => {
+            if (revealed) return;
+            if (sym === seq[stepIdx]) {
+              sfx.powerup();
+              c.textContent = sym;
+              c.classList.add('is-done');
+              c.disabled = true;
+              stepIdx += 1;
+              if (stepIdx >= seq.length) {
+                sfx.victory();
+                showToast('🧠 완벽한 기억력!! 호감도 +6!', 'break');
+                if (!state.love) state.love = { yuki: 0, chloe: 0 };
+                state.love[hKey] = clamp((state.love[hKey] || 0) + 6, 0, 200);
+                state.activeRomanceStory = { ...ars, mgDone: true, mgResultText: mg.perfectText };
+                render();
+              }
+            } else {
+              sfx.click();
+              showToast('😅 아쉽! 그래도 호감도 +3!', 'good');
+              if (!state.love) state.love = { yuki: 0, chloe: 0 };
+              state.love[hKey] = clamp((state.love[hKey] || 0) + 3, 0, 200);
+              state.activeRomanceStory = { ...ars, mgDone: true, mgResultText: mg.goodText || mg.missText };
+              render();
+            }
+          };
+          if (row) row.appendChild(c);
+          return c;
+        });
+        setTimeout(() => {
+          if (state.phase !== 'romance_story') return;
+          revealed = false;
+          const hEl = document.getElementById('rom-mem-hint');
+          if (hEl) hEl.textContent = `👉 이제 기억한 순서대로 누르세요! (${seq.length}개)`;
+          cards.forEach((c) => {
+            c.textContent = '❓';
+            c.disabled = false;
+          });
+        }, 2000);
+        const waitMem = document.createElement('button');
+        waitMem.className = 'choice-btn';
+        waitMem.disabled = true;
+        waitMem.innerHTML = `<span class="choice-title">🧠 2초 후 카드가 가려지면 순서대로 누르세요!</span><span class="choice-sub">순서: ${seq.join(' → ')}</span>`;
+        elChoicesPanel.appendChild(waitMem);
+        return;
+      }
+
+      // NEW 3: 히로인과 가위바위보 (rps)
+      if (mg.type === 'rps') {
+        elBattleLog.innerHTML = `
+          <div class="romance-mg-box">
+            <div style="font-weight:800;font-size:13px;">${mg.title}</div>
+            <div style="font-size:11.5px;opacity:0.92;margin-top:2px;">${mg.desc}</div>
+          </div>
+          <div style="font-size:12.5px;line-height:1.5;">${sc.text}</div>
+        `;
+        const rpsOpts = [
+          { id: 'r', label: '✊ 바위', beats: 's' },
+          { id: 's', label: '✌️ 가위', beats: 'p' },
+          { id: 'p', label: '✋ 보', beats: 'r' },
+        ];
+        rpsOpts.forEach((opt) => {
+          const rb = document.createElement('button');
+          rb.className = 'choice-btn';
+          rb.innerHTML = `<span class="choice-title">${opt.label} 내기!</span><span class="choice-sub">${hName}와(과) 가위바위보 한 판 승부!</span>`;
+          rb.onclick = () => {
+            const ai = rpsOpts[Math.floor(Math.random() * 3)];
+            let loveAdd = 3;
+            let resTxt = '';
+            if (opt.beats === ai.id) {
+              loveAdd = 6;
+              sfx.victory();
+              showToast(`✌️ 승리 (${ai.label} 격파)! 호감도 +6!`, 'break');
+              resTxt = `${mg.perfectText} (${hName}: ${ai.label}!)`;
+            } else if (opt.id === ai.id) {
+              loveAdd = 4;
+              sfx.powerup();
+              showToast(`🤝 무승부 (${ai.label})! 호감도 +4!`, 'good');
+              resTxt = `${mg.goodText} (둘 다 ${ai.label}를 내고 마주 보며 웃었다!)`;
+            } else {
+              loveAdd = 2;
+              sfx.click();
+              showToast(`😆 아쉽게 패배 (${ai.label})! 호감도 +2!`, 'good');
+              resTxt = `${mg.missText} (${hName}: ${ai.label}로 신나게 승리!)`;
+            }
+            if (!state.love) state.love = { yuki: 0, chloe: 0 };
+            state.love[hKey] = clamp((state.love[hKey] || 0) + loveAdd, 0, 200);
+            state.activeRomanceStory = { ...ars, mgDone: true, mgResultText: resTxt };
+            render();
+          };
+          elChoicesPanel.appendChild(rb);
+        });
         return;
       }
 
@@ -4977,6 +5170,8 @@ function render() {
       if (!state.romanceStory) state.romanceStory = { yuki: { ep: 0, cleared: false }, chloe: { ep: 0, cleared: false } };
       if (!state.lovers) state.lovers = [];
       if (!state.someCleared) state.someCleared = { yuki: false, chloe: false };
+      if (!state.lastRomanceEpDay) state.lastRomanceEpDay = { yuki: 0, chloe: 0 };
+      state.lastRomanceEpDay[hKey] = state.day;
       const st = state.romanceStory[hKey];
       if (epObj.ep > st.ep) st.ep = epObj.ep;
       if (epObj.ep >= arr.length) {
@@ -5081,11 +5276,17 @@ function render() {
     `;
     elChoicesPanel.className = 'choices-panel';
 
+    const stNow = state.romanceStory?.[hKey] || { ep: 0, cleared: false };
+    const blockedToday = !stNow.cleared && state.lastRomanceEpDay?.[hKey] === state.day;
     if (epIdx + 1 < arr.length) {
       const nextEpBtn = document.createElement('button');
-      nextEpBtn.className = 'choice-btn primary';
-      nextEpBtn.innerHTML = `<span class="choice-title">📖 다음 화 (제${epIdx + 2}화) 바로 이어서 보기 ▶</span><span class="choice-sub">${arr[epIdx + 1].title}</span>`;
+      nextEpBtn.className = blockedToday ? 'choice-btn' : 'choice-btn primary';
+      nextEpBtn.disabled = blockedToday;
+      nextEpBtn.innerHTML = blockedToday
+        ? `<span class="choice-title">⏳ 다음 화(제${epIdx + 2}화)는 내일(DAY ${state.day + 1}) 열립니다!</span><span class="choice-sub">오늘의 연애 스토리를 완료했습니다 (${arr[epIdx + 1].title})</span>`
+        : `<span class="choice-title">📖 다음 화 (제${epIdx + 2}화) 바로 이어서 보기 ▶</span><span class="choice-sub">${arr[epIdx + 1].title}</span>`;
       nextEpBtn.onclick = () => {
+        if (blockedToday) return;
         sfx.powerup();
         state.activeRomanceStory = { heroine: hKey, epIdx: epIdx + 1, sceneIdx: 0 };
         state.phase = 'romance_story';

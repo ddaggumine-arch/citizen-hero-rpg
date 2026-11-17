@@ -2282,3 +2282,53 @@ body[data-time="midnight"] .illustration-frame {
   color: #4c0519;
   line-height: 1.6;
 }
+.rom-tap-arena {
+  position: relative;
+  height: 88px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1.5px dashed #fda4af;
+  margin-top: 8px;
+  overflow: hidden;
+}
+.rom-tap-target {
+  position: absolute;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2px solid #fde047;
+  background: linear-gradient(135deg, #fb7185, #f43f5e);
+  color: #fff;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  transition: transform 0.12s ease, opacity 0.15s ease;
+}
+.rom-tap-target:active {
+  transform: scale(0.86);
+}
+.rom-mem-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 8px;
+}
+.rom-mem-card {
+  flex: 1;
+  max-width: 78px;
+  height: 50px;
+  border-radius: 10px;
+  border: 2px solid #fde047;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.rom-mem-card.is-done {
+  background: #10b981;
+  border-color: #6ee7b7;
+}
