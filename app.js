@@ -14,8 +14,8 @@ import { SPIRITS_50, SPIRIT_ELEMENTS } from './data/spirits50.js?v=76';
 import { UNLOCK_MILESTONES, isFeatureUnlocked, SEOUL_DISTRICTS, getDistrictIdForEnemy, getClearedDistrictCount } from './data/v26World.js?v=48';
 import { STORY_BOSSES } from './data/storyBosses.js?v=45';
 import { STORY_AFTERMATHS } from './data/storyAftermath.js?v=81';
-import { YUKI_ROMANCE_STORY } from './data/romanceStoryYuki.js?v=83';
-import { CHLOE_ROMANCE_STORY } from './data/romanceStoryChloe.js?v=83';
+import { YUKI_ROMANCE_STORY } from './data/romanceStoryYuki.js?v=88';
+import { CHLOE_ROMANCE_STORY } from './data/romanceStoryChloe.js?v=88';
 import { sfx } from './sound.js';
 
 const SAVE_KEY = 'citizen_hero_gta_save_v4';
@@ -4772,13 +4772,15 @@ function render() {
     return;
   }
 
-  // 4-R0. V34.0 연애 스토리 모드 (유키 20화 + 클로이 20화 · 기승전결)
+  // 4-R0. V35.0 연애 스토리 모드 (10배 풀볼륨 · 6종 미니게임 · 실시간 FX · 아련한 여운 컷신)
   if (state.phase === 'romance_story') {
     const ars = state.activeRomanceStory || { heroine: 'yuki', epIdx: 0, sceneIdx: 0 };
     const hKey = ars.heroine === 'chloe' ? 'chloe' : 'yuki';
     const arr = hKey === 'yuki' ? YUKI_ROMANCE_STORY : CHLOE_ROMANCE_STORY;
     const epObj = arr[clamp(ars.epIdx || 0, 0, arr.length - 1)];
-    const sc = epObj.scenes[clamp(ars.sceneIdx || 0, 0, epObj.scenes.length - 1)];
+    const scIdx = clamp(ars.sceneIdx || 0, 0, epObj.scenes.length - 1);
+    const sc = epObj.scenes[scIdx];
+    const isFinalScene = scIdx === epObj.scenes.length - 1;
     const hName = hKey === 'yuki' ? '🇯🇵 유키' : '🇺🇸 클로이';
 
     elLocation.textContent = `DAY ${state.day} · ${hName} 연애 스토리`;
@@ -4795,7 +4797,7 @@ function render() {
       if (elFrame) elFrame.classList.add('combat-stage');
       if (epObj.img.includes('couple_')) {
         if (elCoupleSprite) {
-          elCoupleSprite.src = `${epObj.img}?v=83`;
+          elCoupleSprite.src = `${epObj.img}?v=88`;
           elCoupleSprite.classList.remove('hidden');
         }
       } else {
@@ -4805,20 +4807,177 @@ function render() {
       }
     } else {
       if (elFrame) elFrame.classList.add('couple-stage');
-      elSceneImage.src = `${epObj.img}?v=83`;
+      elSceneImage.src = `${epObj.img}?v=88`;
       elSceneImage.classList.remove('hidden');
     }
 
-    elBattleLog.textContent = sc.text;
+    const fxType = epObj.fx || 'hearts';
+    if (elDateFxLayer) {
+      elDateFxLayer.className = `date-fx-layer fx-${fxType}`;
+      const symMap = { hearts: ['💕', '💖', '🌸', '♥'], rain: ['💧', '☔', '💧', '✨'], stars: ['✨', '⭐', '🌟', '💫'], flash: ['📸', '✨', '⚡', '💫'] };
+      const syms = symMap[fxType] || symMap.hearts;
+      elDateFxLayer.innerHTML = syms.map((s, i) => `<span class="fx-particle" style="left:${10 + i * 23}%;top:${fxType === 'rain' ? 0 : 62}%;animation-delay:${i * 0.42}s;">${s}</span>`).join('');
+    }
+
     elChoicesPanel.className = 'choices-panel';
+    const applyChoiceReward = (ch) => {
+      if (!state.love) state.love = { yuki: 0, chloe: 0 };
+      if (!state.lovers) state.lovers = [];
+      if (!state.someCleared) state.someCleared = { yuki: false, chloe: false };
+      if (!state.romanceStory) state.romanceStory = { yuki: { ep: 0, cleared: false }, chloe: { ep: 0, cleared: false } };
+      if (!state.lastContactDay) state.lastContactDay = { yuki: state.day, chloe: state.day };
+      state.lastContactDay[hKey] = state.day;
+      state.love[hKey] = clamp((state.love[hKey] || 0) + (ch.love || 0), 0, 200);
+      if (ch.statKey === 'speech') state.stats.speech += ch.statAmt;
+      else if (ch.statKey === 'guts') state.stats.guts += ch.statAmt;
+      else if (ch.statKey === 'law') state.stats.law += ch.statAmt;
+      else if (ch.statKey === 'sp') state.sp = clamp(state.sp + ch.statAmt, 0, state.maxSp);
+      else if (ch.statKey === 'hp') state.hp = clamp(state.hp + ch.statAmt, 1, state.maxHp);
+      else if (ch.statKey === 'points') state.points += ch.statAmt;
+      else if (ch.statKey === 'all') {
+        state.stats.speech += ch.statAmt;
+        state.stats.guts += ch.statAmt;
+        state.stats.law += ch.statAmt;
+        state.points += 200;
+      }
+    };
+
+    // 화별 미니게임 처리
+    if (sc.minigame && !ars.mgDone) {
+      const mg = sc.minigame;
+      if (mg.type === 'timing' || mg.type === 'shutter') {
+        elBattleLog.innerHTML = `
+          <div class="romance-mg-box">
+            <div style="font-weight:800;font-size:13px;">${mg.title}</div>
+            <div style="font-size:11.5px;opacity:0.92;margin-top:2px;">${mg.desc}</div>
+            <div class="romance-heart-track"><div class="romance-heart-cursor" id="rom-mg-cursor" style="left:50%"></div></div>
+          </div>
+          <div style="font-size:12.5px;line-height:1.5;">${sc.text}</div>
+        `;
+        let pos = 12;
+        let dir = 1;
+        const step = (now) => {
+          if (state.phase !== 'romance_story' || state.activeRomanceStory?.mgDone) return;
+          const dt = Math.min(40, now - (step.last || now));
+          step.last = now;
+          pos += dir * dt * 0.145;
+          if (pos >= 96) { pos = 96; dir = -1; }
+          else if (pos <= 4) { pos = 4; dir = 1; }
+          const cur = document.getElementById('rom-mg-cursor');
+          if (cur) cur.style.left = `${pos.toFixed(1)}%`;
+          window._romMgRaf = requestAnimationFrame(step);
+        };
+        if (window._romMgRaf) cancelAnimationFrame(window._romMgRaf);
+        window._romMgRaf = requestAnimationFrame(step);
+
+        const actBtn = document.createElement('button');
+        actBtn.className = 'choice-btn primary';
+        actBtn.innerHTML = `<span class="choice-title">${mg.type === 'shutter' ? '📸 지금 셔터 누르기!!' : '💗 지금 타이밍 맞추기!!'}</span><span class="choice-sub">골드존 적중 시 호감도 +6 보너스!</span>`;
+        actBtn.onclick = () => {
+          if (window._romMgRaf) { cancelAnimationFrame(window._romMgRaf); window._romMgRaf = null; }
+          let loveAdd = 2;
+          let resTxt = mg.missText;
+          if (pos >= 37 && pos <= 63) {
+            loveAdd = 6;
+            resTxt = mg.perfectText;
+            sfx.victory();
+            showToast(`✨ PERFECT!! 호감도 +6!`, 'break');
+          } else if (pos >= 21 && pos <= 79) {
+            loveAdd = 4;
+            resTxt = mg.goodText;
+            sfx.powerup();
+            showToast(`💕 GOOD! 호감도 +4!`, 'good');
+          } else {
+            sfx.click();
+          }
+          if (!state.love) state.love = { yuki: 0, chloe: 0 };
+          state.love[hKey] = clamp((state.love[hKey] || 0) + loveAdd, 0, 200);
+          state.activeRomanceStory = { ...ars, mgDone: true, mgResultText: resTxt };
+          render();
+        };
+        elChoicesPanel.appendChild(actBtn);
+        return;
+      }
+
+      if (mg.type === 'mash') {
+        elBattleLog.innerHTML = `
+          <div class="romance-mg-box">
+            <div style="font-weight:800;font-size:13px;">${mg.title}</div>
+            <div style="font-size:11.5px;opacity:0.92;margin-top:2px;">${mg.desc}</div>
+            <div class="romance-mash-track"><div class="romance-mash-fill" id="rom-mash-fill"></div></div>
+          </div>
+          <div style="font-size:12.5px;line-height:1.5;">${sc.text}</div>
+        `;
+        let pct = 15;
+        let finished = false;
+        const finishMash = (isPerfect) => {
+          if (finished) return;
+          finished = true;
+          clearTimeout(timer);
+          const loveAdd = isPerfect ? 6 : (pct >= 55 ? 4 : 2);
+          const resTxt = isPerfect ? mg.perfectText : (pct >= 55 ? mg.goodText : mg.missText);
+          if (isPerfect) { sfx.victory(); showToast('🔥 100% 성공!! 호감도 +6!', 'break'); }
+          else { sfx.powerup(); showToast(`💕 호감도 +${loveAdd}!`, 'good'); }
+          if (!state.love) state.love = { yuki: 0, chloe: 0 };
+          state.love[hKey] = clamp((state.love[hKey] || 0) + loveAdd, 0, 200);
+          state.activeRomanceStory = { ...ars, mgDone: true, mgResultText: resTxt };
+          render();
+        };
+        const timer = setTimeout(() => {
+          if (state.phase === 'romance_story' && !finished) finishMash(false);
+        }, 3800);
+
+        const mashBtn = document.createElement('button');
+        mashBtn.className = 'choice-btn primary';
+        mashBtn.innerHTML = `<span class="choice-title">⚡ 빠르게 연타하기!! (터치/클릭!)</span><span class="choice-sub">3.8초 안에 게이지를 100%로 채우세요!</span>`;
+        mashBtn.onclick = () => {
+          if (finished) return;
+          sfx.click();
+          pct = Math.min(100, pct + 13);
+          const fill = document.getElementById('rom-mash-fill');
+          if (fill) fill.style.width = `${pct}%`;
+          if (pct >= 100) finishMash(true);
+        };
+        elChoicesPanel.appendChild(mashBtn);
+        return;
+      }
+
+      if (mg.type === 'quiz' || mg.type === 'counter' || mg.type === 'phrase') {
+        elBattleLog.innerHTML = `
+          <div class="romance-mg-box">
+            <div style="font-weight:800;font-size:13px;">${mg.title}</div>
+            <div style="font-size:12px;margin-top:3px;color:#fde047;">❓ ${mg.question}</div>
+          </div>
+          <div style="font-size:12.5px;line-height:1.5;">${sc.text}</div>
+        `;
+        mg.options.forEach((opt) => {
+          const ob = document.createElement('button');
+          ob.className = 'choice-btn';
+          ob.innerHTML = `<span class="choice-title">${opt.text}</span><span class="choice-sub">${mg.type === 'counter' ? '결정적 카운터 선택' : '센스 답변 선택'}</span>`;
+          ob.onclick = () => {
+            const loveAdd = opt.correct ? 6 : 2;
+            if (opt.correct) { sfx.victory(); showToast('🎯 대성공!! 호감도 +6!', 'break'); }
+            else { sfx.click(); showToast('💕 호감도 +2!', 'good'); }
+            if (!state.love) state.love = { yuki: 0, chloe: 0 };
+            state.love[hKey] = clamp((state.love[hKey] || 0) + loveAdd, 0, 200);
+            state.activeRomanceStory = { ...ars, mgDone: true, mgResultText: opt.reply };
+            render();
+          };
+          elChoicesPanel.appendChild(ob);
+        });
+        return;
+      }
+    }
+
+    elBattleLog.textContent = ars.mgDone && ars.mgResultText ? ars.mgResultText : sc.text;
 
     if (!sc.choices) {
       const nxtBtn = document.createElement('button');
       nxtBtn.className = 'choice-btn primary';
-      nxtBtn.innerHTML = `<span class="choice-title">다음 장면으로 ▶</span><span class="choice-sub">${epObj.title} (${ars.sceneIdx + 1}/${epObj.scenes.length})</span>`;
+      nxtBtn.innerHTML = `<span class="choice-title">다음 장면으로 ▶</span><span class="choice-sub">${epObj.title} (${scIdx + 1}/${epObj.scenes.length})</span>`;
       nxtBtn.addEventListener('click', () => {
         sfx.click();
-        state.activeRomanceStory = { heroine: hKey, epIdx: ars.epIdx, sceneIdx: ars.sceneIdx + 1 };
+        state.activeRomanceStory = { heroine: hKey, epIdx: ars.epIdx, sceneIdx: scIdx + 1 };
         render();
       });
       elChoicesPanel.appendChild(nxtBtn);
@@ -4828,28 +4987,17 @@ function render() {
         cb.className = 'choice-btn';
         cb.innerHTML = `<span class="choice-title">${ch.label}</span><span class="choice-sub">${ch.sub}</span>`;
         cb.addEventListener('click', () => {
-          sfx.victory();
-          if (!state.love) state.love = { yuki: 0, chloe: 0 };
-          if (!state.lovers) state.lovers = [];
-          if (!state.someCleared) state.someCleared = { yuki: false, chloe: false };
-          if (!state.romanceStory) state.romanceStory = { yuki: { ep: 0, cleared: false }, chloe: { ep: 0, cleared: false } };
-          if (!state.lastContactDay) state.lastContactDay = { yuki: state.day, chloe: state.day };
-          state.lastContactDay[hKey] = state.day;
-          state.love[hKey] = clamp((state.love[hKey] || 0) + ch.love, 0, 200);
-          if (ch.statKey === 'speech') state.stats.speech += ch.statAmt;
-          else if (ch.statKey === 'guts') state.stats.guts += ch.statAmt;
-          else if (ch.statKey === 'law') state.stats.law += ch.statAmt;
-          else if (ch.statKey === 'sp') state.sp = clamp(state.sp + ch.statAmt, 0, state.maxSp);
-          else if (ch.statKey === 'hp') state.hp = clamp(state.hp + ch.statAmt, 1, state.maxHp);
-          else if (ch.statKey === 'points') state.points += ch.statAmt;
-          else if (ch.statKey === 'all') {
-            state.stats.speech += ch.statAmt;
-            state.stats.guts += ch.statAmt;
-            state.stats.law += ch.statAmt;
-            state.points += 200;
+          applyChoiceReward(ch);
+          if (!isFinalScene) {
+            sfx.powerup();
+            showToast(`💕 호감도 +${ch.love || 0}!`, 'good');
+            state.activeRomanceStory = { heroine: hKey, epIdx: ars.epIdx, sceneIdx: scIdx + 1, mgDone: true, mgResultText: ch.reply };
+            saveGame();
+            render();
+            return;
           }
+          sfx.victory();
           advanceDailyQuest('care', 1);
-
           const st = state.romanceStory[hKey];
           if (epObj.ep > st.ep) st.ep = epObj.ep;
           if (epObj.ep >= arr.length) {
@@ -4860,16 +5008,91 @@ function render() {
           } else {
             showToast(`💕 ${hName} ${epObj.ep}화 클리어! (호감도 +${ch.love})`, 'good');
           }
-
-          state.activeRomanceStory = null;
-          state.phase = 'romance';
-          state.log = `📖 [${epObj.title}]\n${ch.reply}`;
+          state.activeRomanceStory = { heroine: hKey, epIdx: ars.epIdx, reply: ch.reply };
+          state.phase = 'romance_epilogue';
           saveGame();
           render();
         });
         elChoicesPanel.appendChild(cb);
       });
     }
+    return;
+  }
+
+  // 4-R0.5 V35.0 연애 스토리 매 화 아련한 여운 엔딩 컷신
+  if (state.phase === 'romance_epilogue') {
+    const ars = state.activeRomanceStory || { heroine: 'yuki', epIdx: 0, reply: '' };
+    const hKey = ars.heroine === 'chloe' ? 'chloe' : 'yuki';
+    const arr = hKey === 'yuki' ? YUKI_ROMANCE_STORY : CHLOE_ROMANCE_STORY;
+    const epIdx = clamp(ars.epIdx || 0, 0, arr.length - 1);
+    const epObj = arr[epIdx];
+    const hName = hKey === 'yuki' ? '🇯🇵 유키' : '🇺🇸 클로이';
+
+    elLocation.textContent = `✨ ${hName} · 제${epObj.ep}화 여운`;
+    elSceneTag.textContent = `완결 여운`;
+    elSceneTag.className = 'scene-tag event';
+    elSceneTitle.textContent = `🌙 ${epObj.title} — 끝`;
+    elWeaknessPill.classList.add('hidden');
+    elEnemyHpWrap.classList.add('hidden');
+    elQuoteBubble.classList.add('hidden');
+
+    if (epObj.img.endsWith('.png')) {
+      setStageBg(hKey === 'yuki' ? 'bg_mapo.jpg' : 'bg_seongsu.jpg');
+      if (elFrame) elFrame.classList.add('combat-stage');
+      if (epObj.img.includes('couple_') && elCoupleSprite) {
+        elCoupleSprite.src = `${epObj.img}?v=88`;
+        elCoupleSprite.classList.remove('hidden');
+      } else {
+        elHeroSprite.classList.remove('hidden');
+        if (hKey === 'yuki' && elYukiSprite) elYukiSprite.classList.remove('hidden');
+        if (hKey === 'chloe' && elChloeSprite) elChloeSprite.classList.remove('hidden');
+      }
+    } else {
+      if (elFrame) elFrame.classList.add('couple-stage');
+      elSceneImage.src = `${epObj.img}?v=88`;
+      elSceneImage.classList.remove('hidden');
+    }
+    if (elDateFxLayer) {
+      elDateFxLayer.className = 'date-fx-layer fx-stars';
+      elDateFxLayer.innerHTML = ['✨', '💖', '🌙', '💫'].map((s, i) => `<span class="fx-particle" style="left:${12 + i * 22}%;top:60%;animation-delay:${i * 0.45}s;">${s}</span>`).join('');
+    }
+
+    const epText = epObj.epilogue || '서로를 향한 마음이 한 걸음 더 깊어진 밤, 아련한 미소만이 오래도록 남았다.';
+    const teaserText = epObj.nextTeaser || (epObj.ep < arr.length ? `제${epObj.ep + 1}화가 이어집니다...` : '🎉 20화 대장정 완결!');
+    elBattleLog.innerHTML = `
+      <div class="romance-epilogue-card">
+        ${ars.reply ? `<div style="font-weight:700;margin-bottom:6px;color:#9f1239;">💬 ${ars.reply}</div>` : ''}
+        <div style="font-size:12.5px;margin-bottom:8px;">🌙 ${epText}</div>
+        <div style="font-size:11.5px;font-weight:800;color:#be123c;border-top:1px dashed #fda4af;padding-top:6px;">📺 ${teaserText}</div>
+      </div>
+    `;
+    elChoicesPanel.className = 'choices-panel';
+
+    if (epIdx + 1 < arr.length) {
+      const nextEpBtn = document.createElement('button');
+      nextEpBtn.className = 'choice-btn primary';
+      nextEpBtn.innerHTML = `<span class="choice-title">📖 다음 화 (제${epIdx + 2}화) 바로 이어서 보기 ▶</span><span class="choice-sub">${arr[epIdx + 1].title}</span>`;
+      nextEpBtn.onclick = () => {
+        sfx.powerup();
+        state.activeRomanceStory = { heroine: hKey, epIdx: epIdx + 1, sceneIdx: 0 };
+        state.phase = 'romance_story';
+        render();
+      };
+      elChoicesPanel.appendChild(nextEpBtn);
+    }
+
+    const hubBtn = document.createElement('button');
+    hubBtn.className = 'choice-btn';
+    hubBtn.innerHTML = `<span class="choice-title">🏠 연애 허브로 돌아가기</span><span class="choice-sub">오늘의 여운을 간직한 채 다음 일정을 정합니다.</span>`;
+    hubBtn.onclick = () => {
+      sfx.click();
+      state.activeRomanceStory = null;
+      state.phase = 'romance';
+      state.log = `🌙 [${epObj.title}] 완결! (현재 ${hName} 호감도: ${state.love?.[hKey] || 0})`;
+      saveGame();
+      render();
+    };
+    elChoicesPanel.appendChild(hubBtn);
     return;
   }
 

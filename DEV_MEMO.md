@@ -5,7 +5,13 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V34.3
+## 현재 최신 버전: V35.0 (1단계: 연애 엔진 + 유키 20화 10배 풀볼륨)
+- **V35.0 (Phase 1)**:
+  - **연애 스토리 엔진 전면 업그레이드 (`romance_story`, `romance_epilogue` in `app.js`, `style.css`)**:
+    - 6종 인터랙티브 미니게임(`timing`/`shutter` 타이밍, `mash` 3.8초 연타, `quiz`/`counter`/`phrase` 선택형) 내장
+    - 실시간 무대 분위기 이펙트(`hearts`/`rain`/`stars`/`flash` 파티클) + 중간 선택지 지원
+    - 매 화 클리어 후 바로 메뉴로 복귀하지 않고 **아련한 여운 독백 + 다음 화 예고 + `[다음 화 바로 이어서 ▶]`**가 뜨는 `romance_epilogue` 컷신 도입
+  - **유키 편 20화 10배 풀볼륨 개편 (`data/romanceStoryYuki.js`)**: 화당 8씬(총 160씬) 감성 웹소설 서사 + 20종 화별 미니게임 + 20종 아련한 여운·다음 화 예고 완성 (`?v=88`, 다음 2단계: 클로이 20화 10배 풀볼륨 예정)
 - **V34.3**:
   - **스탯 3종 & 전투 스킬 7종 커스텀 웹툰 PNG 아이콘 적용 (`assets/images/ui/stat_speech/guts/law.png`, `skill_fact/mirror/law/cider/snap/tag/parry.png`)**: 상단 미니 스탯(`언변/깡다구/법지식`) + 전투 6대 스킬 + 저스트 패링 버튼까지 총 **30종 커스텀 UI 아이콘** 통일 완료 (`?v=87`)
 - **V34.2**:
