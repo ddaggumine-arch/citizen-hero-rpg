@@ -1,6 +1,6 @@
 import { EXTRA_MOBS_40 } from './mobs40.js?v=50';
 
-export const TIME_SLOTS = ['🌅 오전', '☀️ 오후', '🌙 밤', '🦉 심야'];
+export const TIME_SLOTS = ['🌅 아침', '☀️ 오전', '🍱 점심', '🌤️ 오후', '🌇 저녁', '🌙 밤', '🌌 심야'];
 
 export const ITEMS = {
   water_gun: {

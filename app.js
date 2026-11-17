@@ -1,4 +1,4 @@
-import { TIME_SLOTS, ITEMS, TRAITS, VILLAINS, BOSSES, HIDDEN_BOSS, WEATHERS, RANDOM_EVENTS, STORY_MESSAGES } from './data/gameData.js?v=50';
+import { TIME_SLOTS, ITEMS, TRAITS, VILLAINS, BOSSES, HIDDEN_BOSS, WEATHERS, RANDOM_EVENTS, STORY_MESSAGES } from './data/gameData.js?v=98';
 import { STORY_CHAPTERS } from './data/storyChapters.js?v=48';
 import { ACTIVITY_CATEGORIES } from './data/activities.js?v=48';
 import { MINI_EVENTS, ENEMY_INTENTS, createFeedForVictory } from './data/liveEvents.js';
@@ -236,6 +236,9 @@ function createNewGameState() {
     customSpell: null,
     rumor: '',
     sideQuest: { id: null, step: 0, done: [] },
+    houseTier: 0,
+    lottoTickets: 0,
+    pendingDm: null,
   };
 }
 
@@ -798,6 +801,32 @@ function advanceTime() {
   if (state.timeIndex >= TIME_SLOTS.length) {
     restoreSkillPp(2);
     handleNewDayRollover();
+    const hTier = state.houseTier || 0;
+    if (hTier >= 3) {
+      state.hp = state.maxHp;
+      state.sp = state.maxSp;
+    } else if (hTier > 0) {
+      state.hp = clamp(state.hp + hTier * 15, 1, state.maxHp);
+      state.sp = clamp(state.sp + hTier * 12, 0, state.maxSp);
+    }
+    if ((state.lottoTickets || 0) > 0 && state.day % 7 === 0) {
+      let winTotal = 0;
+      for (let i = 0; i < state.lottoTickets; i++) {
+        const r = Math.random();
+        if (r < 0.08) winTotal += 500;
+        else if (r < 0.35) winTotal += 60;
+      }
+      state.lottoTickets = 0;
+      if (winTotal > 0) {
+        state.points += winTotal;
+        showToast(`🎟️ 주간 서울 로또 당첨!! +${winTotal}P 획득!`, 'break');
+      } else {
+        showToast('🎟️ 이번 주 서울 로또는 아쉽게 꽝이었습니다...', 'warn');
+      }
+    }
+  }
+  if (!state.pendingDm && isFeatureUnlocked(state, 'yuki') && Math.random() < 0.16) {
+    state.pendingDm = (isFeatureUnlocked(state, 'chloe') && Math.random() < 0.45) ? 'chloe' : 'yuki';
   }
   state.chaosLevel = clamp((state.chaosLevel ?? 25) + 4, 0, 100);
   if (state.chaosLevel <= 30) {
@@ -1487,7 +1516,9 @@ function grantSpirit(spiritId, autoEquip = false) {
 
 function rollSpiritEncounter(isBoss = false, enemyLv = 1) {
   if ((state.towerFloor || 0) > 0 || (state.nightmareFloor || 0) > 0) return null;
-  const chance = isBoss ? 0.55 : 0.26;
+  const diffId = state.difficulty || 'normal';
+  const diffChanceMap = { normal: isBoss ? 0.55 : 0.26, hard: isBoss ? 0.68 : 0.34, hell: isBoss ? 0.80 : 0.42 };
+  const chance = diffChanceMap[diffId] ?? (isBoss ? 0.55 : 0.26);
   if (Math.random() > chance) return null;
   const lv = Math.max(1, Number(enemyLv) || 1);
   let weights;
@@ -1497,6 +1528,9 @@ function rollSpiritEncounter(isBoss = false, enemyLv = 1) {
   else if (lv >= 11) weights = { unique: 0, epic: 0.03, rare: 0.42, common: 0.55 };
   else weights = { unique: 0, epic: 0, rare: 0.15, common: 0.85 };
 
+  const diffRarityMult = diffId === 'hell' ? 1.75 : (diffId === 'hard' ? 1.35 : 1.0);
+  weights.unique *= diffRarityMult;
+  weights.epic *= diffRarityMult;
   if (isBoss) {
     weights.unique *= 2;
     weights.epic *= 1.5;
@@ -1991,7 +2025,7 @@ function handleEnemyDefeated(enemy) {
   const diff = getDiffObj();
   const eqBon = getEquippedBonuses();
   const baseReward = Math.round(enemy.reward * diff.rewardMult * (1 + (state.rewardMultBonus || 0) + (eqBon.rewardMult || 0)));
-  const nightBonus = state.timeIndex >= 2 ? Math.round(baseReward * 0.25) : 0;
+  const nightBonus = state.timeIndex >= 5 ? Math.round(baseReward * 0.25) : 0;
   const dustBonus = (state.weather || 'sunny') === 'dust' ? 10 : 0;
   const goldSpBonus = getSpiritBonuses().perkId === 'gold_up' ? Math.round(baseReward * 0.25) : 0;
   state.points += baseReward + nightBonus + dustBonus + goldSpBonus;
@@ -2571,7 +2605,7 @@ function useItem(itemId, invIndex) {
 
 function render() {
   if (elBookPage) {
-    elBookPage.classList.toggle('night-mode', state.timeIndex >= 2 && state.phase !== 'title');
+    elBookPage.classList.toggle('night-mode', state.timeIndex >= 5 && state.phase !== 'title');
     elBookPage.classList.remove('boss-aura');
   }
   elHpText.textContent = `${state.hp} / ${state.maxHp}`;
@@ -2648,8 +2682,19 @@ function render() {
   }
 
   const timeLabel = TIME_SLOTS[state.timeIndex] || TIME_SLOTS[0];
-  const timeThemes = ['morning', 'afternoon', 'night', 'midnight'];
+  const timeThemes = ['dawn', 'morning', 'noon', 'afternoon', 'evening', 'night', 'midnight'];
   document.body.dataset.time = state.phase === 'title' ? 'morning' : (timeThemes[state.timeIndex] || 'morning');
+  const elDiffPill = document.getElementById('diff-pill');
+  if (elDiffPill) {
+    if (state.phase === 'title') {
+      elDiffPill.classList.add('hidden');
+    } else {
+      const dId = state.difficulty || 'normal';
+      const dLabels = { normal: '🌱 노멀', hard: '🔥 하드', hell: '💀 헬' };
+      elDiffPill.className = `diff-pill ${dId}`;
+      elDiffPill.textContent = dLabels[dId] || '🌱 노멀';
+    }
+  }
 
   if (elDdayPill) {
     if (state.phase === 'title') {
@@ -3410,6 +3455,22 @@ function render() {
     elBattleLog.textContent = (state.log || '서울 시내 지도입니다. 위 미니맵 핀을 직접 눌러 장소별 자유행동을 선택해보세요!') + `\n${repLine}\n${dqLine}${rumorLine}`;
 
     elChoicesPanel.className = 'choices-panel grid-2';
+
+    // V38.0: 히로인 실시간 선톡(DM) 알림 배너
+    if (state.phase === 'map' && state.pendingDm) {
+      const dmH = state.pendingDm === 'chloe' ? '🇺🇸 클로이' : '🇯🇵 유키';
+      const dmBtn = document.createElement('button');
+      dmBtn.className = 'choice-btn row-btn';
+      dmBtn.style.gridColumn = 'span 2';
+      dmBtn.style.background = 'linear-gradient(180deg, #fff0f6 0%, #ffd6e7 100%)';
+      dmBtn.style.borderColor = '#eb2f96';
+      dmBtn.innerHTML = `<span>📱 [카톡!] ${dmH}에게 선톡이 왔습니다!</span><span class="choice-sub" style="color:#9e1068;">지금 답장해서 돌발 데이트 잡기 ▶</span>`;
+      dmBtn.addEventListener('click', () => {
+        sfx.powerup();
+        openHeroineDmModal();
+      });
+      elChoicesPanel.appendChild(dmBtn);
+    }
 
     // V26.1 실시간 서울 112 긴급 속보 배너 (1일차 첫 진입 시 100% 자동 출몰)
     if (!state.breakingNews && state.day === 1 && !state.breakingFirstDone) {
@@ -6206,7 +6267,7 @@ function render() {
       if ((state.weakCombo || 0) > 0) passiveBadges.push({ cls: 'is-combo', txt: `⚡ 약점콤보 ${state.weakCombo}/2` });
       if (state.pet?.adopted) passiveBadges.push({ cls: 'is-pet', txt: `🐶 콩이 Lv.${state.pet.level}` });
       getGearSetSynergy().labels.forEach((lb) => passiveBadges.push({ cls: 'is-pet', txt: lb }));
-      if (state.timeIndex >= 2) passiveBadges.push({ cls: '', txt: '🌙 야간+25%' });
+      if (state.timeIndex >= 5) passiveBadges.push({ cls: '', txt: '🌙 야간+25%' });
 
       activeBadges.forEach((b) => {
         const sp = document.createElement('span');
@@ -8634,6 +8695,29 @@ function executeActivity(act, cat) {
     state.sp = clamp(state.sp + 20, 0, state.maxSp);
     restoreSkillPp('full');
     handleNewDayRollover();
+    const hTier = state.houseTier || 0;
+    if (hTier >= 3) {
+      state.hp = state.maxHp;
+      state.sp = state.maxSp;
+    } else if (hTier > 0) {
+      state.hp = clamp(state.hp + hTier * 15, 1, state.maxHp);
+      state.sp = clamp(state.sp + hTier * 12, 0, state.maxSp);
+    }
+    if ((state.lottoTickets || 0) > 0 && state.day % 7 === 0) {
+      let winTotal = 0;
+      for (let i = 0; i < state.lottoTickets; i++) {
+        const r = Math.random();
+        if (r < 0.08) winTotal += 500;
+        else if (r < 0.35) winTotal += 60;
+      }
+      state.lottoTickets = 0;
+      if (winTotal > 0) {
+        state.points += winTotal;
+        showToast(`🎟️ 주간 서울 로또 당첨!! +${winTotal}P 획득!`, 'break');
+      } else {
+        showToast('🎟️ 이번 주 서울 로또는 아쉽게 꽝이었습니다...', 'warn');
+      }
+    }
     state.log = act.msg + ' (전 기술 PP 100% 완충!)';
     saveGame();
     render();
@@ -9165,6 +9249,9 @@ function openLocationMenu(locId) {
       saveGame();
       render();
     });
+    addAction('🎭 이중생활 정체 위기 대처', '시민이 "어, 이 목소리 어제 그 알바생?" 하며 알아봅니다!', () => {
+      openDoubleLifeModal();
+    });
   } else if (locId === 'work') {
     addAction('🤝 사장님과 시급 협상 (화술↑)', `화술 Lv.${state.skills.speech} · 말빨로 특별 보너스 수당 획득!`, () => {
       gainSkillXp('speech', 14);
@@ -9208,6 +9295,14 @@ function openLocationMenu(locId) {
       render();
     });
   } else if (locId === 'heal') {
+    const curHouse = HOUSING_TIERS[state.houseTier || 0] || HOUSING_TIERS[0];
+    if (elActivityModalImg) {
+      elActivityModalImg.src = curHouse.img;
+      elActivityModalImg.classList.remove('hidden');
+    }
+    addAction(`🚚 내 집 마련 · 부동산 이사 (${curHouse.name})`, '포인트로 오피스텔·성수 로프트·한강뷰 펜트하우스로 이사!', () => {
+      openHousingModal();
+    });
     addAction('🧪 자취방 연금·요리 조합소', `보유 재료로 커스텀 포션/폭탄 제작 (연금 Lv.${state.skills.alchemy})`, () => {
       openAlchemyModal();
     });
@@ -9218,6 +9313,15 @@ function openLocationMenu(locId) {
       openOblivionSheetModal();
     });
   } else if (locId === 'shop') {
+    addAction('🎟️ 주간 서울 로또 구매 (30P)', `보유 ${state.lottoTickets || 0}장 · 7일마다 추첨 (최대 500P 대박!)`, () => {
+      if (state.points < 30) { showToast('30P가 필요합니다!', 'warn'); return; }
+      state.points -= 30;
+      state.lottoTickets = (state.lottoTickets || 0) + 1;
+      sfx.powerup();
+      state.log = `🎟️ 주간 서울 로또를 1장 구매했습니다! (보유 ${state.lottoTickets}장 · 7의 배수 날 아침 자동 추첨!)`;
+      saveGame();
+      render();
+    });
     addAction('🍱 폐기 도시락 눈치껏 얻기 (화술/은신↑)', '알바생과 친분으로 공짜 회복 + 재료 획득!', () => {
       gainSkillXp('speech', 10);
       state.hp = clamp(state.hp + 25, 1, state.maxHp);
@@ -9239,7 +9343,7 @@ function openLocationMenu(locId) {
       saveGame();
       render();
     });
-    if (state.infamy >= 5 || state.timeIndex >= 2) {
+    if (state.infamy >= 5 || state.timeIndex >= 5) {
       addAction('🕶️ 뒷문 암시장 거래 (40P → 정령가루+홍삼)', '심야 또는 악명 5+ 전용 비밀 상인!', () => {
         if (state.points < 40) { showToast('40P가 필요합니다!', 'warn'); return; }
         state.points -= 40;
@@ -9253,6 +9357,9 @@ function openLocationMenu(locId) {
       });
     }
   } else if (locId === 'luck') {
+    addAction('🃏 지하 VIP 주사위 포커판 (배팅 50P)', '심야/고수 전용! 이기면 120P, 빚지면 악명↑', () => {
+      openUndergroundPokerModal();
+    });
     addAction('🏆 오락실 고수 도장깨기 (격투/명성↑)', '철권/리듬게임 고수를 꺾고 상금 획득!', () => {
       gainSkillXp('combat', 12);
       if (Math.random() < 0.65) {
@@ -9287,6 +9394,211 @@ function openLocationMenu(locId) {
       openActivityModal(cat);
     });
   }
+  elActivityModal.classList.remove('hidden');
+}
+
+// ============================================================
+// V38.0: 내 집 마련(부동산 이사) · 히로인 선톡(DM) · 이중생활 · 지하 포커판
+// ============================================================
+const HOUSING_TIERS = [
+  { tier: 0, name: '🏚️ 반지하 원룸', cost: 0, img: 'assets/images/ui/house_1_banjiha.jpg?v=98', desc: '초심의 자취방 · 기본 아침 회복' },
+  { tier: 1, name: '🏢 역세권 복층 오피스텔', cost: 350, img: 'assets/images/ui/house_2_officetel.jpg?v=98', desc: '매일 아침 HP+15 / SP+12 추가 회복' },
+  { tier: 2, name: '🌆 성수동 루프탑 로프트', cost: 900, img: 'assets/images/ui/house_3_loft.jpg?v=98', desc: '매일 아침 HP+30 / SP+24 · 알바/협상 수익 +15%' },
+  { tier: 3, name: '🏙️ 한강뷰 펜트하우스', cost: 2000, img: 'assets/images/ui/house_4_penthouse.jpg?v=98', desc: '매일 아침 풀회복 · 히로인 집들이 이벤트 해금!' },
+];
+
+function openHousingModal() {
+  const curTier = state.houseTier || 0;
+  const cur = HOUSING_TIERS[curTier] || HOUSING_TIERS[0];
+  elActivityModalTitle.textContent = '🚚 내 집 마련 · 서울 부동산';
+  if (elActivityModalImg) {
+    elActivityModalImg.src = cur.img;
+    elActivityModalImg.classList.remove('hidden');
+  }
+  elActivityList.innerHTML = '';
+
+  const banner = document.createElement('div');
+  banner.className = 'oblivion-banner';
+  banner.innerHTML = `<b>현재 거주지:</b> ${cur.name}<br>${cur.desc} (보유 포인트: ${state.points}P)`;
+  elActivityList.appendChild(banner);
+
+  HOUSING_TIERS.forEach((h) => {
+    const owned = h.tier <= curTier;
+    const isNext = h.tier === curTier + 1;
+    const btn = document.createElement('button');
+    btn.className = 'activity-item-btn';
+    btn.disabled = owned || (!isNext) || state.points < h.cost;
+    const tag = owned ? '✅ 거주중/보유' : (isNext ? `🚚 ${h.cost}P로 이사하기` : `🔒 이전 집 먼저 이사 (${h.cost}P)`);
+    btn.innerHTML = `<div class="act-title">${h.name} · <span style="color:#b45309;">${tag}</span></div><div class="act-desc">${h.desc}</div>`;
+    btn.addEventListener('click', () => {
+      state.points -= h.cost;
+      state.houseTier = h.tier;
+      state.maxHp += 10;
+      state.hp = state.maxHp;
+      state.sp = state.maxSp;
+      sfx.victory();
+      showToast(`🎉 [${h.name}] 이사 완료!!`, 'break');
+      setRumor(`시민영웅이 드디어 ${h.name}으로 성공적으로 이사했다는 화제의 소문`);
+      state.lastCutscene = { image: h.img, animClass: '' };
+      if (h.tier === 3) {
+        if (!state.love) state.love = { yuki: 0, chloe: 0 };
+        state.love.yuki = clamp((state.love.yuki || 0) + 10, 0, 200);
+        state.love.chloe = clamp((state.love.chloe || 0) + 10, 0, 200);
+        state.log = `🏙️ [한강뷰 펜트하우스 입성!!] 유키와 클로이가 집들이 선물과 함께 찾아와 밤새 축하 파티를 열었습니다! (인내심·사이다 풀회복 · 전원 호감도 +10)`;
+      } else {
+        state.log = `🚚 [${h.name}] 이사 대성공!! 새로운 보금자리에서 의지가 불타오릅니다! (최대 인내심 +10 · 풀회복)`;
+      }
+      elActivityModal.classList.add('hidden');
+      saveGame();
+      render();
+    });
+    elActivityList.appendChild(btn);
+  });
+
+  elActivityModal.classList.remove('hidden');
+}
+
+function openHeroineDmModal() {
+  const hKey = state.pendingDm || 'yuki';
+  const hName = hKey === 'chloe' ? '🇺🇸 클로이' : '🇯🇵 유키';
+  elActivityModalTitle.textContent = `📱 ${hName}의 실시간 카톡`;
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+
+  const prompts = {
+    yuki: '"오빠! 오늘 밤 한강 편의점 앞에서 따뜻한 유자차 한 잔 어때요? 잠깐 얼굴 보고 싶어서..."',
+    chloe: '"Hey 영웅! 오늘 촬영 일찍 끝났는데, 지금 루프탑 카페에서 잠깐 만날래? I miss you!"',
+  };
+  const banner = document.createElement('div');
+  banner.className = 'oblivion-banner';
+  banner.textContent = prompts[hKey] || prompts.yuki;
+  elActivityList.appendChild(banner);
+
+  const replies = [
+    { label: '💘 "당장 갈게! 10분 안에 도착!"', love: 8, sp: 15, msg: '설레는 마음으로 달려가 달콤한 깜짝 야간 데이트를 즐겼습니다!' },
+    { label: '😎 "순찰 끝나고 들를게, 기다려!"', love: 5, sp: 10, msg: '듬직한 답장에 상대방이 하트 이모티콘을 보냈습니다!' },
+    { label: '💦 "오늘은 좀 피곤해서 내일 보자"', love: -2, sp: 0, msg: '조금 아쉬워하는 눈치지만 다음을 기약했습니다.' },
+  ];
+  replies.forEach((r) => {
+    const btn = document.createElement('button');
+    btn.className = 'activity-item-btn';
+    btn.innerHTML = `<div class="act-title">${r.label}</div><div class="act-desc">💬 답장 보내기</div>`;
+    btn.addEventListener('click', () => {
+      state.pendingDm = null;
+      if (!state.love) state.love = { yuki: 0, chloe: 0 };
+      state.love[hKey] = clamp((state.love[hKey] || 0) + r.love, 0, 200);
+      state.sp = clamp(state.sp + r.sp, 0, state.maxSp);
+      if (r.love > 0) sfx.victory(); else sfx.click();
+      showToast(r.love > 0 ? `💕 ${hName}와(과) 설레는 톡! (SP +${r.sp})` : '📱 답장을 보냈습니다.', r.love > 0 ? 'good' : 'warn');
+      state.log = `📱 [${hName} 선톡] ${r.msg}`;
+      elActivityModal.classList.add('hidden');
+      saveGame();
+      render();
+    });
+    elActivityList.appendChild(btn);
+  });
+
+  elActivityModal.classList.remove('hidden');
+}
+
+function openDoubleLifeModal() {
+  ensureSandboxState();
+  elActivityModalTitle.textContent = '🎭 낮과 밤의 이중생활 — 정체 위기!';
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+
+  const banner = document.createElement('div');
+  banner.className = 'oblivion-banner';
+  banner.textContent = '순찰 도중 동네 주민이 스마트폰을 들며 묻습니다. "잠깐... 그 노란 완장, 낮에 편의점 알바하던 총각 아니야?!"';
+  elActivityList.appendChild(banner);
+
+  const opts = [
+    {
+      title: `🤫 은신으로 그림자처럼 사라지기 (은신 Lv.${state.skills.sneak})`,
+      desc: '연막처럼 골목으로 빠져나가 정체를 완벽히 숨깁니다',
+      fn: () => {
+        gainSkillXp('sneak', 15);
+        state.fame += 1;
+        state.log = '🤫 눈 깜짝할 새 골목 모퉁이로 사라졌습니다! "어? 귀신인가?" (은신 XP +15 · 명성 +1)';
+      },
+    },
+    {
+      title: `🗣️ 능청스럽게 딴청 피우기 (화술 Lv.${state.skills.speech})`,
+      desc: '"아이고, 제가 좀 흔한 관상이라서요~" 말빨로 위기 모면',
+      fn: () => {
+        gainSkillXp('speech', 15);
+        state.points += 20;
+        state.log = '🗣️ 완벽한 연기력에 주민이 고개를 갸웃하며 돌아갔습니다! (+20P · 화술 XP +15)';
+      },
+    },
+    {
+      title: '📸 "맞습니다, 제가 시민영웅입니다!" 정체 공개',
+      desc: '정체를 밝혀 팔로워 대폭발! (+150명 · 명성 +3)',
+      fn: () => {
+        state.followers = (state.followers || 120) + 150;
+        state.fame += 3;
+        setRumor('노란 완장 시민영웅의 진짜 정체가 SNS에서 대폭발 중!');
+        state.log = '📸 당당히 정체를 공개하자 순식간에 인증샷 인파가 몰렸습니다! (팔로워 +150명 · 명성 +3)';
+      },
+    },
+  ];
+  opts.forEach((o) => {
+    const btn = document.createElement('button');
+    btn.className = 'activity-item-btn';
+    btn.innerHTML = `<div class="act-title">${o.title}</div><div class="act-desc">${o.desc}</div>`;
+    btn.addEventListener('click', () => {
+      elActivityModal.classList.add('hidden');
+      sfx.powerup();
+      o.fn();
+      advanceTime();
+      saveGame();
+      render();
+    });
+    elActivityList.appendChild(btn);
+  });
+
+  elActivityModal.classList.remove('hidden');
+}
+
+function openUndergroundPokerModal() {
+  ensureSandboxState();
+  elActivityModalTitle.textContent = '🃏 지하 VIP 주사위 포커판 (배팅 50P)';
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+
+  const banner = document.createElement('div');
+  banner.className = 'oblivion-banner';
+  banner.textContent = `수상한 지하실에 모인 타짜들! 보유: ${state.points}P (주사위 2개 합이 딜러보다 높으면 +120P, 화술/은신 숙련도 보정!)`;
+  elActivityList.appendChild(banner);
+
+  const playBtn = document.createElement('button');
+  playBtn.className = 'activity-item-btn';
+  playBtn.disabled = state.points < 50;
+  playBtn.innerHTML = '<div class="act-title">🎲 50P 걸고 한 판 승부!</div><div class="act-desc">승리 시 +120P 대박! 패배 시 -50P & 악명 +1</div>';
+  playBtn.addEventListener('click', () => {
+    elActivityModal.classList.add('hidden');
+    state.points -= 50;
+    const bonus = Math.floor((state.skills.sneak + state.skills.speech) / 3);
+    const playerRoll = Math.floor(Math.random() * 6) + 1 + Math.floor(Math.random() * 6) + 1 + bonus;
+    const dealerRoll = Math.floor(Math.random() * 6) + 1 + Math.floor(Math.random() * 6) + 1;
+    if (playerRoll >= dealerRoll) {
+      state.points += 120;
+      gainSkillXp('sneak', 10);
+      sfx.victory();
+      showToast(`🃏 승리! (${playerRoll} vs ${dealerRoll}) +120P!`, 'break');
+      state.log = `🃏 [지하 포커 승리!!] 내 패 ${playerRoll} vs 딜러 ${dealerRoll}! 칩을 싹쓸이했습니다! (+70P 순이익)`;
+    } else {
+      state.infamy += 1;
+      sfx.damage();
+      showToast(`💸 패배... (${playerRoll} vs ${dealerRoll})`, 'warn');
+      state.log = `🃏 [지하 포커 패배...] 내 패 ${playerRoll} vs 딜러 ${dealerRoll}. 50P를 잃었습니다! (악명 +1)`;
+    }
+    advanceTime();
+    saveGame();
+    render();
+  });
+  elActivityList.appendChild(playBtn);
+
   elActivityModal.classList.remove('hidden');
 }
 

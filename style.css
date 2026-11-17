@@ -1670,7 +1670,49 @@ body, .hud, .book-page, .illustration-frame {
   border-color: #a5b4fc;
 }
 
-/* 🌅 오전 (상쾌한 하늘빛 & 햇살) */
+/* V38.0: 7시간대 풀 배경색 테마 + 난이도 배지 */
+.diff-pill {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  margin-top: 3px;
+  margin-left: 4px;
+  border: 1px solid #9e7e56;
+  background: #f0fdf4;
+  color: #166534;
+}
+.diff-pill.hard {
+  background: #fff7ed;
+  border-color: #ea580c;
+  color: #c2410c;
+}
+.diff-pill.hell {
+  background: #fef2f2;
+  border-color: #dc2626;
+  color: #991b1b;
+}
+
+/* 🌅 아침 (연살구 아침 햇살) */
+body[data-time="dawn"] {
+  background: radial-gradient(circle at 50% 15%, #fda4af 0%, #ffedd5 48%, #fb923c 100%);
+}
+body[data-time="dawn"] .hud {
+  background: linear-gradient(180deg, #fff1f2 0%, #ffe4e6 100%);
+  border-bottom-color: #fb7185;
+}
+body[data-time="dawn"] .location-badge {
+  background: #ffffff;
+  color: #be123c;
+  border-color: #fda4af;
+}
+body[data-time="dawn"] .illustration-frame {
+  border-color: #fb7185;
+  box-shadow: inset 0 0 18px rgba(251, 113, 133, 0.18);
+}
+
+/* ☀️ 오전 (상쾌한 하늘빛) */
 body[data-time="morning"] {
   background: radial-gradient(circle at 50% 15%, #38bdf8 0%, #bae6fd 48%, #0284c7 100%);
 }
@@ -1688,7 +1730,25 @@ body[data-time="morning"] .illustration-frame {
   box-shadow: inset 0 0 18px rgba(56, 189, 248, 0.18);
 }
 
-/* ☀️ 오후 (따뜻한 골드·노을 오렌지) */
+/* 🍱 점심 (따뜻한 정오 골드) */
+body[data-time="noon"] {
+  background: radial-gradient(circle at 50% 15%, #fde047 0%, #fef9c3 48%, #eab308 100%);
+}
+body[data-time="noon"] .hud {
+  background: linear-gradient(180deg, #fefce8 0%, #fef08a 100%);
+  border-bottom-color: #eab308;
+}
+body[data-time="noon"] .location-badge {
+  background: #ffffff;
+  color: #a16207;
+  border-color: #facc15;
+}
+body[data-time="noon"] .illustration-frame {
+  border-color: #eab308;
+  box-shadow: inset 0 0 18px rgba(234, 179, 8, 0.18);
+}
+
+/* 🌤️ 오후 (따뜻한 앰버·골드) */
 body[data-time="afternoon"] {
   background: radial-gradient(circle at 50% 15%, #fb923c 0%, #fed7aa 48%, #c2410c 100%);
 }
@@ -1704,6 +1764,24 @@ body[data-time="afternoon"] .location-badge {
 body[data-time="afternoon"] .illustration-frame {
   border-color: #f97316;
   box-shadow: inset 0 0 18px rgba(249, 115, 22, 0.18);
+}
+
+/* 🌇 저녁 (붉은 서울 노을 코랄·퍼플) */
+body[data-time="evening"] {
+  background: radial-gradient(circle at 50% 15%, #f43f5e 0%, #fdba74 42%, #7c2d12 100%);
+}
+body[data-time="evening"] .hud {
+  background: linear-gradient(180deg, #ffe4e6 0%, #fecdd3 100%);
+  border-bottom-color: #e11d48;
+}
+body[data-time="evening"] .location-badge {
+  background: #fff1f2;
+  color: #9f1239;
+  border-color: #f43f5e;
+}
+body[data-time="evening"] .illustration-frame {
+  border-color: #e11d48;
+  box-shadow: inset 0 0 18px rgba(225, 29, 72, 0.22);
 }
 
 /* 🌙 밤 (차분한 딥 네이비 야경) */
