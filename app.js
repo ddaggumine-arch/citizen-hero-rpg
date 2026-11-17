@@ -9602,6 +9602,58 @@ function openUndergroundPokerModal() {
   elActivityModal.classList.remove('hidden');
 }
 
+// ============================================================
+// V38.1: 모바일 안드로이드 뒤로가기(<) 실수 종료 방어 & 모달/서브화면 복귀
+// ============================================================
+(function setupBackButtonGuard() {
+  if (typeof window === 'undefined' || !window.history?.pushState) return;
+  let guardArmed = false;
+  let lastBackAt = 0;
+  const armGuard = () => {
+    if (guardArmed) return;
+    guardArmed = true;
+    try {
+      window.history.pushState({ chGuard: 1 }, '');
+    } catch {}
+  };
+  armGuard();
+  window.addEventListener('pointerdown', armGuard, { passive: true, once: true });
+
+  window.addEventListener('popstate', () => {
+    const openModals = Array.from(document.querySelectorAll('.modal-backdrop:not(.hidden)'))
+      .filter((m) => m.id !== 'timing-modal');
+    if (openModals.length > 0) {
+      openModals.forEach((m) => m.classList.add('hidden'));
+      if (state.pendingMorningSummary) state.pendingMorningSummary = null;
+      try { window.history.pushState({ chGuard: 1 }, ''); } catch {}
+      sfx.click();
+      return;
+    }
+
+    if (['romance', 'lifestyle', 'shop', 'boss_select', 'lover_hub', 'gift_shop'].includes(state.phase)) {
+      state.phase = 'map';
+      render();
+      try { window.history.pushState({ chGuard: 1 }, ''); } catch {}
+      sfx.click();
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastBackAt > 2200) {
+      lastBackAt = now;
+      try { window.history.pushState({ chGuard: 1 }, ''); } catch {}
+      showToast('🛡️ 실수 종료 방어! 나가려면 2초 안에 뒤로가기를 한 번 더 누르세요.', 'warn');
+    }
+  });
+
+  window.addEventListener('beforeunload', (e) => {
+    if (state.phase === 'combat') {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+})();
+
 if (elSeoulMinimap && !elSeoulMinimap.dataset.pinBound) {
   elSeoulMinimap.dataset.pinBound = '1';
   elSeoulMinimap.addEventListener('click', (e) => {
