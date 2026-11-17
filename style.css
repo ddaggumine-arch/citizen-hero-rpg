@@ -2068,81 +2068,96 @@ body[data-time="midnight"] .illustration-frame {
   50% { transform: translateY(-6px) scale(1.06); }
 }
 
-/* V32.3 A+B+C 통합 야생 정령 무대 포획 & 홀로그램 도감 연출 */
+/* V32.4 포켓몬식 단독 확대 집중 무대 & 별명 작명 */
 .illustration-frame.spirit-capture-stage {
-  border-color: rgba(250, 204, 21, 0.75);
-  box-shadow: inset 0 0 28px rgba(56, 189, 248, 0.25);
+  border-color: rgba(250, 204, 21, 0.8);
+  background: radial-gradient(circle at 50% 52%, rgba(56, 189, 248, 0.32) 0%, rgba(30, 41, 59, 0.92) 68%, rgba(15, 23, 42, 0.98) 100%) !important;
+  box-shadow: inset 0 0 34px rgba(56, 189, 248, 0.3);
 }
 .illustration-frame.spirit-caught-holo {
   border: 2px solid #facc15 !important;
-  box-shadow: 0 0 22px rgba(250, 204, 21, 0.75), inset 0 0 36px rgba(250, 204, 21, 0.45) !important;
+  background: radial-gradient(circle at 50% 52%, rgba(250, 204, 21, 0.38) 0%, rgba(30, 41, 59, 0.92) 70%, rgba(15, 23, 42, 0.98) 100%) !important;
+  box-shadow: 0 0 24px rgba(250, 204, 21, 0.8), inset 0 0 40px rgba(250, 204, 21, 0.45) !important;
   animation: holoFlash 0.55s ease-out;
 }
 @keyframes holoFlash {
-  0% { filter: brightness(2.1) saturate(1.4); }
+  0% { filter: brightness(2.0) saturate(1.4); }
   100% { filter: brightness(1) saturate(1); }
 }
 .wild-spirit-sprite {
   position: absolute;
-  right: 22%;
-  bottom: 18px;
-  height: 98px !important;
-  width: 98px !important;
+  left: 50%;
+  top: 52%;
+  transform: translate(-50%, -50%);
+  height: 124px !important;
+  width: 124px !important;
   object-fit: contain !important;
   z-index: 10;
   pointer-events: none;
-  filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.95)) drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
-  animation: wildSpiritFloat 2.0s ease-in-out infinite;
-  transition: right 0.55s cubic-bezier(0.22, 1, 0.36, 1), bottom 0.55s ease, transform 0.55s ease, opacity 0.45s ease;
+  filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.95)) drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5));
+  animation: wildSpotlightFloat 2.1s ease-in-out infinite;
+  transition: transform 0.45s ease, opacity 0.45s ease;
 }
-@keyframes wildSpiritFloat {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-9px) scale(1.06); }
+@keyframes wildSpotlightFloat {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -57%) scale(1.06); }
 }
 .wild-spirit-sprite.is-resonating {
-  animation: wildResonate 0.26s ease-in-out infinite !important;
-  filter: drop-shadow(0 0 18px #fde047) drop-shadow(0 0 8px #38bdf8) brightness(1.18) !important;
+  animation: wildResonateCenter 0.24s ease-in-out infinite !important;
+  filter: drop-shadow(0 0 22px #fde047) drop-shadow(0 0 10px #38bdf8) brightness(1.18) !important;
 }
-@keyframes wildResonate {
-  0%, 100% { transform: translateX(0) rotate(0deg) scale(1.04); }
-  25% { transform: translateX(-7px) rotate(-8deg) scale(1.1); }
-  75% { transform: translateX(7px) rotate(8deg) scale(1.1); }
+@keyframes wildResonateCenter {
+  0%, 100% { transform: translate(-50%, -50%) rotate(0deg) scale(1.05); }
+  25% { transform: translate(-54%, -50%) rotate(-9deg) scale(1.12); }
+  75% { transform: translate(-46%, -50%) rotate(9deg) scale(1.12); }
 }
 .wild-spirit-sprite.is-caught-fly {
-  right: auto !important;
-  left: 148px;
-  bottom: auto !important;
-  top: 14px;
-  height: 52px !important;
-  width: 52px !important;
-  animation: spiritFloat 1.8s ease-in-out infinite !important;
+  height: 132px !important;
+  width: 132px !important;
+  filter: drop-shadow(0 0 24px #fde047) drop-shadow(0 6px 16px rgba(0, 0, 0, 0.45)) !important;
+  animation: wildSpotlightFloat 1.8s ease-in-out infinite !important;
 }
 .wild-spirit-sprite.is-escaped {
-  right: -90px !important;
+  transform: translate(120%, -80%) scale(0.45) rotate(22deg) !important;
   opacity: 0;
-  transform: scale(0.6) rotate(18deg);
 }
 .capture-stamp {
   position: absolute;
   left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%) rotate(-6deg);
+  top: 12px;
+  transform: translateX(-50%) rotate(-2deg);
   z-index: 20;
-  padding: 6px 14px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(250, 204, 21, 0.96), rgba(245, 158, 11, 0.96));
+  padding: 5px 14px;
+  border-radius: 99px;
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.98), rgba(245, 158, 11, 0.98));
   color: #1e293b;
   font-weight: 900;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   border: 2px solid #fffbeb;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
   pointer-events: none;
   white-space: nowrap;
-  animation: stampSlam 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: stampSlamTop 0.36s cubic-bezier(0.22, 1, 0.36, 1);
 }
-@keyframes stampSlam {
-  0% { transform: translate(-50%, -50%) scale(2.1) rotate(-14deg); opacity: 0; }
-  100% { transform: translate(-50%, -50%) scale(1) rotate(-6deg); opacity: 1; }
+@keyframes stampSlamTop {
+  0% { transform: translateX(-50%) scale(1.9) rotate(-8deg); opacity: 0; }
+  100% { transform: translateX(-50%) scale(1) rotate(-2deg); opacity: 1; }
+}
+.spirit-nick-input {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 2px solid #eab308;
+  background: #fffbeb;
+  color: #1e293b;
+  font-size: 0.9rem;
+  font-weight: 700;
+  outline: none;
+  box-sizing: border-box;
+}
+.spirit-nick-input:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.2);
 }
 .spirit-timing-wrap {
   padding: 8px 10px;

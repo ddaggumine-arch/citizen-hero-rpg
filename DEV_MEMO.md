@@ -5,7 +5,9 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V32.3
+## 현재 최신 버전: V32.4
+- **V32.4**:
+  - **포켓몬식 단독 확대 집중 무대 & 정령 별명 지어주기 (`spiritNicknames`, `getSpiritDisplayName`, `style.css`, `app.js`)**: 정령 조우/포획 시 주인공·적·레벨배지를 모두 숨기고 신비로운 스포트라이트 배경 중앙에 정령을 **124~132px 확대**해 단독 집중 연출! 포획 성공 시 금빛 홀로그램 + `✨ GET!` 상단 스탬프와 함께 **"별명을 지어줄까요?"** 입력란(`.spirit-nick-input`)을 제공해 도감·전투에서 나만의 별명 표시 (`?v=75`)
 - **V32.3**:
   - **정령 조우 A+B+C 통합 무대 연출 & `undefined`/박스 잘림 완전 수정 (`index.html`, `style.css`, `app.js`)**:
     - **A안 무대 풀활용**: 텍스트 카드 대신 실제 서울 구역 배경 + 주인공(`hero-sprite`) + 오른쪽 야생 정령(`#wild-spirit-sprite`) 배치, 공명 흔들림 후 포획 시 정령이 주인공 옆자리로 날아오는 `.is-caught-fly` 연출

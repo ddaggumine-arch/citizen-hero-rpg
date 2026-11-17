@@ -213,6 +213,7 @@ function createNewGameState() {
     skillPp: { speech: 12, guts: 10, law: 8, snap: 6 },
     spirits: {},
     spiritProgress: {},
+    spiritNicknames: {},
     equippedSpirit: null,
     pendingSpiritEncounter: null,
     spiritCaptureResult: null,
@@ -1358,6 +1359,12 @@ function getEquippedBonuses() {
   if (state.costume === 'cyber') res.crit += 0.10;
   if (state.costume === 'golden_hero') res.atk += 10;
   return res;
+}
+
+function getSpiritDisplayName(sp) {
+  if (!sp) return '';
+  const nick = state.spiritNicknames?.[sp.id];
+  return nick ? `${nick} (${sp.name})` : sp.name;
 }
 
 function getSpiritNextExp(lv) {
@@ -2552,24 +2559,17 @@ function render() {
     const snackRate = Math.min(95, baseRate + 35);
     const capRes = state.spiritCaptureResult;
 
-    // A안: 실제 서울 구역 배경 + 왼쪽 주인공 + 오른쪽 야생 정령 무대 풀활용
-    const distId = state.activeDistrict || 'mapo';
-    setStageBg(`bg_${distId}.jpg`);
+    // V32.4 포켓몬식 단독 확대 스포트라이트 무대 (주인공/적/레벨배지 모두 숨기고 정령에 100% 집중!)
+    setStageBg(null);
     if (elFrame) {
-      elFrame.classList.add('combat-stage', 'spirit-capture-stage');
+      elFrame.classList.add('spirit-capture-stage');
       if (capRes?.status === 'caught') elFrame.classList.add('spirit-caught-holo');
     }
-    elHeroSprite.classList.remove('hidden');
-    if (elHeroLvBadge) {
-      elHeroLvBadge.textContent = `🛡️ 나 Lv.${state.level || 1}`;
-      elHeroLvBadge.classList.remove('hidden');
-    }
-    if (elEnemyLvBadge) {
-      elEnemyLvBadge.textContent = `✨ 야생 ${rarityBadge}`;
-      elEnemyLvBadge.classList.remove('hidden');
-    }
+    elHeroSprite.classList.add('hidden');
+    if (elHeroLvBadge) elHeroLvBadge.classList.add('hidden');
+    if (elEnemyLvBadge) elEnemyLvBadge.classList.add('hidden');
     if (elWildSpiritSprite) {
-      elWildSpiritSprite.src = `${sp.img}?v=74`;
+      elWildSpiritSprite.src = `${sp.img}?v=75`;
       elWildSpiritSprite.className = 'wild-spirit-sprite';
       if (capRes?.status === 'resonating') elWildSpiritSprite.classList.add('is-resonating');
       else if (capRes?.status === 'caught') elWildSpiritSprite.classList.add('is-caught-fly');
@@ -2584,20 +2584,22 @@ function render() {
       }
     }
 
-    elLocation.textContent = '✨ 야생 정령 조우 · SPIRIT ENCOUNTER';
+    elLocation.textContent = '✨ 수호정령 포획 · SPIRIT CAPTURE';
     elSceneTag.textContent = `${elInfo.label} · ${rarityBadge}`;
     elSceneTag.className = 'scene-tag event';
     elSceneTitle.textContent = capRes?.status === 'caught'
-      ? `💥 [${sp.name}] 포획 성공!!`
+      ? `💥 찰칵!! [${sp.name}] 포획 성공!!`
       : capRes?.status === 'escaped'
         ? `💨 [${sp.name}] 이(가) 달아났다...`
         : `✨ 야생 [${sp.name}] 출현!`;
     elWeaknessPill.classList.add('hidden');
     elEnemyHpWrap.classList.add('hidden');
-    elQuoteBubble.classList.remove('hidden');
-    elQuoteBubble.textContent = capRes?.status === 'caught'
-      ? `💬 나: "좋아, 넌 내 동료다! ${sp.greet}"`
-      : `💬 주인공: "${sp.greet}"`;
+    if (!capRes) {
+      elQuoteBubble.classList.remove('hidden');
+      elQuoteBubble.textContent = `💬 "${sp.greet}"`;
+    } else {
+      elQuoteBubble.classList.add('hidden');
+    }
 
     const finishEncounter = (msg) => {
       if (window._spiritTimingRaf) {
@@ -2708,24 +2710,42 @@ function render() {
     }
 
     if (capRes?.status === 'caught') {
+      const prevNick = state.spiritNicknames?.[sp.id] || '';
       elBattleLog.textContent =
-        `🎉 [${sp.name}] Lv.${capRes.growthLv}/20 · ★${capRes.awakeLv} (${elInfo.label} · ${rarityBadge})\n` +
-        `⚔️ 공격 +${sp.atk} · 🫧 사이다 +${sp.spRegen} · 💥 치명 +${Math.round(sp.crit * 100)}%\n` +
-        `★ 특수 기술: ${sp.perkDesc}`;
+        `🎉 야생 [${sp.name}]을(를) 잡았다! (Lv.${capRes.growthLv}/20 · ★${capRes.awakeLv})\n` +
+        `⚔️ 공격 +${sp.atk} · 🫧 사이다 +${sp.spRegen} · ★ 특수: ${sp.perkDesc}\n` +
+        `💫 이 정령에게 특별한 별명을 지어줄까요?`;
+
+      const nickInput = document.createElement('input');
+      nickInput.type = 'text';
+      nickInput.maxLength = 14;
+      nickInput.className = 'spirit-nick-input';
+      nickInput.value = prevNick;
+      nickInput.placeholder = `별명 입력 (비워두면 '${sp.name}' 사용)`;
+      elChoicesPanel.appendChild(nickInput);
+
+      const saveNick = () => {
+        const val = nickInput.value.trim();
+        if (!state.spiritNicknames) state.spiritNicknames = {};
+        if (val) state.spiritNicknames[sp.id] = val;
+      };
+
       const btnNowEquip = document.createElement('button');
       btnNowEquip.className = 'choice-btn primary';
-      btnNowEquip.innerHTML = `<span class="choice-title">✨ 지금 바로 동행하고 맵으로</span><span class="choice-sub">${sp.name}을(를) 전투 파트너로 장착하고 출발합니다!</span>`;
+      btnNowEquip.innerHTML = `<span class="choice-title">✨ 이 이름으로 바로 동행하기!</span><span class="choice-sub">별명을 저장하고 전투 파트너로 즉시 장착합니다.</span>`;
       btnNowEquip.onclick = () => {
+        saveNick();
         state.equippedSpirit = sp.id;
         sfx.powerup?.();
-        finishEncounter(`💥 ${sp.name} 포획 & 도감 등록 완료! (동행 시작)`);
+        finishEncounter(`💥 ${getSpiritDisplayName(sp)} 포획 & 동행 시작!`);
       };
       const btnKeepOnly = document.createElement('button');
       btnKeepOnly.className = 'choice-btn';
-      btnKeepOnly.innerHTML = `<span class="choice-title">📖 도감에 보관하고 맵으로</span><span class="choice-sub">현재 동행 중인 정령을 유지합니다.</span>`;
+      btnKeepOnly.innerHTML = `<span class="choice-title">📖 이름 저장하고 도감에 보관하기</span><span class="choice-sub">현재 동행 중인 정령을 유지합니다.</span>`;
       btnKeepOnly.onclick = () => {
+        saveNick();
         sfx.click?.();
-        finishEncounter(`📖 ${sp.name} 도감 등록 완료!`);
+        finishEncounter(`📖 ${getSpiritDisplayName(sp)} 도감 등록 완료!`);
       };
       elChoicesPanel.append(btnNowEquip, btnKeepOnly);
       return;
@@ -7241,7 +7261,7 @@ function openSpiritModal(filterEl = 'all') {
       card.innerHTML = `
         <img src="${sp.img}?v=72" alt="${sp.name}" class="item-thumb" style="width:44px;height:44px;object-fit:contain;" />
         <div class="inv-info">
-          <h4 style="color:${rInfo.color};">[${rInfo.short}] ${sp.name} <span style="color:#0369a1;">Lv.${prog.lv}/20</span> · ★${lv}/5 ${isEq ? '✅동행중' : ''}</h4>
+          <h4 style="color:${rInfo.color};">[${rInfo.short}] ${getSpiritDisplayName(sp)} <span style="color:#0369a1;">Lv.${prog.lv}/20</span> · ★${lv}/5 ${isEq ? '✅동행중' : ''}</h4>
           <p>${sp.desc}<br/><span style="color:#1e40af;font-size:0.68rem;">📍 출몰: ${sp.zoneHint}</span><br/><span style="color:#695544;font-style:italic;">"${sp.greet}"</span></p>
           <div class="spirit-exp-track"><div class="spirit-exp-fill" style="width:${expPct}%"></div></div>
         </div>
