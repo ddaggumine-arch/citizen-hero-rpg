@@ -847,7 +847,7 @@ function triggerPlayerDamage(dmg) {
 }
 
 function uiImg(name, cls = 'ui-icon-btn') {
-  return `<img src="assets/images/ui/${name}.png?v=86" class="${cls}" alt="" />`;
+  return `<img src="assets/images/ui/${name}.png?v=87" class="${cls}" alt="" />`;
 }
 
 function getHeroRankInfo() {
@@ -5838,7 +5838,7 @@ function render() {
       const guardBtn = document.createElement('button');
       guardBtn.className = 'choice-btn row-btn guard-btn';
       guardBtn.style.gridColumn = 'span 2';
-      guardBtn.innerHTML = '<span>⚡ 저스트 패링!! (강공격 90% 차단 + 역관광)</span><span class="choice-sub">피해 -90% · 반격 · 사이다+25 · 피버+30%</span>';
+      guardBtn.innerHTML = `<span>${uiImg('skill_parry')}저스트 패링!! (강공격 90% 차단 + 역관광)</span><span class="choice-sub">피해 -90% · 반격 · 사이다+25 · 피버+30%</span>`;
       guardBtn.addEventListener('click', performGuard);
       elChoicesPanel.appendChild(guardBtn);
     }
@@ -5862,7 +5862,7 @@ function render() {
 
     const skills = [
       {
-        title: getSkillEvolution('speech').title,
+        title: `${uiImg('skill_fact')}${getSkillEvolution('speech').title.replace(/^[^\s]+\s*/, '')}`,
         ppKey: 'speech',
         sub: muSpeech.tag || `언변 ${state.stats.speech} 기반`,
         subClass: muSpeech.cls,
@@ -5870,7 +5870,7 @@ function render() {
         action: () => performAttack('speech'),
       },
       {
-        title: getSkillEvolution('guts').title,
+        title: `${uiImg('skill_mirror')}${getSkillEvolution('guts').title.replace(/^[^\s]+\s*/, '')}`,
         ppKey: 'guts',
         sub: muGuts.tag ? `${muGuts.tag} · 사이다↑` : '사이다+15 · 광인↑',
         subClass: muGuts.cls,
@@ -5878,7 +5878,7 @@ function render() {
         action: () => performAttack('guts'),
       },
       {
-        title: getSkillEvolution('law').title,
+        title: `${uiImg('skill_law')}${getSkillEvolution('law').title.replace(/^[^\s]+\s*/, '')}`,
         ppKey: 'law',
         sub: muLaw.tag ? `${muLaw.tag} · 🎲12+ 기절` : `🎲 12+ 기절 (+${lawBonus})`,
         subClass: muLaw.cls,
@@ -5886,10 +5886,10 @@ function render() {
         action: () => performAttack('law'),
       },
       {
-        title: getSkillEvolution('special').title,
+        title: `${uiImg('skill_cider')}${getSkillEvolution('special').title.replace(/^[^\s]+\s*/, '')}`,
         ppKey: null,
         sub: state.sp >= ((state.feverTurns || 0) > 0 ? 20 : 40)
-          ? `사이다 ${(state.feverTurns || 0) > 0 ? '20(피버 반값!)' : '40'}${muSpec.tag ? ` · ${muSpec.tag}` : ' · 확정기절!'}`
+          ? `사이다 ${(state.feverTurns || 0) > 0 ? '20(피버 반값!)' : '40'}${muSpec.tag ? ` · ${muSpec.tag}` : ' · 가드2칸+기절!'}`
           : `사이다 부족 (${state.sp}/${(state.feverTurns || 0) > 0 ? 20 : 40})`,
         subClass: muSpec.isUp ? 'weak' : 'sp',
         disabled: state.sp < ((state.feverTurns || 0) > 0 ? 20 : 40),
@@ -5914,7 +5914,7 @@ function render() {
     snapBtn.className = 'choice-btn';
     const snapPp = ppMap.snap ?? getMaxSkillPp('snap');
     snapBtn.disabled = snapPp <= 0;
-    snapBtn.innerHTML = `<span class="skill-top-row"><span>📸 채증 셔터</span>${mkPpHtml('snap')}</span><span class="choice-sub ${muSnap.cls}">${snapPp <= 0 ? '횟수 소진 (휴식/아이템 복구)' : (muSnap.tag ? `${muSnap.tag} · 채증+2` : '타이밍 1.8배 · 채증+2')}</span>`;
+    snapBtn.innerHTML = `<span class="skill-top-row"><span>${uiImg('skill_snap')}채증 셔터</span>${mkPpHtml('snap')}</span><span class="choice-sub ${muSnap.cls}">${snapPp <= 0 ? '횟수 소진 (휴식/아이템 복구)' : (muSnap.tag ? `${muSnap.tag} · 가드2칸+약점` : '타이밍 1.65배 · 가드2칸')}</span>`;
     snapBtn.addEventListener('click', () => {
       const curPp = ensureSkillPp();
       if ((curPp.snap ?? 1) <= 0) return;
@@ -5970,7 +5970,7 @@ function render() {
     const tagMeta = getTagSkillMeta();
     const tagUsed = !!state.tagSkillUsedThisBattle;
     tagBtn.disabled = tagUsed || state.sp < tagCost;
-    tagBtn.innerHTML = `<span>${tagMeta.title}</span><span class="choice-sub ${muTag.isUp ? 'weak' : 'sp'}">${tagUsed ? '전투당 1회 사용 완료' : (state.sp >= tagCost ? `사이다 ${tagCost}${muTag.tag ? ` · ${muTag.tag}` : ''} · ${tagMeta.effectSummary}` : `사이다 부족 (${state.sp}/${tagCost})`)}</span>`;
+    tagBtn.innerHTML = `<span>${uiImg('skill_tag')}${tagMeta.title.replace(/^[^\s]+\s*/, '')}</span><span class="choice-sub ${muTag.isUp ? 'weak' : 'sp'}">${tagUsed ? '전투당 1회 사용 완료' : (state.sp >= tagCost ? `사이다 ${tagCost}${muTag.tag ? ` · ${muTag.tag}` : ''} · ${tagMeta.effectSummary}` : `사이다 부족 (${state.sp}/${tagCost})`)}</span>`;
     tagBtn.addEventListener('click', () => performTagSkill());
     elChoicesPanel.appendChild(tagBtn);
 

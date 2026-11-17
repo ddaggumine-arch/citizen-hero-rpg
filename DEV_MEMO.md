@@ -5,7 +5,9 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V34.2
+## 현재 최신 버전: V34.3
+- **V34.3**:
+  - **스탯 3종 & 전투 스킬 7종 커스텀 웹툰 PNG 아이콘 적용 (`assets/images/ui/stat_speech/guts/law.png`, `skill_fact/mirror/law/cider/snap/tag/parry.png`)**: 상단 미니 스탯(`언변/깡다구/법지식`) + 전투 6대 스킬 + 저스트 패링 버튼까지 총 **30종 커스텀 UI 아이콘** 통일 완료 (`?v=87`)
 - **V34.2**:
   - **20종 커스텀 웹툰 RPG UI & 미니맵 핀 아이콘 전면 적용 (`assets/images/ui/*.png`, `index.html`, `style.css`, `app.js`)**: 서울 미니맵 핀 6종(`골목순찰/알바터/철봉공원/우리집/24시편의점/오락실`), 상단 HUD 4종(`예절폰/설정/가방/특성`), 스탯 아이콘 3종(`인내심/사이다/도덕P`), 맵 허브 메뉴 7종(`편의점/오락실/연애/펫·차고/배틀타워/수호정령/5대구역/마계보스러시`)을 투명 PNG 웹툰 아이콘으로 교체 (`?v=85`)
 - **V34.1**:
