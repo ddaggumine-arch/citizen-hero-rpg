@@ -1,5 +1,5 @@
 import { TIME_SLOTS, ITEMS, TRAITS, VILLAINS, BOSSES, HIDDEN_BOSS, WEATHERS, RANDOM_EVENTS, STORY_MESSAGES } from './data/gameData.js?v=98';
-import { KOREA_ACTS, REGIONAL_GOODS, RUNE_STONES, ACT_VILLAINS, ACT_STORY_EPISODES } from './data/koreaActs.js?v=100';
+import { KOREA_ACTS, REGIONAL_GOODS, RUNE_STONES, ACT_VILLAINS, ACT_STORY_EPISODES } from './data/koreaActs.js?v=101';
 import { STORY_CHAPTERS } from './data/storyChapters.js?v=48';
 import { ACTIVITY_CATEGORIES } from './data/activities.js?v=48';
 import { MINI_EVENTS, ENEMY_INTENTS, createFeedForVictory } from './data/liveEvents.js';
@@ -1716,7 +1716,7 @@ function startBattle(enemyId, isRandomEncounter = false) {
   const nmFloor = state.nightmareFloor || 0;
   const diff = getDiffObj();
   const ngMult = 1 + (state.ngPlus || 0) * 0.3;
-  const isBossEnemy = isBossId(baseEnemy.id) || !!baseEnemy.storyOnly || baseEnemy.id === HIDDEN_BOSS.id;
+  const isBossEnemy = isBossId(baseEnemy.id) || !!baseEnemy.storyOnly || !!baseEnemy.isActBoss || baseEnemy.id === HIDDEN_BOSS.id;
   const mod = (!isBossEnemy && Math.random() < 0.45)
     ? ENEMY_MODIFIERS[Math.floor(Math.random() * ENEMY_MODIFIERS.length)]
     : null;
@@ -1755,10 +1755,10 @@ function startBattle(enemyId, isRandomEncounter = false) {
   const targetTurns = isBossEnemy ? 11.5 : (enemyLv >= 7 ? 7.2 : 5.0);
   const coScaledHp = Math.round(estHeroHit * targetTurns * (enemyLv > heroLv ? 1 + (enemyLv - heroLv) * 0.04 : 1) * modHpMult);
 
-  const rawFormulaHp = Math.round(baseEnemy.maxHp * lvScale * bossHpBoost * modHpMult);
+  const rawFormulaHp = Math.round((Number(baseEnemy.maxHp || baseEnemy.hp) || 100) * lvScale * bossHpBoost * modHpMult);
   const baseScaledHp = Math.max(rawFormulaHp, coScaledHp);
   const minThreatAtk = Math.round((state.maxHp || 140) * (isBossEnemy ? 0.13 : (enemyLv >= 7 ? 0.11 : 0.09)));
-  const baseScaledAtk = Math.max(Math.round(baseEnemy.atk * atkScale * bossAtkBoost * modAtkMult), minThreatAtk);
+  const baseScaledAtk = Math.max(Math.round((Number(baseEnemy.atk) || 14) * atkScale * bossAtkBoost * modAtkMult), minThreatAtk);
   const rawMaxHp = nmFloor > 0
     ? baseScaledHp + nmFloor * 52
     : (floor > 0 ? baseScaledHp + floor * 28 : baseScaledHp);
