@@ -24,35 +24,35 @@ export const SEOUL_DISTRICTS = [
   {
     id: 'mapo',
     minLv: 1, maxLv: 10,
-    name: '🎸 마포구 (홍대·연남)',
+    name: '🍲 전주 (한옥마을·전북대)',
     buffDesc: '전투 매 턴 사이다 +3 자연 충전',
     villains: ['spitter', 'street_smoker', 'trash_dumper'],
   },
   {
     id: 'seongsu',
     minLv: 11, maxLv: 20,
-    name: '☕ 성동구 (성수동)',
+    name: '🚆 평택 (평택역·항구)',
     buffDesc: '팩트폭력 치명타 확률 +6%',
     villains: ['cafe_boss', 'parking_villain', 'sidewalk_blockers', 'line_cutter', 'subway_legger'],
   },
   {
     id: 'jongno',
     minLv: 21, maxLv: 30,
-    name: '📚 종로구 (익선·대학가)',
+    name: '🏙️ 동탄 (호수공원·신도시)',
     buffDesc: '기본 방어력(DEF) +3',
     villains: ['pen_clicker', 'noise_villain', 'cinema_boss'],
   },
   {
     id: 'gangnam',
     minLv: 31, maxLv: 40,
-    name: '🚇 강남구 (2호선·역삼)',
+    name: '😈 마계 인천 (부평·월미도)',
     buffDesc: '모든 공격 피해 +4',
     villains: ['subway_manspreader', 'gym_villain', 'cafe_hogger'],
   },
   {
     id: 'yeouido',
     minLv: 41, maxLv: 50,
-    name: '🌃 영등포구 (여의도)',
+    name: '👑 서울 (홍대·강남·여의도)',
     buffDesc: '유니크/레어 장비 드랍률 +25% 보정',
     villains: ['shorts_terrorist', 'night_biker', 'illegal_parker', 'boss_dr_chaos'],
   },
@@ -60,6 +60,10 @@ export const SEOUL_DISTRICTS = [
 
 export function getDistrictIdForEnemy(enemyId) {
   if (typeof enemyId === 'string') {
+    if (enemyId.startsWith('act_jeonju_')) return 'mapo';
+    if (enemyId.startsWith('act_pyeongtaek_')) return 'seongsu';
+    if (enemyId.startsWith('act_dongtan_')) return 'jongno';
+    if (enemyId.startsWith('act_incheon_')) return 'gangnam';
     if (enemyId.startsWith('mob_m')) return 'mapo';
     if (enemyId.startsWith('mob_s')) return 'seongsu';
     if (enemyId.startsWith('mob_j')) return 'jongno';

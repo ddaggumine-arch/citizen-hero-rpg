@@ -12,7 +12,7 @@ import { CLUES, SOME_CRISIS_EVENTS, RIVAL_EVENTS, REFORMED_ALLIES, GETTING_TO_KN
 import { DIFFICULTIES, RARITY_INFO, GEAR_LOOT_POOL, GEAR_ENCHANTS, PET_JOBS, LOGIC_COUNTERS, generateCommunityPosts } from './data/v24Systems.js?v=61';
 import { KISS_SCENES, LOVER_ACTIONS, KISS_SCENE_CHOICES } from './data/v25Romance.js?v=71';
 import { SPIRITS_50, SPIRIT_ELEMENTS } from './data/spirits50.js?v=76';
-import { UNLOCK_MILESTONES, isFeatureUnlocked, SEOUL_DISTRICTS, getDistrictIdForEnemy, getClearedDistrictCount } from './data/v26World.js?v=48';
+import { UNLOCK_MILESTONES, isFeatureUnlocked, SEOUL_DISTRICTS, getDistrictIdForEnemy, getClearedDistrictCount } from './data/v26World.js?v=108';
 import { STORY_BOSSES } from './data/storyBosses.js?v=45';
 import { STORY_AFTERMATHS } from './data/storyAftermath.js?v=81';
 import { YUKI_ROMANCE_STORY } from './data/romanceStoryYuki.js?v=92';
@@ -3538,7 +3538,7 @@ function render() {
       : `🎯 오늘의 미션: ${state.dailyQuests.items.map((x) => `${x.label}(${x.cur}/${x.goal})`).join(' · ')}`;
     const repLine = `🏅 명성 ${state.fame || 0} · 😈 악명 ${state.infamy || 0} | 🤫은신${state.skills.sneak} 🗣️화술${state.skills.speech} 🧪연금${state.skills.alchemy} 🥊격투${state.skills.combat}`;
     const rumorLine = state.rumor ? `\n📰 [서울 소문] ${state.rumor}` : '';
-    elBattleLog.textContent = (state.log || '서울 시내 지도입니다. 위 미니맵 핀을 직접 눌러 장소별 자유행동을 선택해보세요!') + `\n${repLine}\n${dqLine}${rumorLine}`;
+    elBattleLog.textContent = (state.log || '전국 오픈월드 지도입니다. 위 미니맵 핀을 직접 눌러 장소별 자유행동을 선택해보세요!') + `\n${repLine}\n${dqLine}${rumorLine}`;
 
     elChoicesPanel.className = 'choices-panel grid-2';
 
@@ -3703,7 +3703,7 @@ function render() {
       if (patrolCat) {
         const pBtn = document.createElement('button');
         pBtn.className = 'activity-item-btn';
-        pBtn.innerHTML = `<div class="act-title">${uiImg('pin_patrol')} 서울 순찰 출동</div><div class="act-desc">${patrolCat.sub} · 빌런 제압 & 치안 회복</div>`;
+        pBtn.innerHTML = `<div class="act-title">${uiImg('pin_patrol')} 순찰 출동</div><div class="act-desc">${patrolCat.sub} · 빌런 제압 & 치안 회복</div>`;
         pBtn.addEventListener('click', () => {
           sfx.click();
           openActivityModal(patrolCat);
@@ -3714,7 +3714,7 @@ function render() {
       const distCleared = getClearedDistrictCount(state);
       const dBtn = document.createElement('button');
       dBtn.className = 'activity-item-btn';
-      dBtn.innerHTML = `<div class="act-title">${uiImg('menu_districts')} 서울 5대 구역 치안 (${distCleared}/5)</div><div class="act-desc">평화구역 영구 버프 & 시민 후원 확인</div>`;
+      dBtn.innerHTML = `<div class="act-title">${uiImg('menu_districts')} 전국 5대 도시 치안 (${distCleared}/5)</div><div class="act-desc">평화도시 영구 버프 & 시민 후원 확인</div>`;
       dBtn.addEventListener('click', () => {
         sfx.click();
         elActivityModal.classList.add('hidden');
@@ -6882,7 +6882,7 @@ function render() {
   // 7-1. V17.0 배틀타워 층 클리어 화면
   if (state.phase === 'tower_clear') {
     const floor = state.towerFloor || 1;
-    elLocation.textContent = `🏢 서울 빌런 배틀타워 · ${floor}층`;
+    elLocation.textContent = `🏢 전국 빌런 배틀타워 · ${floor}층`;
     elSceneTag.textContent = '타워 승리';
     elSceneTag.className = 'scene-tag event';
     elSceneTitle.textContent = `🏢 ${floor}층 격파 완료!`;
@@ -8691,7 +8691,7 @@ function openEndingsModal() {
 }
 
 function openDistrictsModal() {
-  elActivityModalTitle.textContent = `🏙️ 서울 5대 구역 치안 (${getClearedDistrictCount(state)}/5 평화구역)`;
+  elActivityModalTitle.textContent = `🏙️ 전국 5대 도시 치안 (${getClearedDistrictCount(state)}/5 평화도시)`;
   elActivityModalImg.classList.add('hidden');
   elActivityList.innerHTML = '';
   const dState = state.districts || {};
