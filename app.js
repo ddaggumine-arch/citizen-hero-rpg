@@ -3395,7 +3395,7 @@ function render() {
   if (state.phase === 'story_interlude') {
     const intId = state.pendingInterlude || 'interlude_1';
     const iv = STORY_INTERLUDES[intId] || STORY_INTERLUDES.interlude_1;
-    elLocation.textContent = `DAY ${state.day} · 메인 스토리`;
+    elLocation.textContent = `DAY ${state.day} · ${timeLabel} · 메인 스토리`;
     elSceneTag.textContent = '긴급 막간';
     elSceneTag.className = 'scene-tag boss';
     elSceneTitle.textContent = iv.title;
@@ -3446,7 +3446,7 @@ function render() {
     const wv = availWeekend[Math.max(0, idx)] || WEEKEND_EVENTS[0];
     const chaos = state.chaosLevel ?? 25;
     const weeklyGrade = chaos <= 25 ? 'S (모범 도시! +50P)' : (chaos <= 55 ? 'A (안정적! +25P)' : 'B (분발 필요!)');
-    elLocation.textContent = `DAY ${state.day} · 주말 특별`;
+    elLocation.textContent = `DAY ${state.day} · ${timeLabel} · 주말 특별`;
     elSceneTag.textContent = '주말 축제';
     elSceneTag.className = 'scene-tag event';
     elSceneTitle.textContent = wv.title;
@@ -3906,7 +3906,7 @@ function render() {
     const curCar = (state.carLevel || 0) >= 1 ? CARS[state.carLevel - 1] : null;
     const nextCar = CARS[state.carLevel || 0] || null;
 
-    elLocation.textContent = `DAY ${state.day} · 펫 · 차고 · 공방`;
+    elLocation.textContent = `DAY ${state.day} · ${timeLabel} · 펫 · 차고 · 공방`;
     elSceneTag.textContent = '라이프';
     elSceneTag.className = 'scene-tag event';
     elSceneTitle.textContent = '🐶 펫 · 🚗 차고 · 🔧 장비 강화';
@@ -4370,7 +4370,7 @@ function render() {
     const yukiCanDate = (state.love.yuki || 0) >= 35;
     const chloeCanDate = (state.love.chloe || 0) >= 35;
 
-    elLocation.textContent = `DAY ${state.day} · 연애 & 어학`;
+    elLocation.textContent = `DAY ${state.day} · ${timeLabel} · 연애 & 어학`;
     elSceneTag.textContent = '미연시';
     elSceneTag.className = 'scene-tag event';
     elSceneTitle.textContent = '💘 어학 공부 & 데이트';
@@ -5076,7 +5076,7 @@ function render() {
     const isFinalScene = scIdx === epObj.scenes.length - 1;
     const hName = hKey === 'yuki' ? '🇯🇵 유키' : '🇺🇸 클로이';
 
-    elLocation.textContent = `DAY ${state.day} · ${hName} 연애 스토리`;
+    elLocation.textContent = `DAY ${state.day} · ${timeLabel} · ${hName} 연애 스토리`;
     elSceneTag.textContent = `[${epObj.act}] ${epObj.ep}/20화`;
     elSceneTag.className = 'scene-tag event';
     elSceneTitle.textContent = epObj.title;
@@ -5479,7 +5479,7 @@ function render() {
     const epObj = arr[epIdx];
     const hName = hKey === 'yuki' ? '🇯🇵 유키' : '🇺🇸 클로이';
 
-    elLocation.textContent = `✨ ${hName} · 제${epObj.ep}화 여운`;
+    elLocation.textContent = `${timeLabel} · ✨ ${hName} · 제${epObj.ep}화 여운`;
     elSceneTag.textContent = `완결 여운`;
     elSceneTag.className = 'scene-tag event';
     elSceneTitle.textContent = `🌙 ${epObj.title} — 끝`;
@@ -5560,7 +5560,7 @@ function render() {
     const pool = isJp ? LANG_QUIZZES.jp : LANG_QUIZZES.en;
     const quiz = pool[state.currentQuizIdx % pool.length];
 
-    elLocation.textContent = `DAY ${state.day} · ${hero.langName} 공부`;
+    elLocation.textContent = `DAY ${state.day} · ${timeLabel} · ${hero.langName} 공부`;
     elSceneTag.textContent = `${hero.langName} 퀴즈`;
     elSceneTag.className = 'scene-tag event';
     elSceneTitle.textContent = `${hero.name}와(과) 어학 스터디`;
@@ -5774,7 +5774,7 @@ function render() {
         ? DATE_EVENTS[key].drive
         : normalPool[(state.currentQuizIdx || 0) % normalPool.length]);
 
-    elLocation.textContent = `DAY ${state.day} · ${state.isDriveDate ? '드라이브 데이트' : '데이트'}`;
+    elLocation.textContent = `DAY ${state.day} · ${timeLabel} · ${state.isDriveDate ? '드라이브 데이트' : '데이트'}`;
     elSceneTag.textContent = isConfess ? '고백 타임!' : (state.isDriveDate ? '🚗 드라이브' : '데이트');
     elSceneTag.className = 'scene-tag event';
     elSceneTitle.textContent = ev.title;
@@ -6349,7 +6349,7 @@ function render() {
     const isBoss = isBossId(enemy.id) || enemy.id === HIDDEN_BOSS.id;
     if (elBookPage && isBoss) elBookPage.classList.add('boss-aura');
     const rep = getReputationInfo();
-    elLocation.textContent = `DAY ${state.day} · ${enemy.location}`;
+    elLocation.textContent = `DAY ${state.day} · ${timeLabel} · ${enemy.location}`;
     elSceneTag.textContent = isBoss ? '보스전' : '빌런 조우';
     elSceneTag.className = `scene-tag ${isBoss ? 'boss' : ''}`;
     const pType = getEnemyPersonality(enemy);
@@ -7098,7 +7098,7 @@ function render() {
     const chIdx = state.pendingStoryAftermath ?? Math.max(0, (state.chapterIndex || 1) - 1);
     const chObj = STORY_CHAPTERS[chIdx] || { title: `제${chIdx + 1}화` };
     const aft = STORY_AFTERMATHS[chIdx] || STORY_AFTERMATHS[0];
-    elLocation.textContent = `📖 제${chIdx + 1}화 완결 · EPISODE AFTERMATH`;
+    elLocation.textContent = `${timeLabel} · 📖 제${chIdx + 1}화 완결 · EPISODE AFTERMATH`;
     elSceneTag.textContent = '후일담';
     elSceneTag.className = 'scene-tag event';
     elSceneTitle.textContent = `🎬 제${chIdx + 1}화 [${chObj.title || ''}] 완결!`;
