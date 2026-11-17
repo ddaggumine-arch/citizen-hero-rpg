@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Serif+KR:wght@500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=84" />
+  <link rel="stylesheet" href="style.css?v=85" />
 </head>
 <body>
   <div class="app-shell">
@@ -21,17 +21,17 @@
             <div class="dday-pill hidden" id="dday-pill">⏳ D-120</div>
           </div>
           <div class="hud-actions">
-            <button class="icon-btn phone-btn" id="btn-phone" title="스마트폰 열기">📱 <span class="phone-badge hidden" id="phone-badge">1</span></button>
-            <button class="icon-btn" id="btn-settings" title="설정 및 메뉴">⚙️</button>
-            <button class="icon-btn" id="btn-inventory" title="가방 열기">🎒 <span id="inv-count">0</span></button>
-            <button class="icon-btn" id="btn-traits" title="보유 특성">✨ <span id="trait-count">0</span></button>
+            <button class="icon-btn phone-btn" id="btn-phone" title="스마트폰 열기"><img src="assets/images/ui/hud_phone.png?v=85" class="ui-icon-sm" alt="폰" /> <span class="phone-badge hidden" id="phone-badge">1</span></button>
+            <button class="icon-btn" id="btn-settings" title="설정 및 메뉴"><img src="assets/images/ui/hud_settings.png?v=85" class="ui-icon-sm" alt="설정" /></button>
+            <button class="icon-btn" id="btn-inventory" title="가방 열기"><img src="assets/images/ui/hud_bag.png?v=85" class="ui-icon-sm" alt="가방" /> <span id="inv-count">0</span></button>
+            <button class="icon-btn" id="btn-traits" title="보유 특성"><img src="assets/images/ui/hud_traits.png?v=85" class="ui-icon-sm" alt="특성" /> <span id="trait-count">0</span></button>
           </div>
         </div>
 
         <div class="stats-grid">
           <div class="stat-box">
             <div class="stat-header">
-              <span>❤️ 인내심</span>
+              <span><img src="assets/images/ui/stat_hp.png?v=85" class="ui-icon-xs" alt="" /> 인내심</span>
               <span id="hp-text">100 / 100</span>
             </div>
             <div class="bar-track">
@@ -41,7 +41,7 @@
 
           <div class="stat-box">
             <div class="stat-header">
-              <span>🫧 사이다</span>
+              <span><img src="assets/images/ui/stat_sp.png?v=85" class="ui-icon-xs" alt="" /> 사이다</span>
               <span id="sp-text">25 / 100</span>
             </div>
             <div class="bar-track">
@@ -53,7 +53,7 @@
             <span title="언변">🗣️<b id="stat-speech">2</b></span>
             <span title="깡다구">🦁<b id="stat-guts">2</b></span>
             <span title="법지식">⚖️<b id="stat-law">2</b></span>
-            <span class="gold-pill" title="도덕점수">🏅<b id="stat-points">0</b></span>
+            <span class="gold-pill" title="도덕점수"><img src="assets/images/ui/stat_points.png?v=85" class="ui-icon-xs" alt="" /><b id="stat-points">0</b></span>
             <span class="mini-sp-dot hidden" id="mini-sp-dot">✨+0</span>
             <span class="mini-help-dot">?</span>
           </div>
@@ -124,12 +124,12 @@
             <div class="map-road-v"></div>
             <div class="map-river">〰️ 한강 〰️</div>
 
-            <div class="map-pin" style="left:17%;top:32%;" data-loc="patrol"><span>🔍</span><small>골목순찰</small></div>
-            <div class="map-pin" style="left:50%;top:31%;" data-loc="work"><span>💼</span><small>알바터</small></div>
-            <div class="map-pin" style="left:83%;top:32%;" data-loc="train"><span>💪</span><small>철봉공원</small></div>
-            <div class="map-pin" style="left:17%;top:63%;" data-loc="heal"><span>🏠</span><small>우리집</small></div>
-            <div class="map-pin" style="left:50%;top:62%;" data-loc="shop"><span>🏪</span><small>24시편의점</small></div>
-            <div class="map-pin" style="left:83%;top:63%;" data-loc="luck"><span>🎲</span><small>오락실</small></div>
+            <div class="map-pin" style="left:17%;top:32%;" data-loc="patrol"><img src="assets/images/ui/pin_patrol.png?v=85" class="map-pin-img" alt="골목순찰" /><small>골목순찰</small></div>
+            <div class="map-pin" style="left:50%;top:31%;" data-loc="work"><img src="assets/images/ui/pin_work.png?v=85" class="map-pin-img" alt="알바터" /><small>알바터</small></div>
+            <div class="map-pin" style="left:83%;top:32%;" data-loc="train"><img src="assets/images/ui/pin_train.png?v=85" class="map-pin-img" alt="철봉공원" /><small>철봉공원</small></div>
+            <div class="map-pin" style="left:17%;top:63%;" data-loc="heal"><img src="assets/images/ui/pin_home.png?v=85" class="map-pin-img" alt="우리집" /><small>우리집</small></div>
+            <div class="map-pin" style="left:50%;top:62%;" data-loc="shop"><img src="assets/images/ui/pin_shop.png?v=85" class="map-pin-img" alt="24시편의점" /><small>24시편의점</small></div>
+            <div class="map-pin" style="left:83%;top:63%;" data-loc="luck"><img src="assets/images/ui/pin_arcade.png?v=85" class="map-pin-img" alt="오락실" /><small>오락실</small></div>
 
             <img id="chibi-walker" class="chibi-walker" src="assets/images/chibi_walk_2.png" alt="이동 캐릭터" />
             <div class="map-boss-strip" id="minimap-bosses"></div>
@@ -322,6 +322,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=84"></script>
+  <script type="module" src="app.js?v=85"></script>
 </body>
 </html>

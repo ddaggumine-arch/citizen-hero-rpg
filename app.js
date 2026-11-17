@@ -846,6 +846,10 @@ function triggerPlayerDamage(dmg) {
   vibrate([100, 40, 100]);
 }
 
+function uiImg(name, cls = 'ui-icon-btn') {
+  return `<img src="assets/images/ui/${name}.png?v=85" class="${cls}" alt="" />`;
+}
+
 function getHeroRankInfo() {
   const w = state.winCount || 0;
   const b = (state.defeatedBossIds || []).length;
@@ -3463,7 +3467,9 @@ function render() {
     ACTIVITY_CATEGORIES.forEach((cat) => {
       const btn = document.createElement('button');
       btn.className = 'choice-btn';
-      btn.innerHTML = `<span>${cat.title}</span><span class="choice-sub">${cat.sub}</span>`;
+      const catIcon = cat.id === 'shop' ? uiImg('pin_shop') : (cat.id === 'luck' ? uiImg('pin_arcade') : '');
+      const catLabel = catIcon ? `${catIcon}${cat.title.replace(/^[^\s]+\s*/, '')}` : cat.title;
+      btn.innerHTML = `<span>${catLabel}</span><span class="choice-sub">${cat.sub}</span>`;
       btn.addEventListener('click', () => {
         sfx.click();
         openActivityModal(cat);
@@ -3481,7 +3487,7 @@ function render() {
       : 'linear-gradient(180deg, #f3f0ea 0%, #e5dfd3 100%)';
     romanceBtn.style.borderColor = romanceUnlocked ? '#d46a92' : '#9c8f7a';
     romanceBtn.innerHTML = romanceUnlocked
-      ? `<span>💘 연애·어학</span><span class="choice-sub" style="color:#9d2d57;">🇯🇵${yukiLove} · 🇺🇸${chloeLove}</span>`
+      ? `<span>${uiImg('menu_romance')}연애·어학</span><span class="choice-sub" style="color:#9d2d57;">🇯🇵${yukiLove} · 🇺🇸${chloeLove}</span>`
       : `<span>🔒 연애·어학 (15화 해금)</span><span class="choice-sub">유키 합류 시 개방</span>`;
     romanceBtn.addEventListener('click', () => {
       if (!romanceUnlocked) {
@@ -3508,7 +3514,7 @@ function render() {
       : 'linear-gradient(180deg, #f3f0ea 0%, #e5dfd3 100%)';
     lifeBtn.style.borderColor = gearUnlocked ? '#5b8c38' : '#9c8f7a';
     lifeBtn.innerHTML = gearUnlocked
-      ? `<span>🐶 펫·🚗 차고·🔧 강화</span><span class="choice-sub" style="color:#37611a;">${petTxt} · ${carTxt}</span>`
+      ? `<span>${uiImg('menu_pet_garage')}펫·차고·강화</span><span class="choice-sub" style="color:#37611a;">${petTxt} · ${carTxt}</span>`
       : `<span>🔒 공방·라이프 (3화 해금)</span><span class="choice-sub">제3화 클리어 시 개방</span>`;
     lifeBtn.addEventListener('click', () => {
       if (!gearUnlocked) {
@@ -3534,7 +3540,7 @@ function render() {
       : 'linear-gradient(180deg, #f3f0ea 0%, #e5dfd3 100%)';
     towerBtn.style.borderColor = towerUnlocked ? '#9e2a2b' : '#9c8f7a';
     towerBtn.innerHTML = towerUnlocked
-      ? `<span>🏢 배틀타워 (최고 ${state.bestTowerFloor || 0}층)</span><span class="choice-sub" style="color:#9e2a2b;">무한 연승 도전 ▶</span>`
+      ? `<span>${uiImg('menu_tower')}배틀타워 (최고 ${state.bestTowerFloor || 0}층)</span><span class="choice-sub" style="color:#9e2a2b;">무한 연승 도전 ▶</span>`
       : `<span>🔒 배틀타워 (24화 해금)</span><span class="choice-sub">4부 총력전 이후 개방</span>`;
     towerBtn.addEventListener('click', () => {
       if (!towerUnlocked) {
@@ -3559,7 +3565,7 @@ function render() {
     spBtn.className = 'choice-btn';
     spBtn.style.background = 'linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%)';
     spBtn.style.borderColor = '#3b82f6';
-    spBtn.innerHTML = `<span>👻 수호정령 (${spiritCount}/${SPIRITS_50.length})</span><span class="choice-sub" style="color:#1e40af;">${eqSp ? `${getSpiritDisplayName(eqSp)} 장착중` : '소환·장착·도감'}</span>`;
+    spBtn.innerHTML = `<span>${uiImg('menu_spirit')}수호정령 (${spiritCount}/${SPIRITS_50.length})</span><span class="choice-sub" style="color:#1e40af;">${eqSp ? `${getSpiritDisplayName(eqSp)} 장착중` : '소환·장착·도감'}</span>`;
     spBtn.addEventListener('click', () => {
       sfx.click();
       openSpiritModal();
@@ -3572,7 +3578,7 @@ function render() {
     distBtn.className = 'choice-btn';
     distBtn.style.background = 'linear-gradient(180deg, #edf6ff 0%, #d8ecff 100%)';
     distBtn.style.borderColor = '#2b6cb0';
-    distBtn.innerHTML = `<span>🏙️ 서울 5대 구역 치안 (${distCleared}/5)</span><span class="choice-sub" style="color:#1e4e8c;">평화구역 영구 버프 & 후원</span>`;
+    distBtn.innerHTML = `<span>${uiImg('menu_districts')}서울 5대 구역 치안 (${distCleared}/5)</span><span class="choice-sub" style="color:#1e4e8c;">평화구역 영구 버프 & 후원</span>`;
     distBtn.addEventListener('click', () => {
       sfx.click();
       openDistrictsModal();
@@ -3590,7 +3596,7 @@ function render() {
     nmBtn.style.borderColor = nmUnlocked ? '#a855f7' : '#9c8f7a';
     if (nmUnlocked) nmBtn.style.color = '#f3e8ff';
     nmBtn.innerHTML = nmUnlocked
-      ? `<span>🌃 심야 마계 보스 러시 (최고 ${state.bestNightmareFloor || 0}층)</span><span class="choice-sub" style="color:#d8b4fe;">보스 연속 격파 · 유니크 드랍↑ ▶</span>`
+      ? `<span>${uiImg('menu_nightmare')}심야 마계 보스 러시 (최고 ${state.bestNightmareFloor || 0}층)</span><span class="choice-sub" style="color:#d8b4fe;">보스 연속 격파 · 유니크 드랍↑ ▶</span>`
       : `<span>🔒 심야 마계 보스 러시 (25화 해금)</span><span class="choice-sub">5부 잠입작전 돌입 시 개방</span>`;
     nmBtn.addEventListener('click', () => {
       if (!nmUnlocked) {

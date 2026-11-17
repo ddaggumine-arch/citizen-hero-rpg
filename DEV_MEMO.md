@@ -5,7 +5,9 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V34.1
+## 현재 최신 버전: V34.2
+- **V34.2**:
+  - **20종 커스텀 웹툰 RPG UI & 미니맵 핀 아이콘 전면 적용 (`assets/images/ui/*.png`, `index.html`, `style.css`, `app.js`)**: 서울 미니맵 핀 6종(`골목순찰/알바터/철봉공원/우리집/24시편의점/오락실`), 상단 HUD 4종(`예절폰/설정/가방/특성`), 스탯 아이콘 3종(`인내심/사이다/도덕P`), 맵 허브 메뉴 7종(`편의점/오락실/연애/펫·차고/배틀타워/수호정령/5대구역/마계보스러시`)을 투명 PNG 웹툰 아이콘으로 교체 (`?v=85`)
 - **V34.1**:
   - **3대 특수기(사이다 필살기·채증 셔터·합동 궁극기) 역할 분화 및 대폭 상향 (`performAttack`, `snapBtn`, `performTagSkill`)**:
     - `📸 채증 셔터`: 각성/초월 배율·장비·정령 공 정상 반영 + PERFECT 시 **가드 2칸 파쇄 + 철벽 변명 해제 + 적 약점 노출(다음 공격 1.4배)** + 사이다+25
