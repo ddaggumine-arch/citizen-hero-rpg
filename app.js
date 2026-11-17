@@ -4971,11 +4971,39 @@ function render() {
 
     elBattleLog.textContent = ars.mgDone && ars.mgResultText ? ars.mgResultText : sc.text;
 
+    const finishEpisode = (replyText = '') => {
+      sfx.victory();
+      advanceDailyQuest('care', 1);
+      if (!state.romanceStory) state.romanceStory = { yuki: { ep: 0, cleared: false }, chloe: { ep: 0, cleared: false } };
+      if (!state.lovers) state.lovers = [];
+      if (!state.someCleared) state.someCleared = { yuki: false, chloe: false };
+      const st = state.romanceStory[hKey];
+      if (epObj.ep > st.ep) st.ep = epObj.ep;
+      if (epObj.ep >= arr.length) {
+        st.cleared = true;
+        state.someCleared[hKey] = true;
+        if (!state.lovers.includes(hKey)) state.lovers.push(hKey);
+        showToast(`💖 [${hName} 연애 스토리 20화 완결!!] 정식 연인 & 자유 데이트 해금!`, 'break');
+      } else {
+        showToast(`💕 ${hName} ${epObj.ep}화 클리어!`, 'good');
+      }
+      state.activeRomanceStory = { heroine: hKey, epIdx: ars.epIdx, reply: replyText };
+      state.phase = 'romance_epilogue';
+      saveGame();
+      render();
+    };
+
     if (!sc.choices) {
       const nxtBtn = document.createElement('button');
       nxtBtn.className = 'choice-btn primary';
-      nxtBtn.innerHTML = `<span class="choice-title">다음 장면으로 ▶</span><span class="choice-sub">${epObj.title} (${scIdx + 1}/${epObj.scenes.length})</span>`;
+      nxtBtn.innerHTML = isFinalScene
+        ? `<span class="choice-title">🌙 제${epObj.ep}화 마무리하기 ▶</span><span class="choice-sub">아련한 여운 & 다음 화 예고 보기</span>`
+        : `<span class="choice-title">다음 장면으로 ▶</span><span class="choice-sub">${epObj.title} (${scIdx + 1}/${epObj.scenes.length})</span>`;
       nxtBtn.addEventListener('click', () => {
+        if (isFinalScene) {
+          finishEpisode('');
+          return;
+        }
         sfx.click();
         state.activeRomanceStory = { heroine: hKey, epIdx: ars.epIdx, sceneIdx: scIdx + 1 };
         render();
@@ -4996,22 +5024,7 @@ function render() {
             render();
             return;
           }
-          sfx.victory();
-          advanceDailyQuest('care', 1);
-          const st = state.romanceStory[hKey];
-          if (epObj.ep > st.ep) st.ep = epObj.ep;
-          if (epObj.ep >= arr.length) {
-            st.cleared = true;
-            state.someCleared[hKey] = true;
-            if (!state.lovers.includes(hKey)) state.lovers.push(hKey);
-            showToast(`💖 [${hName} 연애 스토리 20화 완결!!] 정식 연인 & 자유 데이트 해금!`, 'break');
-          } else {
-            showToast(`💕 ${hName} ${epObj.ep}화 클리어! (호감도 +${ch.love})`, 'good');
-          }
-          state.activeRomanceStory = { heroine: hKey, epIdx: ars.epIdx, reply: ch.reply };
-          state.phase = 'romance_epilogue';
-          saveGame();
-          render();
+          finishEpisode(ch.reply);
         });
         elChoicesPanel.appendChild(cb);
       });
