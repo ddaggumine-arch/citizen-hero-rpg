@@ -46,6 +46,22 @@ export const ITEMS = {
     useEffect: { sp: 65, hp: 25, tempDmg: 12 },
     price: 30,
   },
+  throat_candy: {
+    id: 'throat_candy',
+    name: '🍬 영웅의 목캔디',
+    desc: '전 기술 PP +4 회복 + 사이다 +10! (소모품)',
+    consumable: true,
+    useEffect: { ppAll: 4, sp: 10 },
+    price: 35,
+  },
+  ssanghwatang: {
+    id: 'ssanghwatang',
+    name: '🍵 특제 쌍화탕',
+    desc: '전 기술 PP 100% 완충 + 인내심 +50 + 사이다 +25! (소모품)',
+    consumable: true,
+    useEffect: { ppAll: 99, hp: 50, sp: 25 },
+    price: 110,
+  },
 };
 
 export const TRAITS = [

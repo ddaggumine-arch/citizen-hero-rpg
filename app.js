@@ -1,4 +1,5 @@
-import { TIME_SLOTS, ITEMS, TRAITS, VILLAINS, BOSSES, HIDDEN_BOSS, WEATHERS, RANDOM_EVENTS, STORY_MESSAGES } from './data/gameData.js?v=98';
+import { TIME_SLOTS, ITEMS, TRAITS, VILLAINS, BOSSES, HIDDEN_BOSS, WEATHERS, RANDOM_EVENTS, STORY_MESSAGES } from './data/gameData.js?v=111';
+import { SKILLS_100, getSkillById, getUnlockedSkillsForLevel } from './data/skills100.js?v=111';
 import { KOREA_ACTS, REGIONAL_GOODS, RUNE_STONES, ACT_VILLAINS, ACT_STORY_EPISODES, ACT_PIN_LABELS, RELAY_QUESTS } from './data/koreaActs.js?v=109';
 import { STORY_CHAPTERS } from './data/storyChapters.js?v=48';
 import { ACTIVITY_CATEGORIES } from './data/activities.js?v=48';
@@ -254,6 +255,8 @@ function createNewGameState() {
     freeGtxPass: false,
     activeActStory: null,
     pendingActAftermath: null,
+    equippedSkills: { speech: 'sk_speech_1', guts: 'sk_guts_1', law: 'sk_law_1', snap: 'sk_snap_1' },
+    unlockedSkills: ['sk_speech_1', 'sk_guts_1', 'sk_law_1', 'sk_snap_1'],
   };
 }
 
@@ -1041,8 +1044,11 @@ function gainHeroExp(amount) {
   }
   if (state.level >= 50) state.exp = 0;
   if (ups > 0) {
+    ensureSkillsState();
+    const newSkills = getUnlockedSkillsForLevel(state.level).filter((s) => !state.unlockedSkills.includes(s.id));
+    newSkills.forEach((s) => state.unlockedSkills.push(s.id));
     sfx.powerup();
-    showToast(`🎉 LEVEL UP! Lv.${state.level} [${getHeroRankTitle(state.level)}] (+스킬P ${ups * 2})`, 'good');
+    showToast(`🎉 LEVEL UP! Lv.${state.level} [${getHeroRankTitle(state.level)}]${newSkills.length ? ` · ⚡새 기술 ${newSkills.length}종 습득!` : ''}`, 'good');
   }
   return ups;
 }
@@ -1054,7 +1060,25 @@ const ENEMY_MODIFIERS = [
   { id: 'swift', label: '⚡ 민첩한', hpMult: 1.08, atkMult: 1.18, rewardMult: 1.3, expMult: 1.25 },
 ];
 
+function ensureSkillsState() {
+  if (!state.equippedSkills) state.equippedSkills = { speech: 'sk_speech_1', guts: 'sk_guts_1', law: 'sk_law_1', snap: 'sk_snap_1' };
+  const unlocked = getUnlockedSkillsForLevel(state.level || 1).map((s) => s.id);
+  state.unlockedSkills = Array.from(new Set([...(state.unlockedSkills || []), ...unlocked]));
+}
+
+function getEquippedSkill(slot) {
+  ensureSkillsState();
+  const id = state.equippedSkills?.[slot] || `sk_${slot}_1`;
+  return getSkillById(id) || getSkillById(`sk_${slot}_1`);
+}
+
 function getMaxSkillPp(type) {
+  const eqSk = ['speech', 'guts', 'law', 'snap'].includes(type) ? getEquippedSkill(type) : null;
+  if (eqSk) {
+    const s = state.stats || { speech: 2, guts: 2, law: 2 };
+    const statVal = type === 'speech' ? s.speech : (type === 'guts' ? s.guts : s.law);
+    return (eqSk.maxPp || 10) + ((statVal || 0) >= 50 ? 4 : (statVal || 0) >= 25 ? 2 : 0);
+  }
   const s = state.stats || { speech: 2, guts: 2, law: 2 };
   if (type === 'speech') return 12 + ((s.speech || 0) >= 50 ? 6 : (s.speech || 0) >= 25 ? 3 : 0);
   if (type === 'guts') return 10 + ((s.guts || 0) >= 50 ? 6 : (s.guts || 0) >= 25 ? 3 : 0);
@@ -2383,7 +2407,7 @@ function getSkillEvolution(type) {
   return { title: '🫧 사이다 필살', dmgMult: 1.0, healPct: 0, tier: 1 };
 }
 
-function performAttack(type) {
+function performAttack(type, ultPerfect = false) {
   playHeroAnim('attack');
   const enemy = getEnemyById(state.currentEnemyId);
   const rep = getReputationInfo();
@@ -2411,7 +2435,7 @@ function performAttack(type) {
   const baseSpCost = isFever ? 20 : 40;
   const spCost = spBonCost.perkId === 'sp_saver' ? Math.round(baseSpCost * 0.75) : baseSpCost;
   const ppMap = ensureSkillPp();
-  if (['speech', 'guts', 'law'].includes(type)) {
+  if (['speech', 'guts', 'law', 'snap'].includes(type)) {
     if ((ppMap[type] ?? getMaxSkillPp(type)) <= 0) return;
     ppMap[type] = Math.max(0, (ppMap[type] ?? getMaxSkillPp(type)) - 1);
   }
@@ -2472,6 +2496,55 @@ function performAttack(type) {
     state.lawful += 8;
     if (evo.healPct) state.hp = clamp(state.hp + Math.round(state.maxHp * evo.healPct), 1, state.maxHp);
     state.log = `${evo.title}! 112·보건소 신고 + 공개 참교육!! (멘탈 -${dmg} · 상성무시 치명 & 기절!)`;
+  } else if (type === 'snap') {
+    const base = 22 + state.stats.law * 4.0 + state.bonusDmg + allyFirstBonus + eqBonus.atk;
+    const isWeak = isFever || matchup.isUp || enemy.weakness === 'snap';
+    hitWeakness = isWeak;
+    const critRoll = isFever || Math.random() < (0.20 + state.critBonus + chloeCrit);
+    dmg = Math.round(base * (evo.dmgMult || 1) * matchup.mult * (critRoll ? 1.5 : 1));
+    isCrit = isWeak || critRoll;
+    state.pendingReports = (state.pendingReports || 0) + 1;
+    state.sp = clamp(state.sp + 12, 0, state.maxSp);
+    state.log = `${getEquippedSkill('snap').name}! (적 멘탈 -${dmg} · 채증+1 · 사이다+12)`;
+  }
+
+  // V44.0: 궁극기(사이다 필살기) 타이밍 보너스 (옵션 B)
+  if (type === 'special' && ultPerfect) {
+    dmg = Math.round(dmg * 1.45);
+    state.enemyGuardShield = Math.max(0, (state.enemyGuardShield ?? 3) - 2);
+    addFever(25);
+    state.log += `\n✨ [PERFECT 궁극기!!] 1.45배 극딜 + 가드 2칸 파쇄!`;
+  }
+
+  // V44.0: 100종 장착 스킬 고유기 & 배율 적용
+  if (['speech', 'guts', 'law', 'snap'].includes(type)) {
+    const eqSk = getEquippedSkill(type);
+    if (eqSk) {
+      const m = eqSk.mech;
+      let skMult = eqSk.mult || 1.0;
+      if (m === 'armor_pierce' && matchup.mult < 1) {
+        dmg = Math.round(dmg / Math.max(0.5, matchup.mult));
+        state.log += ' · 🗡️방어관통!';
+      }
+      if (m === 'low_hp') {
+        const missPct = 1 - (state.hp / Math.max(1, state.maxHp));
+        skMult *= (1 + missPct * 0.8);
+      }
+      if (m === 'crit_high' && Math.random() < 0.35) {
+        skMult *= 1.35;
+        isCrit = true;
+        state.log += ' · ⚡초치명!';
+      }
+      dmg = Math.round(dmg * skMult);
+      if (m === 'sp_drain') { state.sp = clamp(state.sp + 24, 0, state.maxSp); state.log += ' · 🫧사이다+24'; }
+      else if (m === 'guard_break') { state.enemyGuardShield = Math.max(0, (state.enemyGuardShield ?? 3) - 2); state.log += ' · 🛡️가드-2'; }
+      else if (m === 'vamp') { const vh = Math.max(5, Math.round(dmg * 0.35)); state.hp = clamp(state.hp + vh, 1, state.maxHp); state.log += ` · 🩸흡혈+${vh}`; }
+      else if (m === 'stun' && Math.random() < 0.55) { state.enemyStunned = true; state.log += ' · 💫기절!'; }
+      else if (m === 'expose') { state.snapExposed = true; state.log += ' · 🎯약점노출!'; }
+      else if (m === 'weaken') { state.currentEnemyAtk = Math.max(5, Math.round((state.currentEnemyAtk || enemy.atk || 14) * 0.85)); state.log += ' · 📉적공격↓'; }
+      else if (m === 'gold_farm') { state.points += 15; state.log += ' · 💰+15P'; }
+      else if (m === 'fever_up') { addFever(30); state.log += ' · ⚡피버+30%'; }
+    }
   }
   const setAtkMult = 1 + (getGearSetSynergy().atkPct || 0);
   const spBonAtk = getSpiritBonuses();
@@ -2638,8 +2711,9 @@ function useItem(itemId, invIndex) {
     if (item.useEffect.sp) state.sp = clamp(state.sp + Math.round(item.useEffect.sp * heatMult), 0, state.maxSp);
     if (item.useEffect.tempDmg) state.sodaBuffDmg = (state.sodaBuffDmg || 0) + Math.round(item.useEffect.tempDmg * heatMult);
     state.inventory.splice(invIndex, 1);
-    restoreSkillPp(2);
-    state.log = `[${item.name}]을(를) 사용했습니다!${heatMult > 1 ? ' 🔥(폭염 보너스 1.5배!)' : ''} 기운이 펄펄 솟아납니다! (전 기술 PP +2)`;
+    const ppGain = item.useEffect.ppAll || 2;
+    restoreSkillPp(ppGain);
+    state.log = `[${item.name}]을(를) 사용했습니다!${heatMult > 1 ? ' 🔥(폭염 보너스 1.5배!)' : ''} 기운이 펄펄 솟아납니다! (전 기술 PP +${ppGain >= 99 ? '100%' : ppGain})`;
     elInvModal.classList.add('hidden');
     saveGame();
     render();
@@ -3797,6 +3871,15 @@ function render() {
         openOblivionSheetModal();
       });
       elActivityList.appendChild(obBtn);
+
+      const skDeckBtn = document.createElement('button');
+      skDeckBtn.className = 'activity-item-btn';
+      skDeckBtn.innerHTML = `<div class="act-title">⚡ 100종 스킬 덱 교체 (${(state.unlockedSkills || []).length}/100 해금)</div><div class="act-desc">레벨업으로 습득한 고유 기술을 4슬롯에 자유롭게 장착!</div>`;
+      skDeckBtn.addEventListener('click', () => {
+        sfx.click();
+        openSkillEquipModal('speech');
+      });
+      elActivityList.appendChild(skDeckBtn);
 
       const lifeItem = document.createElement('button');
       lifeItem.className = 'activity-item-btn';
@@ -6272,6 +6355,8 @@ function render() {
     const shopItems = [
       { id: 'cheongsimhwan', label: '💊 우황청심환 (최대HP 45%+사이다15)', cost: 35 },
       { id: 'cold_soda', label: '🫧 칠성사이다 캔 (사이다65+HP25+공격12)', cost: 30 },
+      { id: 'throat_candy', label: '🍬 영웅의 목캔디 (전 기술 PP+4 · 사이다10)', cost: 35 },
+      { id: 'ssanghwatang', label: '🍵 특제 쌍화탕 (전 기술 PP100%+HP50+SP25)', cost: 110 },
     ];
     ['water_gun', 'megaphone', 'mirror'].forEach((eqId) => {
       if (!state.inventory.includes(eqId)) {
@@ -6601,25 +6686,25 @@ function render() {
 
     const skills = [
       {
-        title: `${uiImg('skill_fact')}${getSkillEvolution('speech').title.replace(/^[^\s]+\s*/, '')}`,
+        title: `${uiImg('skill_fact')}${getEquippedSkill('speech').name}`,
         ppKey: 'speech',
-        sub: muSpeech.tag || `언변 ${state.stats.speech} 기반`,
+        sub: muSpeech.tag ? `${muSpeech.tag} · ${getEquippedSkill('speech').mechTag}` : `${getEquippedSkill('speech').mechTag}`,
         subClass: muSpeech.cls,
         disabled: (ppMap.speech ?? 1) <= 0,
         action: () => performAttack('speech'),
       },
       {
-        title: `${uiImg('skill_mirror')}${getSkillEvolution('guts').title.replace(/^[^\s]+\s*/, '')}`,
+        title: `${uiImg('skill_mirror')}${getEquippedSkill('guts').name}`,
         ppKey: 'guts',
-        sub: muGuts.tag ? `${muGuts.tag} · 사이다↑` : '사이다+15 · 광인↑',
+        sub: muGuts.tag ? `${muGuts.tag} · ${getEquippedSkill('guts').mechTag}` : `${getEquippedSkill('guts').mechTag} · 사이다↑`,
         subClass: muGuts.cls,
         disabled: (ppMap.guts ?? 1) <= 0,
         action: () => performAttack('guts'),
       },
       {
-        title: `${uiImg('skill_law')}${getSkillEvolution('law').title.replace(/^[^\s]+\s*/, '')}`,
+        title: `${uiImg('skill_law')}${getEquippedSkill('law').name}`,
         ppKey: 'law',
-        sub: muLaw.tag ? `${muLaw.tag} · 🎲12+ 기절` : `🎲 12+ 기절 (+${lawBonus})`,
+        sub: muLaw.tag ? `${muLaw.tag} · ${getEquippedSkill('law').mechTag}` : `${getEquippedSkill('law').mechTag} · 🎲12+ 기절`,
         subClass: muLaw.cls,
         disabled: (ppMap.law ?? 1) <= 0,
         action: () => performAttack('law'),
@@ -6632,7 +6717,7 @@ function render() {
           : `사이다 부족 (${state.sp}/${(state.feverTurns || 0) > 0 ? 20 : 40})`,
         subClass: muSpec.isUp ? 'weak' : 'sp',
         disabled: state.sp < ((state.feverTurns || 0) > 0 ? 20 : 40),
-        action: () => performAttack('special'),
+        action: () => { sfx.click(); startTimingMinigame((isPerfect) => performAttack('special', isPerfect)); },
       },
     ];
 
@@ -6653,7 +6738,10 @@ function render() {
     snapBtn.className = 'choice-btn';
     const snapPp = ppMap.snap ?? getMaxSkillPp('snap');
     snapBtn.disabled = snapPp <= 0;
-    snapBtn.innerHTML = `<span class="skill-top-row"><span>${uiImg('skill_snap')}채증 셔터</span>${mkPpHtml('snap')}</span><span class="choice-sub ${muSnap.cls}">${snapPp <= 0 ? '횟수 소진 (휴식/아이템 복구)' : (muSnap.tag ? `${muSnap.tag} · 가드2칸+약점` : '타이밍 1.65배 · 가드2칸')}</span>`;
+    const skSnap = getEquippedSkill('snap');
+    snapBtn.innerHTML = `<span class="skill-top-row"><span>${uiImg('skill_snap')}${skSnap.name}</span>${mkPpHtml('snap')}</span><span class="choice-sub ${muSnap.cls}">${snapPp <= 0 ? '횟수 소진 (휴식/아이템 복구)' : (muSnap.tag ? `${muSnap.tag} · ${skSnap.mechTag}` : `${skSnap.mechTag} · 즉시 발동 + 채증+1`)}</span>`;
+    snapBtn.addEventListener('click', () => performAttack('snap'));
+    if (false) {
     snapBtn.addEventListener('click', () => {
       const curPp = ensureSkillPp();
       if ((curPp.snap ?? 1) <= 0) return;
@@ -6701,6 +6789,7 @@ function render() {
         else enemyCounterTurn(enemy, false);
       });
     });
+    }
     elChoicesPanel.appendChild(snapBtn);
 
     const tagBtn = document.createElement('button');
@@ -10440,6 +10529,70 @@ function openRelayModal() {
     }
     elActivityList.appendChild(btn);
   });
+}
+
+// ============================================================
+// V44.0: 100종 스킬 도감 & 4슬롯 자유 교체 모달
+// ============================================================
+function openSkillEquipModal(activeTab = 'speech') {
+  ensureSkillsState();
+  elActivityModalTitle.textContent = `⚡ 100종 스킬 덱 (${state.unlockedSkills.length}/100 해금)`;
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+
+  const eq = state.equippedSkills;
+  const curSummary = [
+    `🗣️ ${getEquippedSkill('speech').name}`,
+    `🥊 ${getEquippedSkill('guts').name}`,
+    `⚖️ ${getEquippedSkill('law').name}`,
+    `📸 ${getEquippedSkill('snap').name}`,
+  ].join(' | ');
+  const banner = document.createElement('div');
+  banner.className = 'oblivion-banner';
+  banner.innerHTML = `<b>현재 장착 4슬롯:</b><br>${curSummary}`;
+  elActivityList.appendChild(banner);
+
+  const tabs = document.createElement('div');
+  tabs.className = 'gear-tabs';
+  [
+    { id: 'speech', label: '🗣️ 언변(25)' },
+    { id: 'guts', label: '🥊 깡다구(25)' },
+    { id: 'law', label: '⚖️ 법질서(25)' },
+    { id: 'snap', label: '📸 채증(25)' },
+  ].forEach((t) => {
+    const tb = document.createElement('button');
+    tb.className = `gear-tab${activeTab === t.id ? ' active' : ''}`;
+    tb.textContent = t.label;
+    tb.addEventListener('click', () => { sfx.click(); openSkillEquipModal(t.id); });
+    tabs.appendChild(tb);
+  });
+  elActivityList.appendChild(tabs);
+
+  const list = SKILLS_100.filter((s) => s.slot === activeTab);
+  list.forEach((sk) => {
+    const unlocked = state.unlockedSkills.includes(sk.id);
+    const isEquipped = eq[sk.slot] === sk.id;
+    const row = document.createElement('div');
+    row.className = 'inv-item';
+    row.style.opacity = unlocked ? '1' : '0.6';
+    row.innerHTML = `<div class="inv-info"><h4>${isEquipped ? '✅ ' : ''}${sk.name} <span style="font-size:0.72rem;color:#0369a1;">(해금 Lv.${sk.reqLv} · 위력×${sk.mult} · PP ${sk.maxPp})</span></h4><p>${sk.desc}</p></div>`;
+    const btn = document.createElement('button');
+    btn.className = 'use-btn';
+    btn.disabled = !unlocked || isEquipped;
+    btn.textContent = !unlocked ? `🔒Lv.${sk.reqLv}` : (isEquipped ? '장착중' : '장착');
+    btn.addEventListener('click', () => {
+      state.equippedSkills[sk.slot] = sk.id;
+      if (state.skillPp) state.skillPp[sk.slot] = Math.min(state.skillPp[sk.slot] ?? sk.maxPp, getMaxSkillPp(sk.slot));
+      sfx.powerup();
+      showToast(`⚡ [${sk.name}] 장착 완료!`, 'good');
+      saveGame();
+      openSkillEquipModal(activeTab);
+    });
+    row.appendChild(btn);
+    elActivityList.appendChild(row);
+  });
+
+  elActivityModal.classList.remove('hidden');
 }
 
 if (elSeoulMinimap && !elSeoulMinimap.dataset.pinBound) {
