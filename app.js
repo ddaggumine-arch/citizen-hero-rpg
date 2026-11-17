@@ -1,5 +1,5 @@
 import { TIME_SLOTS, ITEMS, TRAITS, VILLAINS, BOSSES, HIDDEN_BOSS, WEATHERS, RANDOM_EVENTS, STORY_MESSAGES } from './data/gameData.js?v=98';
-import { KOREA_ACTS, REGIONAL_GOODS, RUNE_STONES, ACT_VILLAINS, ACT_STORY_EPISODES } from './data/koreaActs.js?v=101';
+import { KOREA_ACTS, REGIONAL_GOODS, RUNE_STONES, ACT_VILLAINS, ACT_STORY_EPISODES } from './data/koreaActs.js?v=102';
 import { STORY_CHAPTERS } from './data/storyChapters.js?v=48';
 import { ACTIVITY_CATEGORIES } from './data/activities.js?v=48';
 import { MINI_EVENTS, ENEMY_INTENTS, createFeedForVictory } from './data/liveEvents.js';
@@ -1329,7 +1329,7 @@ function setStageBg(bgFile) {
 function showEnemyVisual(enemy) {
   elSceneCard.classList.add('hidden');
   if (enemy.image) {
-    const isPngSprite = enemy.image.endsWith('.png');
+    const isPngSprite = enemy.image.includes('.png');
     elSceneImage.src = enemy.image;
     elSceneImage.classList.remove('hidden');
     elSceneImage.classList.toggle('enemy-sprite', isPngSprite);
@@ -1344,8 +1344,15 @@ function showEnemyVisual(enemy) {
       } else if (isBoss) {
         setStageBg('bg_boss_normal.jpg');
       } else {
-        const dId = enemy.district || getDistrictIdForEnemy(enemy.id) || 'mapo';
-        setStageBg(`bg_${dId}.jpg`);
+        if (enemy.actId && ['jeonju', 'pyeongtaek', 'dongtan', 'incheon'].includes(enemy.actId) && elFrame) {
+          elFrame.style.backgroundImage = `url('assets/images/ui/bg_${enemy.actId}.jpg?v=102')`;
+          elFrame.style.backgroundSize = 'cover';
+          elFrame.style.backgroundPosition = 'center';
+        } else {
+          const dId = enemy.district || getDistrictIdForEnemy(enemy.id) || 'mapo';
+          setStageBg(`bg_${dId}.jpg`);
+        }
+
       }
     } else {
       setStageBg(null);
@@ -1727,11 +1734,11 @@ function startBattle(enemyId, isRandomEncounter = false) {
   const minZoneLv = distInfo?.minLv || 1;
   const maxZoneLv = distInfo?.maxLv || 50;
   // 랜덤 인카운터는 주인공 현재 레벨(-1 ~ +2)에 맞춤, 구역 지정 출동은 해당 구역 티어 유지
-  const enemyLv = isBossEnemy
+  const enemyLv = baseEnemy.fixedLv ? baseEnemy.fixedLv : (isBossEnemy
     ? Math.max(heroLv, Math.min(50, Math.round((state.chapterIndex || 0) * 1.65) + 2))
     : (isRandomEncounter
       ? Math.max(1, Math.min(50, heroLv + Math.floor(Math.random() * 3) - 1))
-      : Math.max(minZoneLv, Math.min(maxZoneLv + Math.floor(Math.max(0, heroLv - maxZoneLv) * 0.55), heroLv + Math.max(0, minZoneLv - heroLv))));
+      : Math.max(minZoneLv, Math.min(maxZoneLv + Math.floor(Math.max(0, heroLv - maxZoneLv) * 0.55), heroLv + Math.max(0, minZoneLv - heroLv)))));
 
   const lvScale = 1 + Math.max(0, enemyLv - 1) * 0.115;
   const atkScale = 1 + Math.max(0, enemyLv - 1) * 0.085;
@@ -2077,6 +2084,11 @@ function handleEnemyDefeated(enemy) {
   const enemyLv = state.currentEnemyLv || enemy.lv || state.level || 1;
   rollGearDrop(isBossId(enemy.id) || enemy.id === HIDDEN_BOSS.id, enemyLv);
   rollSpiritEncounter(isBossId(enemy.id) || enemy.id === HIDDEN_BOSS.id, enemyLv);
+  if (enemy.actId && enemy.actEp) {
+    if (!state.actStoryStep) state.actStoryStep = {};
+    state.actStoryStep[enemy.actId] = Math.max(state.actStoryStep[enemy.actId] || 0, enemy.actEp);
+    showToast(`📖 [${enemy.location}] 클리어!`, 'good');
+  }
   if (enemy.isActBoss && enemy.actId) {
     if (!Array.isArray(state.clearedActs)) state.clearedActs = [];
     if (!state.clearedActs.includes(enemy.actId)) {
@@ -3605,6 +3617,24 @@ function render() {
       openKoreaWorldModal();
     });
     elChoicesPanel.appendChild(actBanner);
+    const guideAct = KOREA_ACTS.find((a) => !state.clearedActs.includes(a.id) && a.id !== 'seoul') || curAct;
+    const guideEps = ACT_STORY_EPISODES[guideAct.id] || [];
+    const guideStep = state.actStoryStep?.[guideAct.id] || 0;
+    const guideEp = guideEps[Math.min(guideStep, Math.max(0, guideEps.length - 1))];
+    if (guideEp && guideAct.id !== 'seoul' && guideStep < guideEps.length) {
+      const gBtn = document.createElement('button');
+      gBtn.className = 'choice-btn row-btn';
+      gBtn.style.gridColumn = 'span 2';
+      gBtn.style.background = 'linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%)';
+      gBtn.style.borderColor = '#d97706';
+      gBtn.innerHTML = `<span>📌 [다음 목표] ${guideAct.name} ${guideEp.ep || 1}/${guideEps.length}화</span><span class="choice-sub" style="color:#b45309;">추천 Lv.${guideEp.recLv || 1} (내 Lv.${state.level || 1}) · 진행 ▶</span>`;
+      gBtn.addEventListener('click', () => {
+        sfx.click();
+        state.currentAct = guideAct.id;
+        openActStoryModal(guideAct.id);
+      });
+      elChoicesPanel.appendChild(gBtn);
+    }
 
     // V36.0: 4대 핵심 허브 (2×2 그리드) + 모달 내 6대 활동/전투 통합
     function openCombatHubModal() {
@@ -9803,7 +9833,12 @@ function openActStoryModal(actId) {
   const eps = ACT_STORY_EPISODES[actId] || ACT_STORY_EPISODES.seoul;
   const step = Math.min(state.actStoryStep[actId] || 0, eps.length - 1);
   const ep = eps[step];
-  elActivityModalTitle.textContent = ep.title;
+  const curActObj = KOREA_ACTS.find((a) => a.id === actId);
+  if (elActivityModalImg && curActObj?.bg) {
+    elActivityModalImg.src = curActObj.bg;
+    elActivityModalImg.classList.remove('hidden');
+  }
+  elActivityModalTitle.textContent = `${ep.title} (${step + 1}/${eps.length}화)`;
   elActivityList.innerHTML = '';
 
   const banner = document.createElement('div');
@@ -9814,12 +9849,13 @@ function openActStoryModal(actId) {
   if (ep.battleBossId) {
     const bBtn = document.createElement('button');
     bBtn.className = 'activity-item-btn';
-    bBtn.innerHTML = `<div class="act-title">⚔️ 지역 보스 결전 돌입!</div><div class="act-desc">승리 시 지역 영구 버프 + 지역 정령석 획득!</div>`;
+    bBtn.innerHTML = `<div class="act-title">${ep.isBoss ? '👑 지역 보스 결전 돌입!!' : `⚔️ 제${ep.ep || step + 1}화 빌런 참교육 시작!`}</div><div class="act-desc">추천 Lv.${ep.recLv || 1} (내 Lv.${state.level || 1}) · 승리 시 다음 화 해금!</div>`;
     bBtn.addEventListener('click', () => {
       elActivityModal.classList.add('hidden');
       startBattle(ep.battleBossId);
     });
     elActivityList.appendChild(bBtn);
+    elActivityModal.classList.remove('hidden');
   } else if (ep.choices) {
     ep.choices.forEach((ch) => {
       const cBtn = document.createElement('button');

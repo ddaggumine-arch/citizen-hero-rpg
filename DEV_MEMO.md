@@ -5,7 +5,14 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V40.0
+## 현재 최신 버전: V41.0 (GitHub Pages 배포됨)
+- **V41.0 (`?v=102`)**:
+  - **50화 전국 액트 스토리 + 40종 신규 컷팅 스프라이트 + 4종 지역 배경 조립 완료 (`data/koreaActs.js`, `app.js`)**:
+    - 전주(5화 · 추천 Lv.1~5) → 평택(10화 · 추천 Lv.6~14) → 동탄(15화 · 추천 Lv.15~25) → 마계 인천(20화 · 추천 Lv.26~40) → 서울(기존 30화) = **총 80화**!
+    - 챗GPT 시트 1, 2, 4, 5에서 **40명 자동 10등분 크롭 + 투명 PNG** 변환 (`assets/images/acts/act_s*_*.png`) + 2×2 배경 시트에서 **4개 지역 배경 (`bg_jeonju.jpg`, `bg_pyeongtaek.jpg`, `bg_dongtan.jpg`, `bg_incheon.jpg`)** 컷팅 후 전투/스토리 모달에 연동!
+    - 맵 상단 **`📌 [다음 목표]`** 네비게이션 배너에 현재 화수 + 추천 레벨(`추천 Lv.X / 내 Lv.Y`) 표기 및 `startBattle`에 `fixedLv` 기반 점진적 난이도 곡선 적용! *(※ 참고: 시트 3 동탄 6~15화는 시트 2가 중복 업로드되어 임시 스프라이트 매핑 상태, 시트 3 업로드 시 즉시 교체 예정)*
+- **V40.1**:
+  - **5대 액트 빌런/보스 8종 `NaN/NaN` 체력 & 스프라이트 경로 수정 (`data/koreaActs.js`, `app.js`)**: `maxHp`/`image`/`weakness`/`defeatQuote` 스키마 통일 및 `startBattle` 방어 코드 추가 (`?v=101`).
 - **V40.0**:
   - **전국 5대 액트 대장정 (`data/koreaActs.js`, `app.js`)**: `Act 1 전주` → `Act 2 평택` → `Act 3 동탄` → `Act 4 마계 인천` → `Act 5 서울` 5대 지역 이동·액트 스토리·지역 보스전 및 영구 버프!
   - **손 많이 가는 4대 파고들기 시스템**:
