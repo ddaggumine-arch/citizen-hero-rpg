@@ -205,6 +205,57 @@ Object.entries(RAW_ROSTER).forEach(([actId, list]) => {
   });
 });
 
+export const ACT_PIN_LABELS = {
+  jeonju: { patrol: '한옥순찰', work: '비빔알바', train: '전주천', heal: '전주숙소', shop: '한옥상점', luck: '야시장', landmark: '🏯', river: '〰️ 전주천 〰️' },
+  pyeongtaek: { patrol: '항구순찰', work: '기지알바', train: '부두공원', heal: '평택숙소', shop: '24시편의점', luck: '역오락실', landmark: '⚓', river: '〰️ 평택항 〰️' },
+  dongtan: { patrol: '신도시순찰', work: '카페알바', train: '호수공원', heal: '동탄숙소', shop: '동탄마트', luck: '메타오락실', landmark: '🏙️', river: '〰️ 동탄호수 〰️' },
+  incheon: { patrol: '부평순찰', work: '차이나알바', train: '월미공원', heal: '인천아지트', shop: '뒷문암시장', luck: '디스코오락실', landmark: '🎡', river: '〰️ 월미바다 〰️' },
+  seoul: { patrol: '골목순찰', work: '알바터', train: '철봉공원', heal: '우리집', shop: '24시편의점', luck: '오락실', landmark: '🗼', river: '〰️ 한강 〰️' },
+};
+
+export const RELAY_QUESTS = [
+  {
+    id: 'relay_jj_ic',
+    title: '🌶️ 전주 → 😈 인천: 전설의 비법 고추장 배달',
+    from: 'jeonju',
+    to: 'incheon',
+    itemName: '전주 100년 비법 고추장',
+    rewardDesc: '불지옥 엘릭서 2개 + 공격력 +3 + 120P',
+    rewardPoints: 120,
+    rewardAtk: 3,
+  },
+  {
+    id: 'relay_pt_dt',
+    title: '🔧 평택 → 🏙️ 동탄: 수입 소음차단 부품 납품',
+    from: 'pyeongtaek',
+    to: 'dongtan',
+    itemName: '평택항 특수 방음 모듈',
+    rewardDesc: '방어력 +4 + 최대 HP +15 + 150P',
+    rewardPoints: 150,
+    rewardDef: 4,
+  },
+  {
+    id: 'relay_dt_sl',
+    title: '🚄 동탄 → 👑 서울: GTX VIP 쾌속 패스 개통',
+    from: 'dongtan',
+    to: 'seoul',
+    itemName: 'GTX VIP 쾌속 패스',
+    rewardDesc: '동탄↔서울 KTX 특실 영구 무료 + 180P',
+    rewardPoints: 180,
+    freeGtx: true,
+  },
+  {
+    id: 'relay_ic_jj',
+    title: '💿 인천 → 🍲 전주: 부평 레트로 명반 선물',
+    from: 'incheon',
+    to: 'jeonju',
+    itemName: '부평 지하상가 희귀 레코드판',
+    rewardDesc: '🌟 서울 각성석(정령석) + 250P',
+    rewardPoints: 250,
+    rewardRune: 'rune_seoul',
+  },
+];
+
 ACT_STORY_EPISODES.seoul = [
   {
     ep: 1,

@@ -1,5 +1,5 @@
 import { TIME_SLOTS, ITEMS, TRAITS, VILLAINS, BOSSES, HIDDEN_BOSS, WEATHERS, RANDOM_EVENTS, STORY_MESSAGES } from './data/gameData.js?v=98';
-import { KOREA_ACTS, REGIONAL_GOODS, RUNE_STONES, ACT_VILLAINS, ACT_STORY_EPISODES } from './data/koreaActs.js?v=103';
+import { KOREA_ACTS, REGIONAL_GOODS, RUNE_STONES, ACT_VILLAINS, ACT_STORY_EPISODES, ACT_PIN_LABELS, RELAY_QUESTS } from './data/koreaActs.js?v=104';
 import { STORY_CHAPTERS } from './data/storyChapters.js?v=48';
 import { ACTIVITY_CATEGORIES } from './data/activities.js?v=48';
 import { MINI_EVENTS, ENEMY_INTENTS, createFeedForVictory } from './data/liveEvents.js';
@@ -248,6 +248,10 @@ function createNewGameState() {
     dispatchedActs: {},
     ownedRunes: [],
     socketedRunes: { weapon: null, armor: null, acc: null },
+    relayItems: [],
+    relayDone: [],
+    pendingSos: null,
+    freeGtxPass: false,
   };
 }
 
@@ -843,6 +847,14 @@ function advanceTime() {
   if (dispKeys.length > 0) {
     const dispGain = dispKeys.length * 10;
     state.points += dispGain;
+  }
+  if (!state.pendingSos && Math.random() < 0.18) {
+    const candidates = KOREA_ACTS.filter((a) => a.id !== (state.currentAct || 'seoul') && (state.clearedActs?.includes(a.id) || state.dispatchedActs?.[a.id]));
+    if (candidates.length > 0) {
+      const pickAct = candidates[Math.floor(Math.random() * candidates.length)];
+      const mob = ACT_VILLAINS.find((v) => v.actId === pickAct.id) || VILLAINS[0];
+      state.pendingSos = { actId: pickAct.id, enemyId: mob.id };
+    }
   }
   state.chaosLevel = clamp((state.chaosLevel ?? 25) + 4, 0, 100);
   if (state.chaosLevel <= 30) {
@@ -3488,6 +3500,24 @@ function render() {
     const chaos = state.chaosLevel ?? 25;
     const chaosTag = chaos >= 90 ? '🚨비상!' : chaos >= 70 ? '⚠️경계' : chaos <= 30 ? '✨쾌적' : '보통';
     elSeoulMinimap.classList.remove('hidden');
+    const curActId = state.currentAct || 'seoul';
+    const pinLbl = ACT_PIN_LABELS[curActId] || ACT_PIN_LABELS.seoul;
+    if (curActId !== 'seoul') {
+      elSeoulMinimap.style.backgroundImage = `linear-gradient(rgba(15,23,42,0.28), rgba(15,23,42,0.28)), url('assets/images/ui/bg_${curActId}.jpg?v=104')`;
+      elSeoulMinimap.style.backgroundSize = 'cover';
+      elSeoulMinimap.style.backgroundPosition = 'center';
+    } else {
+      elSeoulMinimap.style.backgroundImage = '';
+    }
+    const elLandmark = elSeoulMinimap.querySelector('.map-namsan');
+    if (elLandmark) elLandmark.textContent = pinLbl.landmark;
+    const elRiver = elSeoulMinimap.querySelector('.map-river');
+    if (elRiver) elRiver.textContent = pinLbl.river;
+    elSeoulMinimap.querySelectorAll('.map-pin').forEach((pin) => {
+      const loc = pin.dataset.loc;
+      const sm = pin.querySelector('small');
+      if (sm && pinLbl[loc]) sm.textContent = pinLbl[loc];
+    });
     elMinimapChaos.textContent = `🌆${chaos}%(${chaosTag})`;
     elMinimapFollowers.textContent = `📱${(state.followers || 120).toLocaleString()}명`;
     elMinimapBosses.textContent = `${bTag('street_smoker')}홍대 ${bTag('subway_manspreader')}2호선 ${bTag('cinema_boss')}영화관 ${bTag('cafe_boss')}카페(${state.defeatedBossIds.length}/4)`;
@@ -3508,6 +3538,28 @@ function render() {
     elBattleLog.textContent = (state.log || '서울 시내 지도입니다. 위 미니맵 핀을 직접 눌러 장소별 자유행동을 선택해보세요!') + `\n${repLine}\n${dqLine}${rumorLine}`;
 
     elChoicesPanel.className = 'choices-panel grid-2';
+
+    // V42.0: 타 지역 긴급 SOS 지원 요청 배너
+    if (state.phase === 'map' && state.pendingSos) {
+      const sosAct = KOREA_ACTS.find((a) => a.id === state.pendingSos.actId);
+      if (sosAct) {
+        const sosBtn = document.createElement('button');
+        sosBtn.className = 'choice-btn row-btn breaking-banner';
+        sosBtn.style.gridColumn = 'span 2';
+        sosBtn.innerHTML = `<span>🚨 [긴급 SOS!!] ${sosAct.name} 지부 지원 요청!</span><span class="choice-sub">즉시 출동해 격퇴 시 +100P · 명성 +3!! ▶</span>`;
+        sosBtn.addEventListener('click', () => {
+          const eId = state.pendingSos.enemyId;
+          state.currentAct = sosAct.id;
+          state.pendingSos = null;
+          state.points += 100;
+          state.fame = (state.fame || 0) + 3;
+          sfx.powerup();
+          showToast(`🚨 ${sosAct.name} 긴급 출동!! (선지급 +100P · 명성 +3)`, 'break');
+          startBattle(eId, true);
+        });
+        elChoicesPanel.appendChild(sosBtn);
+      }
+    }
 
     // V38.0: 히로인 실시간 선톡(DM) 알림 배너
     if (state.phase === 'map' && state.pendingDm) {
@@ -9784,6 +9836,7 @@ function openKoreaWorldModal() {
     { t: `📖 [${curAct.name}] 액트 스토리 & 지역 보스전`, d: curAct.buffDesc, fn: () => openActStoryModal(curAct.id) },
     { t: `🕸️ ${curAct.dungeonName} 탐험 (미로 던전)`, d: '앞/좌/우 갈림길을 뚫고 보물·정령석·보스방 공략!', fn: () => startActDungeon(curAct) },
     { t: '🚚 보부상 특산품 무역 (실시간 시세)', d: '산지에서 싸게 사서 다른 도시에 비싸게 매도!', fn: openTradeModal },
+    { t: '🔗 도시 간 릴레이 의뢰 (나비효과)', d: '전주↔인천↔평택↔동탄↔서울 연결 특급 의뢰!', fn: openRelayModal },
     { t: '👥 자경단 지부 파견 관리', d: '제패한 지역에 동료를 파견해 매 턴 자동 +10P 수익', fn: openDispatchModal },
     { t: `💎 장비 정령석(룬) 소켓 각인 (보유 ${state.ownedRunes.length}개)`, d: '무기·방어구·장신구에 지역 정령석 장착!', fn: openRuneSocketModal },
   ];
@@ -9816,7 +9869,8 @@ function openActTravelModal() {
     btn.disabled = isHere || !lvOk;
     btn.innerHTML = `<div class="act-title">${act.name} ${cleared ? '✅제패' : ''} ${isHere ? '📍현재위치' : ''}</div><div class="act-desc">${act.sub} · ${lvOk ? act.desc : `🔒 Lv.${act.minLv} 이상 해금`}</div>`;
     btn.addEventListener('click', () => {
-      state.currentAct = act.id;
+      openTravelChoiceModal(act);
+      return;
       sfx.powerup();
       showToast(`🚄 [${act.name}] 도착!`, 'good');
       state.log = `🚄 고속열차를 타고 [${act.name}]에 도착했습니다! (${act.sub})`;
@@ -10069,6 +10123,143 @@ function openRuneSocketModal() {
       row.appendChild(b);
     });
     elActivityList.appendChild(row);
+  });
+}
+
+function openTravelChoiceModal(act) {
+  ensureNationalState();
+  elActivityModalTitle.textContent = `🚄 [${act.name}] 이동 수단 선택`;
+  if (elActivityModalImg && act.bg) {
+    elActivityModalImg.src = act.bg;
+    elActivityModalImg.classList.remove('hidden');
+  }
+  elActivityList.innerHTML = '';
+
+  const banner = document.createElement('div');
+  banner.className = 'oblivion-banner';
+  banner.textContent = `${act.name}(으)로 이동합니다! 이동 방식에 따라 돌발 이벤트와 컨디션이 달라집니다.`;
+  elActivityList.appendChild(banner);
+
+  const busBtn = document.createElement('button');
+  busBtn.className = 'activity-item-btn';
+  busBtn.innerHTML = '<div class="act-title">🚌 일반 고속버스 / 지하철 (무료 · 시간+1)</div><div class="act-desc">이동 중 45% 확률로 돌발 열차 이벤트 or 민폐 빌런 조우!</div>';
+  busBtn.addEventListener('click', () => executeTravel(act, 'bus'));
+  elActivityList.appendChild(busBtn);
+
+  const hasCar = (state.carLevel || 0) >= 1;
+  const gtxFree = !!state.freeGtxPass && ['dongtan', 'seoul'].includes(act.id) && ['dongtan', 'seoul'].includes(state.currentAct);
+  const fastCost = (hasCar || gtxFree) ? 0 : 20;
+  const fastBtn = document.createElement('button');
+  fastBtn.className = 'activity-item-btn';
+  fastBtn.disabled = state.points < fastCost;
+  fastBtn.innerHTML = hasCar
+    ? `<div class="act-title">🚗 내 차(T${state.carLevel}) 드라이브 (무료 · 시간 소모 없음!)</div><div class="act-desc">쾌속 직행 + 인내심/사이다 +15 회복!</div>`
+    : `<div class="act-title">🚄 KTX 특실 쾌속 이동 (${gtxFree ? 'VIP 무료!' : '20P'} · 시간 소모 없음)</div><div class="act-desc">쾌속 직행 + 인내심/사이다 +15 회복!</div>`;
+  fastBtn.addEventListener('click', () => executeTravel(act, 'fast', fastCost));
+  elActivityList.appendChild(fastBtn);
+}
+
+function executeTravel(act, mode, fastCost = 0) {
+  state.currentAct = act.id;
+  if (mode === 'fast') {
+    state.points -= fastCost;
+    state.hp = clamp(state.hp + 15, 1, state.maxHp);
+    state.sp = clamp(state.sp + 15, 0, state.maxSp);
+    sfx.powerup();
+    showToast(`🚄 [${act.name}] 쾌속 도착! (HP/SP +15)`, 'good');
+    state.log = `🚄 쾌속 이동으로 [${act.name}]에 상쾌하게 도착했습니다!`;
+    elActivityModal.classList.add('hidden');
+    saveGame();
+    render();
+    return;
+  }
+
+  advanceTime();
+  const r = Math.random();
+  if (r < 0.28) {
+    const mob = ACT_VILLAINS.find((v) => v.actId === act.id && !v.isActBoss) || VILLAINS[0];
+    elActivityModal.classList.add('hidden');
+    showToast('🚨 [이동 중 돌발!!] 열차/버스 민폐 빌런 출현!', 'warn');
+    state.log = `🚌 [${act.name}]으로 가는 길, 차내 소란 빌런을 만났습니다!`;
+    startBattle(mob.id, true);
+    return;
+  } else if (r < 0.55) {
+    const keys = Object.keys(INGREDIENT_META);
+    const ing = keys[Math.floor(Math.random() * keys.length)];
+    gainIngredient(ing, 1);
+    state.points += 20;
+    sfx.powerup();
+    showToast(`🎁 이동 중 옆자리 어르신이 [${INGREDIENT_META[ing].name}] & +20P 선물!`, 'good');
+    state.log = `🚌 [${act.name}]행 버스에서 훈훈한 인심을 얻었습니다! (+20P · ${INGREDIENT_META[ing].name})`;
+  } else {
+    sfx.click();
+    showToast(`🚌 [${act.name}] 도착!`, 'good');
+    state.log = `🚌 대중교통을 타고 [${act.name}]에 도착했습니다!`;
+  }
+  elActivityModal.classList.add('hidden');
+  saveGame();
+  render();
+}
+
+function openRelayModal() {
+  ensureNationalState();
+  if (!Array.isArray(state.relayItems)) state.relayItems = [];
+  if (!Array.isArray(state.relayDone)) state.relayDone = [];
+  const curId = state.currentAct || 'seoul';
+  elActivityModalTitle.textContent = '🔗 도시 간 릴레이 의뢰 (나비효과)';
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+
+  const banner = document.createElement('div');
+  banner.className = 'oblivion-banner';
+  banner.textContent = '출발 도시에서 특산 물품을 챙긴 뒤, 도착 도시로 이동해 납품하면 영구 스탯·특전을 얻습니다!';
+  elActivityList.appendChild(banner);
+
+  RELAY_QUESTS.forEach((rq) => {
+    const isDone = state.relayDone.includes(rq.id);
+    const hasItem = state.relayItems.includes(rq.id);
+    const btn = document.createElement('button');
+    btn.className = 'activity-item-btn';
+    if (isDone) {
+      btn.disabled = true;
+      btn.innerHTML = `<div class="act-title">✅ ${rq.title} (완료)</div><div class="act-desc">${rq.rewardDesc}</div>`;
+    } else if (!hasItem) {
+      btn.disabled = curId !== rq.from;
+      const fromName = KOREA_ACTS.find((a) => a.id === rq.from)?.name || rq.from;
+      btn.innerHTML = `<div class="act-title">${rq.title}</div><div class="act-desc">${curId === rq.from ? `📦 지금 [${rq.itemName}] 수령 가능!` : `🔒 ${fromName}에서 먼저 수령하세요`} · 보상: ${rq.rewardDesc}</div>`;
+      btn.addEventListener('click', () => {
+        state.relayItems.push(rq.id);
+        sfx.powerup();
+        showToast(`📦 [${rq.itemName}] 수령! 이제 도착 도시로 이동하세요!`, 'good');
+        saveGame();
+        openRelayModal();
+      });
+    } else {
+      btn.disabled = curId !== rq.to;
+      const toName = KOREA_ACTS.find((a) => a.id === rq.to)?.name || rq.to;
+      btn.innerHTML = `<div class="act-title">🚚 ${rq.title} (보유중!)</div><div class="act-desc">${curId === rq.to ? `🎁 지금 납품하고 보상 받기! (${rq.rewardDesc})` : `📍 ${toName}로 이동해서 납품하세요!`}</div>`;
+      btn.addEventListener('click', () => {
+        state.relayItems = state.relayItems.filter((x) => x !== rq.id);
+        state.relayDone.push(rq.id);
+        state.points += rq.rewardPoints || 0;
+        if (rq.rewardAtk) state.bonusDmg += rq.rewardAtk;
+        if (rq.rewardDef) state.flatDef = (state.flatDef || 0) + rq.rewardDef;
+        if (rq.freeGtx) state.freeGtxPass = true;
+        if (rq.rewardRune) state.ownedRunes.push(rq.rewardRune);
+        if (rq.id === 'relay_jj_ic') {
+          if (!Array.isArray(state.customPotions)) state.customPotions = [];
+          state.customPotions.push(
+            { name: '🔥 마계 불지옥 엘릭서', type: 'bomb', power: 85, desc: '적 멘탈 -85 & 기절' },
+            { name: '🔥 마계 불지옥 엘릭서', type: 'bomb', power: 85, desc: '적 멘탈 -85 & 기절' }
+          );
+        }
+        sfx.victory();
+        showToast(`🎉 릴레이 의뢰 완료!! ${rq.rewardDesc}`, 'break');
+        saveGame();
+        openRelayModal();
+      });
+    }
+    elActivityList.appendChild(btn);
   });
 }
 

@@ -5,7 +5,13 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V41.1 (GitHub Pages 배포됨)
+## 현재 최신 버전: V42.0 (GitHub Pages 배포됨)
+- **V42.0 (`?v=104`)**:
+  - **도시 간 순환 & 상호작용 4대 시스템 완비 (`data/koreaActs.js`, `app.js`)**:
+    1. **🗺️ 미니맵 현지화**: 현재 체류 도시(`전주/평택/동탄/마계 인천/서울`)에 맞춰 미니맵 배경 이미지·랜드마크·강·6대 핀 이름 자동 변신!
+    2. **🚄 이동 수단 선택 & 돌발 이벤트 (`openTravelChoiceModal`, `executeTravel`)**: 일반 버스(무료·돌발 빌런/선물 이벤트) vs 내 차/KTX 특실(시간 소모 없이 쾌속 직행 + HP/SP+15).
+    3. **🔗 도시 간 릴레이 의뢰 (`RELAY_QUESTS`, `openRelayModal`)**: 전주→인천(불지옥 엘릭서2·공격+3), 평택→동탄(방어+4), 동탄→서울(GTX VIP 무료 패스), 인천→전주(서울 각성석) 4종 나비효과 퀘스트!
+    4. **🚨 타 지역 긴급 SOS (`state.pendingSos`)**: 다른 도시 활동 중 클리어/파견 지역에서 SOS 발생 → 긴급 출동 시 +100P · 명성 +3!
 - **V41.1 (`?v=103`)**:
   - **시트 3 (동탄 6~15화 · `act_s3_01.png`~`act_s3_10.png`) 컷팅 및 매핑 완료**: `맘카페 유포자` ~ `층간소음 리코더 마왕`까지 50화 전용 적 50명 전부 100% 고유 스프라이트 탑재 완료!
 - **V41.0 (`?v=102`)**:
