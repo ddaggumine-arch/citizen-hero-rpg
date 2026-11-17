@@ -2611,10 +2611,12 @@ function render() {
     elSceneTag.textContent = `${elInfo.label} · ${rarityBadge}`;
     elSceneTag.className = 'scene-tag event';
     elSceneTitle.textContent = capRes?.status === 'caught'
-      ? `💥 찰칵!! [${sp.name}] 포획 성공!!`
+      ? `💥 ${capRes.isSummon ? '소환 성공!!' : '찰칵!!'} [${sp.name}] ${capRes.isSummon ? '강림!!' : '포획 성공!!'}`
       : capRes?.status === 'escaped'
         ? `💨 [${sp.name}] 이(가) 달아났다...`
-        : `✨ 야생 [${sp.name}] 출현!`;
+        : capRes?.isSummon
+          ? `✨ [${sp.name}] 소환 의식 중...`
+          : `✨ 야생 [${sp.name}] 출현!`;
     elWeaknessPill.classList.add('hidden');
     elEnemyHpWrap.classList.add('hidden');
     if (!capRes) {
@@ -7219,11 +7221,11 @@ function openSpiritModal(filterEl = 'all') {
   const summonBtn = document.createElement('button');
   summonBtn.className = 'gear-quick-btn';
   summonBtn.style.cssText = 'width:100%;margin-bottom:8px;padding:9px 8px;background:linear-gradient(90deg,#0284c7 0%,#7e22ce 100%);';
-  summonBtn.textContent = `✨ 수호정령 소환하기 (600P · ${SPIRITS_50.length}종 랜덤 / 중복 시 ★각성!)`;
+  summonBtn.textContent = `✨ 수호정령 소환 (600P · 일반55%/레어32%/에픽11%/유니크2%)`;
   summonBtn.disabled = state.points < 600;
   summonBtn.addEventListener('click', () => {
     if (state.points < 600) return;
-    sfx.victory();
+    sfx.powerup?.();
     state.points -= 600;
     const r = Math.random();
     let rar = 'common';
@@ -7232,10 +7234,26 @@ function openSpiritModal(filterEl = 'all') {
     else if (r < 0.45) rar = 'rare';
     const pool = SPIRITS_50.filter((x) => x.rarity === rar);
     const pick = pool[Math.floor(Math.random() * pool.length)] || SPIRITS_50[0];
-    grantSpirit(pick.id);
+    if (typeof elEndingsModal !== 'undefined' && elEndingsModal) elEndingsModal.classList.add('hidden');
+    state.pendingSpiritEncounter = pick.id;
+    state.spiritCaptureResult = { status: 'resonating', label: '신비한 소환진', isSummon: true };
+    state.phase = 'spirit_encounter';
     saveGame();
-    openSpiritModal(filterEl);
     render();
+    setTimeout(() => {
+      if (state.phase !== 'spirit_encounter' || state.pendingSpiritEncounter !== pick.id) return;
+      const res = grantSpirit(pick.id, false);
+      sfx.victory?.();
+      state.spiritCaptureResult = {
+        status: 'caught',
+        isSummon: true,
+        isNew: res.isNew,
+        awakeLv: res.count,
+        growthLv: getSpiritProgress(pick.id).lv,
+      };
+      saveGame();
+      render();
+    }, 850);
   });
   elEndingsList.appendChild(summonBtn);
 
