@@ -1,5 +1,5 @@
 import { TIME_SLOTS, ITEMS, TRAITS, VILLAINS, BOSSES, HIDDEN_BOSS, WEATHERS, RANDOM_EVENTS, STORY_MESSAGES } from './data/gameData.js?v=98';
-import { KOREA_ACTS, REGIONAL_GOODS, RUNE_STONES, ACT_VILLAINS, ACT_STORY_EPISODES } from './data/koreaActs.js?v=102';
+import { KOREA_ACTS, REGIONAL_GOODS, RUNE_STONES, ACT_VILLAINS, ACT_STORY_EPISODES } from './data/koreaActs.js?v=103';
 import { STORY_CHAPTERS } from './data/storyChapters.js?v=48';
 import { ACTIVITY_CATEGORIES } from './data/activities.js?v=48';
 import { MINI_EVENTS, ENEMY_INTENTS, createFeedForVictory } from './data/liveEvents.js';

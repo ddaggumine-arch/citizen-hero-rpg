@@ -5,7 +5,9 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V41.0 (GitHub Pages 배포됨)
+## 현재 최신 버전: V41.1 (GitHub Pages 배포됨)
+- **V41.1 (`?v=103`)**:
+  - **시트 3 (동탄 6~15화 · `act_s3_01.png`~`act_s3_10.png`) 컷팅 및 매핑 완료**: `맘카페 유포자` ~ `층간소음 리코더 마왕`까지 50화 전용 적 50명 전부 100% 고유 스프라이트 탑재 완료!
 - **V41.0 (`?v=102`)**:
   - **50화 전국 액트 스토리 + 40종 신규 컷팅 스프라이트 + 4종 지역 배경 조립 완료 (`data/koreaActs.js`, `app.js`)**:
     - 전주(5화 · 추천 Lv.1~5) → 평택(10화 · 추천 Lv.6~14) → 동탄(15화 · 추천 Lv.15~25) → 마계 인천(20화 · 추천 Lv.26~40) → 서울(기존 30화) = **총 80화**!
