@@ -14,6 +14,8 @@ import { SPIRITS_50, SPIRIT_ELEMENTS } from './data/spirits50.js?v=76';
 import { UNLOCK_MILESTONES, isFeatureUnlocked, SEOUL_DISTRICTS, getDistrictIdForEnemy, getClearedDistrictCount } from './data/v26World.js?v=48';
 import { STORY_BOSSES } from './data/storyBosses.js?v=45';
 import { STORY_AFTERMATHS } from './data/storyAftermath.js?v=81';
+import { YUKI_ROMANCE_STORY } from './data/romanceStoryYuki.js?v=83';
+import { CHLOE_ROMANCE_STORY } from './data/romanceStoryChloe.js?v=83';
 import { sfx } from './sound.js';
 
 const SAVE_KEY = 'citizen_hero_gta_save_v4';
@@ -219,6 +221,8 @@ function createNewGameState() {
     pendingSpiritEncounter: null,
     spiritCaptureResult: null,
     pendingStoryAftermath: null,
+    romanceStory: { yuki: { ep: 0, cleared: false }, chloe: { ep: 0, cleared: false } },
+    activeRomanceStory: null,
     epilogueIdx: 0,
     epilogueSeen: false,
   };
@@ -4141,7 +4145,40 @@ function render() {
     };
 
     const chloeUnlocked = isFeatureUnlocked(state, 'chloe');
+    if (!state.romanceStory) state.romanceStory = { yuki: { ep: 0, cleared: false }, chloe: { ep: 0, cleared: false } };
+    const ySt = state.romanceStory.yuki || { ep: 0, cleared: false };
+    const cSt = state.romanceStory.chloe || { ep: 0, cleared: false };
+    const yFreeUnlocked = ySt.cleared || state.lovers.includes('yuki');
+    const cFreeUnlocked = cSt.cleared || state.lovers.includes('chloe');
+
+    const startRomanceStory = (hKey) => {
+      const st = state.romanceStory[hKey] || { ep: 0, cleared: false };
+      const arr = hKey === 'yuki' ? YUKI_ROMANCE_STORY : CHLOE_ROMANCE_STORY;
+      const targetEp = st.ep >= arr.length ? 0 : st.ep;
+      sfx.powerup();
+      state.activeRomanceStory = { heroine: hKey, epIdx: targetEp, sceneIdx: 0 };
+      state.phase = 'romance_story';
+      render();
+    };
+
     const rActions = [
+      {
+        title: ySt.cleared ? '📖 유키 연애 스토리 (20/20 완결 ✅)' : `📖 유키 연애 스토리 (제${ySt.ep + 1}/20화)`,
+        sub: ySt.cleared ? '완결! 1화부터 다시 감상 가능' : '기·승·전·결 스토리 완결 시 정식 연인 & 자유 데이트 해금!',
+        run: () => startRomanceStory('yuki'),
+      },
+      {
+        title: !chloeUnlocked ? '🔒 클로이 연애 스토리 (17화 해금)' : (cSt.cleared ? '📖 클로이 연애 스토리 (20/20 완결 ✅)' : `📖 클로이 연애 스토리 (제${cSt.ep + 1}/20화)`),
+        sub: !chloeUnlocked ? '제17화 클로이 합류(또는 2회차) 시 해금' : (cSt.cleared ? '완결! 1화부터 다시 감상 가능' : '기·승·전·결 스토리 완결 시 정식 연인 & 자유 데이트 해금!'),
+        run: () => {
+          if (!chloeUnlocked) {
+            sfx.damage();
+            showToast('🔒 제17화에서 클로이를 만나면 연애 스토리가 해금됩니다!', 'warn');
+            return;
+          }
+          startRomanceStory('chloe');
+        },
+      },
       {
         title: '🇯🇵 일본어 공부 (유키)',
         sub: state.lastStudyDay.jp === state.day ? '오늘 공부 완료 (내일 가능)' : `Lv.${state.lang.jp} · 하루 1회 · 호감+4`,
@@ -4182,19 +4219,29 @@ function render() {
         },
       },
       {
-        title: yukiReady ? '💖 유키에게 고백하기!' : (yukiCanDate ? '🍵 유키와 데이트 (35P)' : '💬 유키와 알아가기 (15P)'),
-        sub: state.lastDateDay.yuki === state.day ? '오늘 완료 (내일 가능)' : (yukiCanDate ? '하루 1회 · 취향 공략' : '호감 35 달성 시 데이트 해금'),
-        run: () => tryStartDate('yuki'),
+        title: !yFreeUnlocked ? '🔒 유키 자유 데이트 (스토리 20화 완결 해금)' : (yukiReady ? '💖 유키에게 고백하기!' : '🍵 유키와 자유 데이트 (35P)'),
+        sub: !yFreeUnlocked ? `연애 스토리 ${ySt.ep}/20화 진행 중` : (state.lastDateDay.yuki === state.day ? '오늘 완료 (내일 가능)' : '하루 1회 · 연인 데이트 & 키스신'),
+        run: () => {
+          if (!yFreeUnlocked) {
+            sfx.damage();
+            showToast('📖 유키 연애 스토리 20화를 완결하면 자유 데이트가 열립니다!', 'warn');
+            return;
+          }
+          tryStartDate('yuki');
+        },
       },
       {
-        title: !chloeUnlocked ? '🔒 클로이 데이트 (17화 해금)' : (chloeReady ? '💖 클로이에게 고백하기!' : (chloeCanDate ? '📸 클로이와 데이트 (35P)' : '💬 클로이와 알아가기 (15P)')),
-        sub: !chloeUnlocked ? '제17화 클로이 합류 시 해금' : (state.lastDateDay.chloe === state.day ? '오늘 완료 (내일 가능)' : (chloeCanDate ? '하루 1회 · 취향 공략' : '호감 35 달성 시 데이트 해금')),
+        title: !chloeUnlocked ? '🔒 클로이 자유 데이트 (17화 해금)' : (!cFreeUnlocked ? '🔒 클로이 자유 데이트 (스토리 20화 완결 해금)' : (chloeReady ? '💖 클로이에게 고백하기!' : '📸 클로이와 자유 데이트 (35P)')),
+        sub: !chloeUnlocked ? '제17화 클로이 합류 시 해금' : (!cFreeUnlocked ? `연애 스토리 ${cSt.ep}/20화 진행 중` : (state.lastDateDay.chloe === state.day ? '오늘 완료 (내일 가능)' : '하루 1회 · 연인 데이트 & 키스신')),
         run: () => {
           if (!chloeUnlocked) {
             sfx.damage();
-            showToast('🔒 제17화에서 클로이를 만나면 데이트가 해금됩니다!', 'warn');
-            state.log = '🔒 클로이는 제17화에서 합류합니다!';
-            render();
+            showToast('🔒 제17화에서 클로이를 만나면 해금됩니다!', 'warn');
+            return;
+          }
+          if (!cFreeUnlocked) {
+            sfx.damage();
+            showToast('📖 클로이 연애 스토리 20화를 완결하면 자유 데이트가 열립니다!', 'warn');
             return;
           }
           tryStartDate('chloe');
@@ -4700,6 +4747,107 @@ function render() {
     backBtn.innerHTML = '<span>◀ 연애 허브로 돌아가기</span><span class="choice-sub">뒤로</span>';
     backBtn.addEventListener('click', () => { sfx.click(); state.phase = 'romance'; render(); });
     elChoicesPanel.appendChild(backBtn);
+    return;
+  }
+
+  // 4-R0. V34.0 연애 스토리 모드 (유키 20화 + 클로이 20화 · 기승전결)
+  if (state.phase === 'romance_story') {
+    const ars = state.activeRomanceStory || { heroine: 'yuki', epIdx: 0, sceneIdx: 0 };
+    const hKey = ars.heroine === 'chloe' ? 'chloe' : 'yuki';
+    const arr = hKey === 'yuki' ? YUKI_ROMANCE_STORY : CHLOE_ROMANCE_STORY;
+    const epObj = arr[clamp(ars.epIdx || 0, 0, arr.length - 1)];
+    const sc = epObj.scenes[clamp(ars.sceneIdx || 0, 0, epObj.scenes.length - 1)];
+    const hName = hKey === 'yuki' ? '🇯🇵 유키' : '🇺🇸 클로이';
+
+    elLocation.textContent = `DAY ${state.day} · ${hName} 연애 스토리`;
+    elSceneTag.textContent = `[${epObj.act}] ${epObj.ep}/20화`;
+    elSceneTag.className = 'scene-tag event';
+    elSceneTitle.textContent = epObj.title;
+    elWeaknessPill.classList.add('hidden');
+    elEnemyHpWrap.classList.add('hidden');
+    elQuoteBubble.textContent = `💬 ${sc.speaker}`;
+    elQuoteBubble.classList.remove('hidden');
+
+    if (epObj.img.endsWith('.png')) {
+      setStageBg(hKey === 'yuki' ? 'bg_mapo.jpg' : 'bg_seongsu.jpg');
+      if (elFrame) elFrame.classList.add('combat-stage');
+      if (epObj.img.includes('couple_')) {
+        if (elCoupleSprite) {
+          elCoupleSprite.src = `${epObj.img}?v=83`;
+          elCoupleSprite.classList.remove('hidden');
+        }
+      } else {
+        elHeroSprite.classList.remove('hidden');
+        if (hKey === 'yuki' && elYukiSprite) elYukiSprite.classList.remove('hidden');
+        if (hKey === 'chloe' && elChloeSprite) elChloeSprite.classList.remove('hidden');
+      }
+    } else {
+      if (elFrame) elFrame.classList.add('couple-stage');
+      elSceneImage.src = `${epObj.img}?v=83`;
+      elSceneImage.classList.remove('hidden');
+    }
+
+    elBattleLog.textContent = sc.text;
+    elChoicesPanel.className = 'choices-panel';
+
+    if (!sc.choices) {
+      const nxtBtn = document.createElement('button');
+      nxtBtn.className = 'choice-btn primary';
+      nxtBtn.innerHTML = `<span class="choice-title">다음 장면으로 ▶</span><span class="choice-sub">${epObj.title} (${ars.sceneIdx + 1}/${epObj.scenes.length})</span>`;
+      nxtBtn.addEventListener('click', () => {
+        sfx.click();
+        state.activeRomanceStory = { heroine: hKey, epIdx: ars.epIdx, sceneIdx: ars.sceneIdx + 1 };
+        render();
+      });
+      elChoicesPanel.appendChild(nxtBtn);
+    } else {
+      sc.choices.forEach((ch) => {
+        const cb = document.createElement('button');
+        cb.className = 'choice-btn';
+        cb.innerHTML = `<span class="choice-title">${ch.label}</span><span class="choice-sub">${ch.sub}</span>`;
+        cb.addEventListener('click', () => {
+          sfx.victory();
+          if (!state.love) state.love = { yuki: 0, chloe: 0 };
+          if (!state.lovers) state.lovers = [];
+          if (!state.someCleared) state.someCleared = { yuki: false, chloe: false };
+          if (!state.romanceStory) state.romanceStory = { yuki: { ep: 0, cleared: false }, chloe: { ep: 0, cleared: false } };
+          if (!state.lastContactDay) state.lastContactDay = { yuki: state.day, chloe: state.day };
+          state.lastContactDay[hKey] = state.day;
+          state.love[hKey] = clamp((state.love[hKey] || 0) + ch.love, 0, 200);
+          if (ch.statKey === 'speech') state.stats.speech += ch.statAmt;
+          else if (ch.statKey === 'guts') state.stats.guts += ch.statAmt;
+          else if (ch.statKey === 'law') state.stats.law += ch.statAmt;
+          else if (ch.statKey === 'sp') state.sp = clamp(state.sp + ch.statAmt, 0, state.maxSp);
+          else if (ch.statKey === 'hp') state.hp = clamp(state.hp + ch.statAmt, 1, state.maxHp);
+          else if (ch.statKey === 'points') state.points += ch.statAmt;
+          else if (ch.statKey === 'all') {
+            state.stats.speech += ch.statAmt;
+            state.stats.guts += ch.statAmt;
+            state.stats.law += ch.statAmt;
+            state.points += 200;
+          }
+          advanceDailyQuest('care', 1);
+
+          const st = state.romanceStory[hKey];
+          if (epObj.ep > st.ep) st.ep = epObj.ep;
+          if (epObj.ep >= arr.length) {
+            st.cleared = true;
+            state.someCleared[hKey] = true;
+            if (!state.lovers.includes(hKey)) state.lovers.push(hKey);
+            showToast(`💖 [${hName} 연애 스토리 20화 완결!!] 정식 연인 & 자유 데이트 해금!`, 'break');
+          } else {
+            showToast(`💕 ${hName} ${epObj.ep}화 클리어! (호감도 +${ch.love})`, 'good');
+          }
+
+          state.activeRomanceStory = null;
+          state.phase = 'romance';
+          state.log = `📖 [${epObj.title}]\n${ch.reply}`;
+          saveGame();
+          render();
+        });
+        elChoicesPanel.appendChild(cb);
+      });
+    }
     return;
   }
 
