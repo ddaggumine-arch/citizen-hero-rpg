@@ -10,7 +10,7 @@ import { COURT_CASES, COSTUMES, CAPSULE_POOL, PET_WALK_EVENTS } from './data/v17
 import { CLUES, SOME_CRISIS_EVENTS, RIVAL_EVENTS, REFORMED_ALLIES, GETTING_TO_KNOW_EVENTS, STORY_INTERLUDES, WEEKEND_EVENTS } from './data/v19Story.js?v=51';
 import { DIFFICULTIES, RARITY_INFO, GEAR_LOOT_POOL, GEAR_ENCHANTS, PET_JOBS, LOGIC_COUNTERS, generateCommunityPosts } from './data/v24Systems.js?v=61';
 import { KISS_SCENES, LOVER_ACTIONS, KISS_SCENE_CHOICES } from './data/v25Romance.js?v=71';
-import { SPIRITS_50, SPIRIT_ELEMENTS } from './data/spirits50.js?v=72';
+import { SPIRITS_50, SPIRIT_ELEMENTS } from './data/spirits50.js?v=76';
 import { UNLOCK_MILESTONES, isFeatureUnlocked, SEOUL_DISTRICTS, getDistrictIdForEnemy, getClearedDistrictCount } from './data/v26World.js?v=48';
 import { STORY_BOSSES } from './data/storyBosses.js?v=45';
 import { sfx } from './sound.js';
@@ -1019,7 +1019,8 @@ function advanceDailyQuest(qId, amt = 1) {
 function addFever(amount) {
   if ((state.feverTurns || 0) > 0) return false;
   const prev = state.feverGauge || 0;
-  state.feverGauge = Math.min(100, prev + amount);
+  const boostMult = getSpiritBonuses().perkId === 'fever_boost' ? 1.5 : 1;
+  state.feverGauge = Math.min(100, prev + Math.round(amount * boostMult));
   if (prev < 100 && state.feverGauge >= 100) {
     showToast('⚡ 피버 100% 충전! [노란 완장 풀개방!!] 버튼을 눌러 각성하세요!', 'break');
     return true;
@@ -1871,6 +1872,11 @@ function enemyCounterTurn(enemy, isGuarding = false) {
     dmg = nextDmg;
     if (blocked > 0) state.log += `\n🛡️ [방어력 경감 -${blocked}]`;
   }
+  if (spBonTurn.perkId === 'counter_guard' && dmg > 1) {
+    dmg = Math.max(2, Math.round(dmg * 0.85));
+    state.enemyHp = clamp(state.enemyHp - 6, 0, state.enemyMaxHp);
+    state.log += `\n🛡️ [${spBonTurn.spirit.name}] 수호 반격! (피해 -15% · 반사 -6)`;
+  }
   const totalReflect = (eqBonus.reflect || 0) + (state.pet?.adopted && state.pet.job === 'guard' ? 0.15 : 0);
   if (totalReflect > 0 && dmg > 1) {
     const refDmg = Math.max(2, Math.round(dmg * totalReflect));
@@ -1934,7 +1940,8 @@ function handleEnemyDefeated(enemy) {
   const baseReward = Math.round(enemy.reward * diff.rewardMult * (1 + (state.rewardMultBonus || 0) + (eqBon.rewardMult || 0)));
   const nightBonus = state.timeIndex >= 2 ? Math.round(baseReward * 0.25) : 0;
   const dustBonus = (state.weather || 'sunny') === 'dust' ? 10 : 0;
-  state.points += baseReward + nightBonus + dustBonus;
+  const goldSpBonus = getSpiritBonuses().perkId === 'gold_up' ? Math.round(baseReward * 0.25) : 0;
+  state.points += baseReward + nightBonus + dustBonus + goldSpBonus;
   const expSpMult = getSpiritBonuses().perkId === 'exp_up' ? 1.35 : 1;
   const expGain = Math.round((24 + (enemy.reward || 30) * 0.65) * ((isBossId(enemy.id) || enemy.storyOnly) ? 1.6 : 1) * (1 + (eqBon.expMult || 0)) * expSpMult);
   gainHeroExp(expGain);
@@ -2204,6 +2211,7 @@ function performAttack(type) {
   const allyFirstBonus = state.isFirstTurn && state.allies?.includes('parking_bro') ? 8 : 0;
   const rankBonus = getHeroRankInfo().atkBonus || 0;
   const sodaBonus = (state.sodaBuffDmg || 0) + rankBonus + eqBonus.atk;
+  const wasFirstTurn = !!state.isFirstTurn;
   state.isFirstTurn = false;
   if (state.sodaBuffDmg) state.sodaBuffDmg = 0;
 
@@ -2214,7 +2222,9 @@ function performAttack(type) {
   }
 
   const isFever = (state.feverTurns || 0) > 0;
-  const spCost = isFever ? 20 : 40;
+  const spBonCost = getSpiritBonuses();
+  const baseSpCost = isFever ? 20 : 40;
+  const spCost = spBonCost.perkId === 'sp_saver' ? Math.round(baseSpCost * 0.75) : baseSpCost;
   const ppMap = ensureSkillPp();
   if (['speech', 'guts', 'law'].includes(type)) {
     if ((ppMap[type] ?? getMaxSkillPp(type)) <= 0) return;
@@ -2333,6 +2343,19 @@ function performAttack(type) {
 
   if ((state.bossDmgMult || 0) > 0 && (isBossId(enemy.id) || enemy.storyOnly || enemy.id === HIDDEN_BOSS.id)) {
     dmg = Math.round(dmg * (1 + state.bossDmgMult));
+  }
+  if (wasFirstTurn && spBonAtk.perkId === 'first_strike') {
+    dmg = Math.round(dmg * 1.35);
+    state.log += `\n⚡ [${spBonAtk.spirit.name}] 선제 강타! 피해 +35%!`;
+  }
+  if ((type === 'guts' || type === 'law') && spBonAtk.perkId === 'stun_master' && !state.enemyStunned && Math.random() < 0.20) {
+    state.enemyStunned = true;
+    state.log += `\n💫 [${spBonAtk.spirit.name}] 충격 파동으로 빌런 기절!`;
+  }
+  if (spBonAtk.perkId === 'vampiric' && dmg > 0 && state.hp > 0) {
+    const vampHeal = Math.max(3, Math.round(dmg * 0.10));
+    state.hp = clamp(state.hp + vampHeal, 1, state.maxHp);
+    state.log += `\n🩸 [${spBonAtk.spirit.name}] 기운 흡수 +${vampHeal} HP`;
   }
 
   // V27.0: 사이다 필살기(special) 제외, 일반 공격으로는 풀피 적을 한 방에 처치 불가 (최소 2턴 이상 공방 보장)
@@ -7190,13 +7213,13 @@ function openSpiritModal(filterEl = 'all') {
   if (!state.spirits) state.spirits = {};
   const ownedCount = Object.keys(state.spirits).filter((k) => (state.spirits[k] || 0) > 0).length;
   const eqBon = getSpiritBonuses();
-  elEndingsModalTitle.textContent = `👻 예절 수호정령 (${ownedCount}/50)`;
+  elEndingsModalTitle.textContent = `👻 예절 수호정령 (${ownedCount}/${SPIRITS_50.length})`;
   elEndingsList.innerHTML = '';
 
   const summonBtn = document.createElement('button');
   summonBtn.className = 'gear-quick-btn';
   summonBtn.style.cssText = 'width:100%;margin-bottom:8px;padding:9px 8px;background:linear-gradient(90deg,#0284c7 0%,#7e22ce 100%);';
-  summonBtn.textContent = '✨ 수호정령 소환하기 (600P · 50종 랜덤 / 중복 시 Lv각성!)';
+  summonBtn.textContent = `✨ 수호정령 소환하기 (600P · ${SPIRITS_50.length}종 랜덤 / 중복 시 ★각성!)`;
   summonBtn.disabled = state.points < 600;
   summonBtn.addEventListener('click', () => {
     if (state.points < 600) return;
@@ -7219,7 +7242,7 @@ function openSpiritModal(filterEl = 'all') {
   const tabsWrap = document.createElement('div');
   tabsWrap.className = 'gear-tabs';
   [
-    { id: 'all', label: `전체(${ownedCount}/50)` },
+    { id: 'all', label: `전체(${ownedCount}/${SPIRITS_50.length})` },
     { id: 'speech', label: '🗣️언변' },
     { id: 'guts', label: '🦁깡다구' },
     { id: 'law', label: '⚖️법질서' },

@@ -5,7 +5,10 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V32.4
+## 현재 최신 버전: V32.5
+- **V32.5**:
+  - **예절 수호정령 100종 대도감 완성 (`data/spirits50.js`, `assets/images/spirit_51~100.png`)**: 기존 50종 + 신규 50종(언변·깡다구 2탄 각 10종 + **한국 테마** 법질서·진실·사이다 각 10종: 마패·무궁화·진돗개·청사초롱·하회탈·해태·도깨비·남산타워·혼천의·삼족오·칠성사이다·팥빙수·오리배·붕어빵·돌하르방·한강청룡·태극무궁화신룡 등) 총 **100마리** 투명 PNG 추출 & 100종 전원 고유 주인공 만남 대사(`greet`) 적용
+  - **16종 고유 특수 기술(`SPIRIT_PERKS`) & 등급 역전 유틸 밸런싱 (`app.js`)**: `gold_up`(도덕P+25%)·`sp_saver`(필살기SP-25%)·`first_strike`(첫턴+35%)·`counter_guard`(피해-15%·반사6)·`pp_refund`·`turn_heal`·`snap_wide`·`apology_up` 등 실용 특화 기술을 일반·레어 정령에게 폭넓게 배분해 희귀 등급만 쓰지 않도록 설계 (`?v=76`)
 - **V32.4**:
   - **포켓몬식 단독 확대 집중 무대 & 정령 별명 지어주기 (`spiritNicknames`, `getSpiritDisplayName`, `style.css`, `app.js`)**: 정령 조우/포획 시 주인공·적·레벨배지를 모두 숨기고 신비로운 스포트라이트 배경 중앙에 정령을 **124~132px 확대**해 단독 집중 연출! 포획 성공 시 금빛 홀로그램 + `✨ GET!` 상단 스탬프와 함께 **"별명을 지어줄까요?"** 입력란(`.spirit-nick-input`)을 제공해 도감·전투에서 나만의 별명 표시 (`?v=75`)
 - **V32.3**:
