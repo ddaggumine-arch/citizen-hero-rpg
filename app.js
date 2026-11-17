@@ -2,7 +2,7 @@ import { TIME_SLOTS, ITEMS, TRAITS, VILLAINS, BOSSES, HIDDEN_BOSS, WEATHERS, RAN
 import { STORY_CHAPTERS } from './data/storyChapters.js?v=48';
 import { ACTIVITY_CATEGORIES } from './data/activities.js?v=48';
 import { MINI_EVENTS, ENEMY_INTENTS, createFeedForVictory } from './data/liveEvents.js';
-import { ENDINGS, evaluateEnding } from './data/endings.js';
+import { ENDINGS, evaluateEnding, buildFullEndingText } from './data/endings.js?v=82';
 import { HEROINES, LANG_QUIZZES, DATE_EVENTS } from './data/romance.js?v=63';
 import { CARS, GEAR_UPGRADES, ACHIEVEMENTS } from './data/lifestyle.js';
 import { STREAM_MISSIONS, ROOM_UPGRADES, GUERRILLA_VILLAINS, STOCKS, HEROINE_GIFTS } from './data/v16Systems.js';
@@ -2130,7 +2130,7 @@ function handleEnemyDefeated(enemy) {
       state.log = '🎉 드디어 길고 길었던 서울의 대장정이 막을 내립니다...';
     } else {
       state.phase = 'victory';
-      state.log = ending.story;
+      state.log = buildFullEndingText(ending, state);
     }
     showToast('♾️ 스토리 클리어! 에필로그 & 무한 자유모드 해금!', 'good');
     saveGame();
@@ -3002,8 +3002,8 @@ function render() {
       btnNg.className = 'choice-btn row-btn';
       btnNg.style.background = 'linear-gradient(180deg, #fff6df 0%, #fde4a6 100%)';
       btnNg.style.borderColor = '#b07d2b';
-      const bonusStat = Math.min(6, unlockedEndCnt * 2);
-      btnNg.innerHTML = `<span>🔄 2회차 계승 시작 (엔딩 ${unlockedEndCnt}종 보너스)</span><span class="choice-sub">전스탯+${bonusStat} · +120P · 적 1.3배</span>`;
+      const bonusStat = Math.min(8, unlockedEndCnt * 2);
+      btnNg.innerHTML = `<span>🔄 2회차 계승 시작 (${pickedDiff.name} · 엔딩 ${unlockedEndCnt}종)</span><span class="choice-sub">전스탯+${bonusStat} · +120P · 💕 유키/클로이 1일차 즉시 해금!</span>`;
       btnNg.addEventListener('click', () => {
         sfx.powerup();
         const selDiff = state.difficulty || 'normal';
@@ -6299,8 +6299,9 @@ function render() {
       } else {
         state.epilogueSeen = true;
         const ending = evaluateEnding(state, false);
+        state.achievedEndingId = ending.id;
         state.phase = 'victory';
-        state.log = ending.story;
+        state.log = buildFullEndingText(ending, state);
       }
       saveGame();
       render();
@@ -6311,20 +6312,21 @@ function render() {
 
   if (state.phase === 'victory') {
     const ending = ENDINGS.find((e) => e.id === state.achievedEndingId) || ENDINGS[ENDINGS.length - 1];
-    elLocation.textContent = `DAY ${state.day} · 엔딩 #${ending.num}`;
+    elLocation.textContent = `DAY ${state.day} · 엔딩 #${ending.num}/${ENDINGS.length}`;
     elSceneTag.textContent = ending.badge;
     elSceneTag.className = 'scene-tag event';
     elSceneTitle.textContent = ending.title;
     if (ending.image) {
-      elSceneImage.src = ending.image;
+      elSceneImage.src = `${ending.image}?v=82`;
       elSceneImage.classList.remove('hidden');
     } else {
       showSceneCard(
-        `🏆 ENDING ${ending.num}/15 · ${ending.badge}`,
+        `🏆 ENDING ${ending.num}/${ENDINGS.length} · ${ending.badge}`,
         ending.ascii,
         `총 ${state.day}일차 · 팔로워 ${(state.followers || 120).toLocaleString()}명 · 특성 ${state.traits.length}개`
       );
     }
+    state.log = buildFullEndingText(ending, state);
   } else {
     elLocation.textContent = `DAY ${state.day} · 동네 응급실`;
     elSceneTag.textContent = '패배';
@@ -6351,6 +6353,33 @@ function render() {
       render();
     });
     elChoicesPanel.appendChild(btnFree);
+
+    // V33.2 스토리 클리어 후 즉시 난이도 선택 2회차(NG+) 시작
+    const ngBox = document.createElement('div');
+    ngBox.style.cssText = 'display:flex;gap:4px;margin-top:4px;';
+    const unlockedCnt = loadUnlockedEndings().length;
+    const bonusStat = Math.min(8, Math.max(2, unlockedCnt * 2));
+    Object.values(DIFFICULTIES).forEach((df) => {
+      const nb = document.createElement('button');
+      nb.className = 'choice-btn';
+      nb.style.cssText = 'flex:1;padding:7px 4px;background:linear-gradient(180deg,#fffbeb,#fef3c7);border-color:#d97706;';
+      nb.innerHTML = `<span style="font-size:0.78rem;font-weight:800;">🔄 ${df.name} 2회차</span><span class="choice-sub" style="font-size:0.65rem;">전스탯+${bonusStat} · 유키/클로이 즉시해금!</span>`;
+      nb.addEventListener('click', () => {
+        sfx.powerup();
+        const nextNg = (state.ngPlus || 0) + 1;
+        state = createNewGameState();
+        state.difficulty = df.id;
+        state.ngPlus = nextNg;
+        state.stats.speech += bonusStat;
+        state.stats.guts += bonusStat;
+        state.stats.law += bonusStat;
+        state.points += 120;
+        saveGame();
+        render();
+      });
+      ngBox.appendChild(nb);
+    });
+    elChoicesPanel.appendChild(ngBox);
   }
 
   const btnTitle = document.createElement('button');
@@ -7724,16 +7753,23 @@ function openSaveModal(allowSave) {
 
 function openEndingsModal() {
   const unlocked = loadUnlockedEndings();
-  elEndingsModalTitle.textContent = `🏆 엔딩 도감 (${unlocked.length}/15)`;
+  elEndingsModalTitle.textContent = `🏆 엔딩 도감 (${unlocked.length}/${ENDINGS.length})`;
   elEndingsList.innerHTML = '';
   const sorted = [...ENDINGS].sort((a, b) => a.num - b.num);
   sorted.forEach((end) => {
     const isOpen = unlocked.includes(end.id);
     const card = document.createElement('div');
     card.className = `ending-card${isOpen ? '' : ' locked'}`;
-    card.innerHTML = isOpen
-      ? `<span class="ending-badge">#${end.num} ${end.badge}</span><h4>${end.title}</h4><p>${end.story}</p>`
-      : `<span class="ending-badge">#${end.num} 미해금</span><h4>🔒 ??? (엔딩 ${end.num})</h4><p>💡 힌트: ${end.hint}</p>`;
+    if (isOpen) {
+      card.innerHTML = `
+        ${end.image ? `<img src="${end.image}?v=82" alt="${end.title}" style="width:100%;max-height:145px;object-fit:cover;border-radius:8px;margin-bottom:6px;" />` : ''}
+        <span class="ending-badge">#${end.num} ${end.badge}</span>
+        <h4>${end.title}</h4>
+        <p style="white-space:pre-line;">${end.story}</p>
+      `;
+    } else {
+      card.innerHTML = `<span class="ending-badge">#${end.num} 미해금</span><h4>🔒 ??? (엔딩 ${end.num})</h4><p>💡 힌트: ${end.hint}</p>`;
+    }
     elEndingsList.appendChild(card);
   });
   elEndingsModal.classList.remove('hidden');
