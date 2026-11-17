@@ -822,11 +822,11 @@ function triggerEnemyHit(dmg, isCrit = false) {
   void elFrame.offsetWidth;
   elFrame.classList.add('hit-flash');
   if (isCrit && elBookPage) {
-    elBookPage.classList.remove('hit-flash');
+    elBookPage.classList.remove('hit-flash', 'shake');
     void elBookPage.offsetWidth;
-    elBookPage.classList.add('hit-flash');
+    elBookPage.classList.add('hit-flash', 'shake');
   }
-  showFloatingText(isCrit ? `약점/치명 -${dmg}!` : `-${dmg}`, isCrit ? 'crit' : 'hit');
+  showFloatingText(isCrit ? `💥 치명 -${dmg}!!` : `-${dmg}`, isCrit ? 'crit' : 'hit');
   sfx.hit(isCrit);
   vibrate(isCrit ? [45, 30, 85] : 35);
 }
@@ -1708,6 +1708,9 @@ function startBattle(enemyId, isRandomEncounter = false) {
   state.enemyMaxHp = enemy.maxHp;
   state.enemyStunned = false;
   state.enemyExcuseShield = false;
+  state.enemyGuardShield = 3;
+  state.combatChain = 0;
+  state.nextGuaranteedCrit = false;
   state.enemyIntent = 'normal';
   state.weakCombo = 0;
   state.skillChain = [];
@@ -1876,7 +1879,7 @@ function enemyCounterTurn(enemy, isGuarding = false) {
     state.log += `\n📝 [반성문 효과] 빌런이 주눅 들어 공격력이 40% 감소!`;
   }
   if (isGuarding) {
-    dmg = Math.max(2, Math.round(dmg * 0.25));
+    dmg = Math.max(1, Math.round(dmg * 0.10));
   }
   const totalDef = (eqBonus.def || 0) + (state.flatDef || 0) + Math.floor(((state.level || 1) - 1) / 3);
   if (totalDef > 0) {
@@ -2156,22 +2159,34 @@ function handleEnemyDefeated(enemy) {
 
 function performGuard() {
   const enemy = getEnemyById(state.currentEnemyId);
-  const counterDmg = 14 + state.stats.guts * 3 + state.bonusDmg;
-  state.sp = clamp(state.sp + 18, 0, state.maxSp);
+  const counterDmg = Math.round(22 + state.stats.guts * 3.5 + state.bonusDmg);
+  state.sp = clamp(state.sp + 25, 0, state.maxSp);
   state.enemyHp = clamp(state.enemyHp - counterDmg, 0, state.enemyMaxHp);
-  state.weakCombo = (state.weakCombo || 0) + 1;
-  addFever(25);
+  state.combatChain = (state.combatChain || 0) + 1;
+  state.enemyGuardShield = Math.max(0, (state.enemyGuardShield ?? 3) - 1);
+  addFever(30);
   playHeroAnim('guard');
   sfx.hit(true);
-  state.log = `🛡️ 완벽 가드 & 카운터! (반격 -${counterDmg} · 사이다 +18)`;
-  if (state.weakCombo >= 2) {
+  state.log = `⚡ [저스트 패링!!] 피해 90% 차단 + 역관광 -${counterDmg} · 사이다 +25 · 피버 +30%!`;
+  let gotBonusTurn = false;
+  if (state.enemyGuardShield <= 0 && state.enemyHp > 0) {
     state.enemyBroken = true;
     state.enemyStunned = true;
-    state.weakCombo = 0;
-    state.log += `\n💥 [카운터 브레이크!!] 빌런이 멘붕하여 다음 공격 1.5배 + 기절!`;
-    showToast('💥 카운터 브레이크! 다음 공격 피해 1.5배!', 'break');
+    state.enemyGuardShield = 3;
+    gotBonusTurn = true;
+    state.log += `\n💥 [MENTAL BREAK!!] 실드 격파! 빌런 기절 + 공짜 보너스 1턴!!`;
+    showToast('💥 MENTAL BREAK! 공짜 보너스 1턴 획득!!', 'break');
   }
   triggerEnemyHit(counterDmg, true);
+  if (state.enemyHp <= 0) {
+    handleEnemyDefeated(enemy);
+    return;
+  }
+  if (gotBonusTurn) {
+    saveGame();
+    render();
+    return;
+  }
   enemyCounterTurn(enemy, true);
 }
 
@@ -2182,15 +2197,17 @@ function checkStreamMission(actionId) {
   const f = Math.round(state.streamMission.rewardF * mult);
   state.points += p;
   state.followers = (state.followers || 120) + f;
-  state.log += `\n📺 [시청자 미션 성공!] 도네이션 +${p} P · 팔로워 +${f}!`;
+  state.sp = clamp(state.sp + 20, 0, state.maxSp);
+  state.nextGuaranteedCrit = true;
+  state.log += `\n📺 [시청자 미션 성공!] +${p}P · 팔로워 +${f} · 사이다 +20 · 다음 공격 확정 치명타!`;
   if (state.goldenMission) {
     state.goldenMission = false;
     state.points += 80;
     state.scrap = (state.scrap || 0) + 2;
     state.log += `\n🌟 [동접 10만 황금 별풍선 잭팟!!] +80 P · 강화석 +2개 즉석 지급!`;
-    showToast(`🌟 황금 별풍선 잭팟!! +80 P · 강화석 +2!`, 'break');
+    showToast(`🌟 황금 별풍선 잭팟!! +80 P · 강화석 +2 · 확정치명!`, 'break');
   } else {
-    showToast(`📺 도네이션 +${p} P · 팔로워 +${f}!`, 'good');
+    showToast(`📺 도네 성공! +${p}P · 사이다+20 · 다음 타 확정치명!`, 'good');
   }
   state.streamMission = STREAM_MISSIONS[Math.floor(Math.random() * STREAM_MISSIONS.length)];
   state.goldenMission = Math.random() < 0.15;
@@ -2389,6 +2406,38 @@ function performAttack(type) {
     }
   }
 
+  if (state.nextGuaranteedCrit) {
+    state.nextGuaranteedCrit = false;
+    if (!isCrit) {
+      dmg = Math.round(dmg * 1.5);
+      isCrit = true;
+    }
+    state.log += `\n📺 [구독자 환호 버프!] 확정 치명타 작렬!!`;
+  }
+  if (hitWeakness || isCrit) {
+    state.combatChain = (state.combatChain || 0) + 1;
+    if (state.combatChain >= 2) {
+      const chainMult = 1 + Math.min(0.5, (state.combatChain - 1) * 0.1);
+      dmg = Math.round(dmg * chainMult);
+      state.log += `\n🔥 [${state.combatChain} CHAIN!] 콤보 배율 x${chainMult.toFixed(1)} 적용!`;
+    }
+  } else {
+    state.combatChain = 0;
+  }
+
+  let gotBreakBonusTurn = false;
+  if (hitWeakness && state.enemyHp > 0) {
+    state.enemyGuardShield = Math.max(0, (state.enemyGuardShield ?? 3) - 1);
+    if (state.enemyGuardShield <= 0) {
+      state.enemyBroken = true;
+      state.enemyStunned = true;
+      state.enemyGuardShield = 3;
+      gotBreakBonusTurn = true;
+      state.log += `\n💥 [MENTAL BREAK!!] 가드 3칸 완파! 빌런 기절 + 공짜 보너스 1턴 획득!!`;
+      showToast('💥 MENTAL BREAK!! 공짜 보너스 1턴 획득!!', 'break');
+    }
+  }
+
   // V27.0: 사이다 필살기(special) 제외, 일반 공격으로는 풀피 적을 한 방에 처치 불가 (최소 2턴 이상 공방 보장)
   if (type !== 'special' && state.enemyHp >= state.enemyMaxHp && dmg >= state.enemyHp) {
     const surviveHp = Math.max(1, Math.round(state.enemyMaxHp * 0.14));
@@ -2404,6 +2453,15 @@ function performAttack(type) {
   }
   checkStreamMission(type);
   triggerEnemyHit(dmg, isCrit);
+  if (state.enemyHp <= 0) {
+    handleEnemyDefeated(enemy);
+    return;
+  }
+  if (gotBreakBonusTurn) {
+    saveGame();
+    render();
+    return;
+  }
   enemyCounterTurn(enemy);
 }
 
@@ -5453,13 +5511,16 @@ function render() {
     const intentObj = ENEMY_INTENTS.find((i) => i.id === state.enemyIntent) || ENEMY_INTENTS[0];
     elEnemyIntentBar.classList.remove('hidden');
     elEnemyIntentBar.className = `enemy-intent-bar${intentObj.isDanger ? ' danger' : ''}`;
-    const comboText = (state.weakCombo || 0) > 0 ? `🔥 콤보 x${state.weakCombo}` : (state.bossPhase2 ? '💢 2페이즈' : '전투 중');
-    elEnemyIntentBar.innerHTML = `<span>${intentObj.label}</span><span>${comboText}</span>`;
+    const chainTxt = (state.combatChain || 0) >= 2 ? `🔥 ${state.combatChain} CHAIN (x${(1 + Math.min(0.5, (state.combatChain - 1) * 0.1)).toFixed(1)})` : (state.bossPhase2 ? '💢 2페이즈' : '전투 중');
+    elEnemyIntentBar.innerHTML = `<span>${intentObj.label}</span><span>${chainTxt}</span>`;
 
     if (elCombatBadges) {
       elCombatBadges.innerHTML = '';
       const activeBadges = [];
       const passiveBadges = [];
+      const gShield = state.enemyGuardShield ?? 3;
+      activeBadges.push({ cls: 'is-combo', txt: `🛡️ 가드 ${'◆'.repeat(gShield)}${'◇'.repeat(Math.max(0, 3 - gShield))}` });
+      if (state.nextGuaranteedCrit) activeBadges.push({ cls: 'is-break', txt: '📺 다음 타 확정치명!' });
       if (state.bossGimmick === 'shield' && (state.bossShield || 0) > 0) activeBadges.push({ cls: 'is-break', txt: `🛡️ 보스실드 ${state.bossShield}겹` });
       if (state.bossGimmick === 'countdown') activeBadges.push({ cls: 'is-break', txt: `⏰ 광폭까지 ${state.bossCountdown || 3}턴` });
       if (state.enemyBroken) activeBadges.push({ cls: 'is-break', txt: '💥 멘붕 1.5배!' });
@@ -5601,7 +5662,7 @@ function render() {
       const guardBtn = document.createElement('button');
       guardBtn.className = 'choice-btn row-btn guard-btn';
       guardBtn.style.gridColumn = 'span 2';
-      guardBtn.innerHTML = '<span>🛡️ 완벽 가드 & 카운터 (필살기 방어!)</span><span class="choice-sub">피해 -75% · 반격 · 사이다+18</span>';
+      guardBtn.innerHTML = '<span>⚡ 저스트 패링!! (강공격 90% 차단 + 역관광)</span><span class="choice-sub">피해 -90% · 반격 · 사이다+25 · 피버+30%</span>';
       guardBtn.addEventListener('click', performGuard);
       elChoicesPanel.appendChild(guardBtn);
     }
@@ -5698,6 +5759,7 @@ function render() {
           state.sp = clamp(state.sp + 20, 0, state.maxSp);
           state.perfectSnaps = (state.perfectSnaps || 0) + 1;
           if (state.bossGimmick === 'shield' && (state.bossShield || 0) > 0) state.bossShield -= 1;
+          state.enemyGuardShield = Math.max(0, (state.enemyGuardShield ?? 3) - 1);
           addFever(35);
           state.log = `📸 [PERFECT 채증!!] 결정적 순간 포착! (멘탈 -${dmg} · 채증+2 · 사이다+20)`;
           checkAchievements();
@@ -5708,6 +5770,15 @@ function render() {
         checkStreamMission('snap');
         triggerEnemyHit(dmg, isPerfect);
         if (state.enemyHp <= 0) handleEnemyDefeated(enemy);
+        else if (isPerfect && state.enemyGuardShield <= 0) {
+          state.enemyBroken = true;
+          state.enemyStunned = true;
+          state.enemyGuardShield = 3;
+          state.log += `\n💥 [MENTAL BREAK!!] 채증으로 가드 완파! 보너스 1턴 획득!!`;
+          showToast('💥 MENTAL BREAK! 공짜 보너스 1턴!!', 'break');
+          saveGame();
+          render();
+        }
         else enemyCounterTurn(enemy, false);
       });
     });
