@@ -165,6 +165,14 @@ export const ACT_STORY_EPISODES = {};
 
 Object.entries(RAW_ROSTER).forEach(([actId, list]) => {
   const baseLv = ACT_BASE_LV[actId] || 1;
+  const actObj = KOREA_ACTS.find((a) => a.id === actId);
+  const locFlavor = {
+    jeonju: ['전주 한옥마을 돌담길', '전통시장 먹거리 골목', '전북대 캠퍼스 앞', '한옥마을 야시장'],
+    pyeongtaek: ['평택역 광장', '송탄 로데오거리', '평택항 부두길', '평택 시외터미널'],
+    dongtan: ['동탄 호수공원 산책로', '동탄역 GTX 환승통로', '메타폴리스 아파트 단지', '동탄 신도시 카페거리'],
+    incheon: ['부평 지하상가 미로', '차이나타운 홍등 거리', '소래포구 어시장', '월미도 테마파크 앞바다'],
+  }[actId] || ['현장'];
+
   ACT_STORY_EPISODES[actId] = [];
   list.forEach((row, idx) => {
     const epNum = idx + 1;
@@ -174,33 +182,75 @@ Object.entries(RAW_ROSTER).forEach(([actId, list]) => {
     const atk = Math.round((10 + recLv * 1.15) * (isBoss ? 1.25 : 1.0));
     const reward = Math.round((32 + recLv * 6) * (isBoss ? 1.8 : 1.0));
     const id = `act_${actId}_${epNum}`;
+    const spot = locFlavor[idx % locFlavor.length];
+    const nextRow = list[idx + 1];
+    const spriteUrl = `assets/images/acts/${row[2]}?v=109`;
+
     ACT_VILLAINS.push({
       id,
       actId,
       actEp: epNum,
       isActBoss: isBoss,
       fixedLv: recLv,
-      location: `${KOREA_ACTS.find((a) => a.id === actId)?.name || actId} ${epNum}화`,
+      location: `${actObj?.name || actId} ${epNum}화`,
       name: row[0],
       maxHp,
       atk,
       reward,
       weakness: row[1],
       weaknessLabel: WEAK_LABELS[row[1]] || '🗣️ 약점: 언변',
-      image: `assets/images/acts/${row[2]}?v=102`,
+      image: spriteUrl,
       introQuote: row[3],
       banterQuotes: [row[3]],
       defeatQuote: isBoss ? '"크윽... 전국구 시민영웅의 완장, 인정한다!"' : '"죄송합니다! 두 번 다시 민폐 안 끼칠게요!"',
     });
+
     ACT_STORY_EPISODES[actId].push({
       ep: epNum,
       recLv,
       isBoss,
-      title: `📖 제${epNum}화 · ${row[0]}`,
-      text: isBoss
-        ? `[최종 보스전 · 추천 Lv.${recLv}] ${row[0]}이(가) 지역 전체를 혼란에 빠뜨리고 있습니다! 노란 완장의 정의를 보여주세요!`
-        : `[추천 Lv.${recLv}] ${row[0]}이(가) 현장에서 소란을 피우고 있습니다. (${row[3]})`,
+      actId,
+      actName: actObj?.name || actId,
+      bg: actObj?.bg || '',
+      sprite: spriteUrl,
+      title: `제${epNum}화 · ${row[0]}`,
       battleBossId: id,
+      scenes: [
+        {
+          speaker: `📍 ${spot}`,
+          text: isBoss
+            ? `무거운 긴장감이 ${spot}을 감쌉니다. 지금까지의 소란을 뒤에서 조종하던 최종 흑막 [${row[0]}]이(가) 마침내 모습을 드러냈습니다!`
+            : `노란 완장을 고쳐 매고 ${spot}을 순찰하던 중, 저쪽에서 시민들의 웅성거림이 들려옵니다. 또 누군가 민폐를 부리고 있는 모양입니다!`,
+        },
+        {
+          speaker: row[0],
+          showSprite: true,
+          text: `${row[3]}\n\n[${row[0]}]이(가) 적반하장으로 기세등등하게 쏘아붙입니다! 어떻게 대응할까요?`,
+          choices: [
+            {
+              label: '🗣️ 조목조목 논리로 따진다 (화술↑)',
+              sub: '사이다 +20 회복 · 화술 숙련도 상승 · 명성 +1',
+              effect: 'speech',
+              reply: '차분하고 논리적인 일침에 빌런의 표정이 굳어집니다! "뭐, 뭐야 이 인간?!" (사이다 +20 · 명성 +1)',
+            },
+            {
+              label: '🥊 노란 완장을 치켜들고 정면 돌파! (격투↑)',
+              sub: '선제 기선제압 (적 HP -15% 시작) · 격투 숙련도 상승',
+              effect: 'guts',
+              reply: '압도적인 포스로 앞을 가로막자 빌런이 한 걸음 물러섭니다! (전투 시 적 체력 -15%로 시작!)',
+            },
+            {
+              label: '📸 몰래 채증 사진부터 찍어둔다 (은신↑)',
+              sub: '채증 +1 · 은신 숙련도 상승 · +20P',
+              effect: 'sneak',
+              reply: '현장 증거를 찰칵 확보했습니다! 이제 빠져나갈 구멍은 없습니다! (채증 +1 · +20P)',
+            },
+          ],
+        },
+      ],
+      aftermathText: isBoss
+        ? `🎉 [${actObj?.name}] 지역 보스 [${row[0]}]을(를) 완벽히 제압했습니다!\n주변 시민들이 박수를 치며 환호하고, 도시의 거리에 평화가 찾아옵니다!`
+        : `[${row[0]}]이(가) 고개를 푹 숙이고 현장을 정리하며 사라졌습니다.\n${nextRow ? `📰 다음 소문: 근처에서 [${nextRow[0]}]의 움직임이 포착되었다는 제보가 들어옵니다...` : '지역 평화가 한 걸음 더 가까워졌습니다!'}`,
     });
   });
 });

@@ -1,5 +1,5 @@
 import { TIME_SLOTS, ITEMS, TRAITS, VILLAINS, BOSSES, HIDDEN_BOSS, WEATHERS, RANDOM_EVENTS, STORY_MESSAGES } from './data/gameData.js?v=98';
-import { KOREA_ACTS, REGIONAL_GOODS, RUNE_STONES, ACT_VILLAINS, ACT_STORY_EPISODES, ACT_PIN_LABELS, RELAY_QUESTS } from './data/koreaActs.js?v=104';
+import { KOREA_ACTS, REGIONAL_GOODS, RUNE_STONES, ACT_VILLAINS, ACT_STORY_EPISODES, ACT_PIN_LABELS, RELAY_QUESTS } from './data/koreaActs.js?v=109';
 import { STORY_CHAPTERS } from './data/storyChapters.js?v=48';
 import { ACTIVITY_CATEGORIES } from './data/activities.js?v=48';
 import { MINI_EVENTS, ENEMY_INTENTS, createFeedForVictory } from './data/liveEvents.js';
@@ -252,6 +252,8 @@ function createNewGameState() {
     relayDone: [],
     pendingSos: null,
     freeGtxPass: false,
+    activeActStory: null,
+    pendingActAftermath: null,
   };
 }
 
@@ -1813,6 +1815,10 @@ function startBattle(enemyId, isRandomEncounter = false) {
   state.currentEnemyLv = enemyLv;
   state.currentEnemyAtk = enemy.atk;
   state.enemyHp = startHp;
+  if (state.activeActStory?.preDamagePct) {
+    state.enemyHp = Math.max(1, Math.round(state.enemyHp * (1 - state.activeActStory.preDamagePct)));
+  }
+  state.activeActStory = null;
   state.enemyMaxHp = enemy.maxHp;
   state.enemyStunned = false;
   state.enemyExcuseShield = false;
@@ -2099,6 +2105,7 @@ function handleEnemyDefeated(enemy) {
   if (enemy.actId && enemy.actEp) {
     if (!state.actStoryStep) state.actStoryStep = {};
     state.actStoryStep[enemy.actId] = Math.max(state.actStoryStep[enemy.actId] || 0, enemy.actEp);
+    state.pendingActAftermath = { actId: enemy.actId, epNum: enemy.actEp, isBoss: !!enemy.isActBoss };
     showToast(`📖 [${enemy.location}] 클리어!`, 'good');
   }
   if (enemy.isActBoss && enemy.actId) {
@@ -7078,7 +7085,7 @@ function render() {
         const msg = applyDraftReward(opt);
         state.phase = (state.pendingStoryAftermath !== null && state.pendingStoryAftermath !== undefined)
           ? 'story_aftermath'
-          : 'map';
+          : (state.pendingActAftermath ? 'act_aftermath' : 'map');
         state.log = `${msg} (상단 📱 버튼으로 톡 알림/안전신문고를 확인해 보세요)`;
         saveGame();
         render();
@@ -7093,6 +7100,114 @@ function render() {
   elWeaknessPill.classList.add('hidden');
   elEnemyHpWrap.classList.add('hidden');
   elQuoteBubble.classList.add('hidden');
+
+  // V43.0: 전국 5대 액트 비주얼 노벨 스토리 & 승리 후일담
+  if (state.phase === 'act_story') {
+    const st = state.activeActStory || { actId: 'jeonju', epIdx: 0, sceneIdx: 0 };
+    const eps = ACT_STORY_EPISODES[st.actId] || [];
+    const ep = eps[st.epIdx] || eps[0];
+    if (!ep || !ep.scenes) { state.phase = 'map'; render(); return; }
+    const sc = ep.scenes[Math.min(st.sceneIdx || 0, ep.scenes.length - 1)];
+    elLocation.textContent = `DAY ${state.day} · ${timeLabel} · ${ep.actName}`;
+    elSceneTag.textContent = `${ep.actName} (${ep.ep}/${eps.length}화)`;
+    elSceneTag.className = 'scene-tag story';
+    elSceneTitle.textContent = ep.title;
+    if (elFrame && ep.bg) {
+      elFrame.classList.add('story-stage');
+      elFrame.style.backgroundImage = `url('${ep.bg}')`;
+      elFrame.style.backgroundSize = 'cover';
+      elFrame.style.backgroundPosition = 'center';
+    }
+    if (sc.showSprite && ep.sprite) {
+      elSceneImage.src = ep.sprite;
+      elSceneImage.className = 'enemy-sprite';
+      elSceneImage.classList.remove('hidden');
+    } else {
+      elSceneImage.classList.add('hidden');
+    }
+    elBattleLog.textContent = st.reply ? `${st.reply}` : `[${sc.speaker}]\n${sc.text}`;
+
+    if (st.reply || !sc.choices) {
+      const isLast = (st.sceneIdx || 0) >= ep.scenes.length - 1;
+      const nxt = document.createElement('button');
+      nxt.className = 'choice-btn row-btn story-main-btn';
+      nxt.style.gridColumn = 'span 2';
+      nxt.innerHTML = isLast
+        ? `<span>⚔️ 참교육 전투 돌입!! (추천 Lv.${ep.recLv})</span><span class="choice-sub">내 Lv.${state.level || 1} · 승리 시 다음 화 해금!</span>`
+        : `<span>다음 장면으로 ▶</span><span class="choice-sub">${ep.title} (${(st.sceneIdx || 0) + 1}/${ep.scenes.length})</span>`;
+      nxt.addEventListener('click', () => {
+        sfx.powerup();
+        if (isLast) {
+          startBattle(ep.battleBossId);
+        } else {
+          state.activeActStory = { ...st, sceneIdx: (st.sceneIdx || 0) + 1, reply: '' };
+          render();
+        }
+      });
+      elChoicesPanel.appendChild(nxt);
+    } else {
+      sc.choices.forEach((ch) => {
+        const cb = document.createElement('button');
+        cb.className = 'choice-btn row-btn';
+        cb.style.gridColumn = 'span 2';
+        cb.innerHTML = `<span>${ch.label}</span><span class="choice-sub">${ch.sub}</span>`;
+        cb.addEventListener('click', () => {
+          ensureSandboxState();
+          let preDmg = 0;
+          if (ch.effect === 'speech') {
+            gainSkillXp('speech', 12);
+            state.sp = clamp(state.sp + 20, 0, state.maxSp);
+            state.fame = (state.fame || 0) + 1;
+          } else if (ch.effect === 'guts') {
+            gainSkillXp('combat', 12);
+            preDmg = 0.15;
+          } else if (ch.effect === 'sneak') {
+            gainSkillXp('sneak', 12);
+            state.pendingReports = (state.pendingReports || 0) + 1;
+            state.points += 20;
+          }
+          sfx.powerup();
+          state.activeActStory = { ...st, reply: ch.reply, preDamagePct: preDmg };
+          render();
+        });
+        elChoicesPanel.appendChild(cb);
+      });
+    }
+    return;
+  }
+
+  if (state.phase === 'act_aftermath') {
+    const am = state.pendingActAftermath || { actId: 'jeonju', epNum: 1 };
+    const eps = ACT_STORY_EPISODES[am.actId] || [];
+    const ep = eps.find((e) => e.ep === am.epNum) || eps[0];
+    const actObj = KOREA_ACTS.find((a) => a.id === am.actId);
+    elLocation.textContent = `DAY ${state.day} · ${timeLabel} · ${actObj?.name || ''}`;
+    elSceneTag.textContent = `제${am.epNum}화 클리어!`;
+    elSceneTag.className = 'scene-tag victory';
+    elSceneTitle.textContent = ep ? ep.title : '사건 해결!';
+    if (elFrame && actObj?.bg) {
+      elFrame.classList.add('story-stage');
+      elFrame.style.backgroundImage = `url('${actObj.bg}')`;
+      elFrame.style.backgroundSize = 'cover';
+      elFrame.style.backgroundPosition = 'center';
+    }
+    elBattleLog.textContent = ep?.aftermathText || '현장의 소란이 깔끔하게 정리되었습니다!';
+    const doneBtn = document.createElement('button');
+    doneBtn.className = 'choice-btn row-btn story-main-btn';
+    doneBtn.style.gridColumn = 'span 2';
+    doneBtn.innerHTML = am.isBoss
+      ? `<span>🏆 ${actObj?.name || '지역'} 제패 완료!! 지도로 복귀 ▶</span><span class="choice-sub">다음 지역 및 신규 시스템 해금!</span>`
+      : `<span>✨ 사건 마무리 & 지도로 복귀 ▶</span><span class="choice-sub">다음 화 해금 완료!</span>`;
+    doneBtn.addEventListener('click', () => {
+      state.pendingActAftermath = null;
+      state.phase = 'map';
+      sfx.victory();
+      saveGame();
+      render();
+    });
+    elChoicesPanel.appendChild(doneBtn);
+    return;
+  }
 
   if (state.phase === 'story_aftermath') {
     const chIdx = state.pendingStoryAftermath ?? Math.max(0, (state.chapterIndex || 1) - 1);
@@ -9923,6 +10038,13 @@ function openActStoryModal(actId) {
   const eps = ACT_STORY_EPISODES[actId] || ACT_STORY_EPISODES.seoul;
   const step = Math.min(state.actStoryStep[actId] || 0, eps.length - 1);
   const ep = eps[step];
+  if (ep && ep.scenes) {
+    elActivityModal.classList.add('hidden');
+    state.activeActStory = { actId, epIdx: step, sceneIdx: 0, reply: '', preDamagePct: 0 };
+    state.phase = 'act_story';
+    render();
+    return;
+  }
   const curActObj = KOREA_ACTS.find((a) => a.id === actId);
   if (elActivityModalImg && curActObj?.bg) {
     elActivityModalImg.src = curActObj.bg;
