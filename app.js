@@ -18,6 +18,7 @@ import { UNLOCK_MILESTONES, isFeatureUnlocked, SEOUL_DISTRICTS, getDistrictIdFor
 import { STORY_BOSSES } from './data/storyBosses.js?v=45';
 import { STORY_AFTERMATHS } from './data/storyAftermath.js?v=81';
 import { YUKI_ROMANCE_STORY } from './data/romanceStoryYuki.js?v=132';
+import { LUXURY_GIFTS_100 } from './data/luxuryGifts100.js?v=148';
 import { CHLOE_ROMANCE_STORY } from './data/romanceStoryChloe.js?v=132';
 import { sfx } from './sound.js';
 
@@ -985,13 +986,13 @@ function spawnCombatVfx(vfxOpts, isCrit = false) {
     const img = document.createElement('img');
     const isBig = isCrit || vfxOpts.isBreak || vfxOpts.isFever || (vfxOpts.tier || 1) >= 4;
     img.src = vfxOpts.vfxImg;
-    img.className = `vfx-impact-sprite${isBig ? ' is-big' : ''}`;
+    img.className = `vfx-impact-sprite${isBig ? ' is-big' : ''}${vfxOpts.isHeroSide ? ' is-hero-side' : ''}`;
     img.alt = '';
     elCombatVfxLayer.appendChild(img);
     setTimeout(() => img.remove(), 1380);
 
     const ring = document.createElement('div');
-    ring.className = 'vfx-hit-ring';
+    ring.className = `vfx-hit-ring${vfxOpts.isHeroSide ? ' is-hero-side' : ''}`;
     elCombatVfxLayer.appendChild(ring);
     setTimeout(() => ring.remove(), 900);
   }
@@ -1027,8 +1028,13 @@ function triggerEnemyHit(dmg, isCrit = false, vfxOpts = null) {
   vibrate(isCrit ? [45, 30, 85] : 35);
 }
 
-function triggerPlayerDamage(dmg) {
-  state.battleDamageTaken = (state.battleDamageTaken || 0) + (Number(dmg) || 0);
+function triggerPlayerDamage(dmg, isGuard = false) {
+  if (!isGuard) state.battleDamageTaken = (state.battleDamageTaken || 0) + (Number(dmg) || 0);
+  spawnCombatVfx({
+    vfxImg: isGuard ? 'assets/images/vfx/vfx_law_3.png?v=148' : 'assets/images/vfx/vfx_guts_1.png?v=148',
+    isHeroSide: true,
+    tier: 2,
+  }, !isGuard);
   elBookPage.classList.remove('shake');
   void elBookPage.offsetWidth;
   elBookPage.classList.add('shake');
@@ -2764,19 +2770,25 @@ function handleEnemyDefeated(enemy) {
   }
   // V57.0: 전투 챌린지 훈장 3종 정산!
   const chalRewards = [];
+  if (!state.records) state.records = { maxHitDmg: 0, fastestWinTurns: 99, noDmgWins: 0, speedWins: 0, chainWins: 0 };
+  const tWin = Math.max(1, state.battleTurn || 1);
+  if (tWin < (state.records.fastestWinTurns || 99)) state.records.fastestWinTurns = tWin;
   if ((state.battleDamageTaken || 0) === 0) {
     state.points += 40;
     state.scrap = (state.scrap || 0) + 1;
+    state.records.noDmgWins = (state.records.noDmgWins || 0) + 1;
     chalRewards.push('🛡️노데미지(+40P·고철+1)');
   }
   if ((state.battleTurn || 0) <= 3) {
     state.points += 35;
     if (state.equippedSpirit) gainSpiritExp(state.equippedSpirit, 25);
+    state.records.speedWins = (state.records.speedWins || 0) + 1;
     chalRewards.push('⚡3턴컷(+35P·정령EXP+25)');
   }
   if ((state.battleChainClears || 0) >= 1) {
     state.points += 45;
     state.sp = clamp(state.sp + 20, 0, state.maxSp);
+    state.records.chainWins = (state.records.chainWins || 0) + 1;
     chalRewards.push('🌀3체인마스터(+45P·SP+20)');
   }
   if (chalRewards.length > 0) {
@@ -2958,6 +2970,7 @@ function performGuard() {
   state.enemyGuardShield = Math.max(0, (state.enemyGuardShield ?? 3) - 1);
   addFever(30);
   playHeroAnim('guard');
+  spawnCombatVfx({ vfxImg: 'assets/images/vfx/vfx_law_3.png?v=148', isHeroSide: true, tier: 2 }, false);
   sfx.hit(true);
   state.log = `⚡ [저스트 패링!!] 피해 90% 차단 + 역관광 -${counterDmg} · 사이다 +25 · 피버 +30%!`;
   let gotBonusTurn = false;
@@ -3376,6 +3389,8 @@ function performAttack(type, ultPerfect = false) {
     state.log += `\n💢 [끈질긴 멘탈!] 빌런이 이를 악물고 간신히 버텼습니다! (필살기 외 1타 격파 불가)`;
   }
 
+  if (!state.records) state.records = { maxHitDmg: 0, fastestWinTurns: 99, noDmgWins: 0, speedWins: 0, chainWins: 0 };
+  if (dmg > (state.records.maxHitDmg || 0)) state.records.maxHitDmg = dmg;
   state.enemyHp = clamp(state.enemyHp - dmg, 0, state.enemyMaxHp);
   if (isFever) {
     state.feverTurns = Math.max(0, (state.feverTurns || 0) - 1);
@@ -4652,6 +4667,25 @@ function render() {
       });
       elActivityList.appendChild(refBtn);
 
+      const recBtn = document.createElement('button');
+      recBtn.className = 'activity-item-btn';
+      recBtn.innerHTML = `<div class="act-title">🏆 영웅 명예 전적 & 한방 딜 랭킹</div><div class="act-desc">최대 데미지 ${(state.records?.maxHitDmg || 0).toLocaleString()} · 챌린지 달성 현황</div>`;
+      recBtn.addEventListener('click', () => { sfx.click(); openHeroRecordsModal(); });
+      elActivityList.appendChild(recBtn);
+
+      const cinBtn = document.createElement('button');
+      cinBtn.className = 'activity-item-btn';
+      cinBtn.innerHTML = '<div class="act-title">🎬 시네마틱 극장 · 회상관 (11편)</div><div class="act-desc">오프닝 & 시즌·연애·결혼 아웃트로 다시 보기!</div>';
+      cinBtn.addEventListener('click', () => { sfx.click(); openCinemaHallModal(); });
+      elActivityList.appendChild(cinBtn);
+
+      const vipBtn = document.createElement('button');
+      vipBtn.className = 'activity-item-btn';
+      vipBtn.style.borderColor = '#d97706';
+      vipBtn.innerHTML = '<div class="act-title">💎 VIP 럭셔리 부티크 & 정령 가챠</div><div class="act-desc">도덕P로 정령 뽑기 · 한계돌파 비약 · 100종 명품 선물!</div>';
+      vipBtn.addEventListener('click', () => { sfx.click(); openVipShopModal(); });
+      elActivityList.appendChild(vipBtn);
+
       const towerUnlocked = isFeatureUnlocked(state, 'foundation');
       const tBtn = document.createElement('button');
       tBtn.className = 'activity-item-btn';
@@ -5581,6 +5615,15 @@ function render() {
       render();
     });
     elChoicesPanel.appendChild(giftBtn);
+
+    const vipRomBtn = document.createElement('button');
+    vipRomBtn.className = 'choice-btn row-btn';
+    vipRomBtn.style.gridColumn = 'span 2';
+    vipRomBtn.style.borderColor = '#d97706';
+    vipRomBtn.style.background = 'linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%)';
+    vipRomBtn.innerHTML = `<span>💎 VIP 명품 부티크 (100종 고유 선물 & 리액션!)</span><span class="choice-sub" style="color:#b45309;">컬렉션 ${(state.givenLuxuryGifts || []).length}/100 · 도덕P로 명품 선물 & 정령 가챠 ▶</span>`;
+    vipRomBtn.addEventListener('click', () => { sfx.click(); openVipShopModal(); });
+    elChoicesPanel.appendChild(vipRomBtn);
 
     // V53.4: 결혼은 (1) 공식 연인 + (2) 스토리 모드 클리어 + (3) 호감 180+ 전부 충족 시 해금!
     // 트리플 웨딩은 "한쪽과 결혼 + 나머지 한쪽과도 공식 커플(연인) + 양쪽 180+ & 스토리 클리어" 시 시크릿으로 개방!
@@ -12631,6 +12674,179 @@ if (elSeoulMinimap && !elSeoulMinimap.dataset.pinBound) {
     sfx.click();
     openLocationMenu(locId);
   });
+}
+
+// ===== V58.0: 시네마틱 회상관 + VIP 럭키 가챠 & 100종 명품 샵 + 영웅 전적 랭킹 =====
+function openCinemaHallModal() {
+  elActivityModalTitle.textContent = '🎬 시네마틱 극장 · 회상관 (11편)';
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+
+  const list = [
+    { label: '🎥 오프닝 인트로: 2026 시민영웅', sub: '언제든 다시 감상 가능', ok: true, run: () => initCinematicIntro() },
+    { label: '🍲 시즌 1 아웃트로: 전주 완결', sub: '전주 제패 시 해금', ok: (state.clearedActs || []).includes('jeonju'), run: () => playSeasonOutro('jeonju') },
+    { label: '🚆 시즌 2 아웃트로: 평택 완결', sub: '평택 제패 시 해금', ok: (state.clearedActs || []).includes('pyeongtaek'), run: () => playSeasonOutro('pyeongtaek') },
+    { label: '🏙️ 시즌 3 아웃트로: 동탄 완결', sub: '동탄 제패 시 해금', ok: (state.clearedActs || []).includes('dongtan'), run: () => playSeasonOutro('dongtan') },
+    { label: '😈 시즌 4 아웃트로: 마계 인천 완결', sub: '인천 제패 시 해금', ok: (state.clearedActs || []).includes('incheon'), run: () => playSeasonOutro('incheon') },
+    { label: '👑 그랜드 피날레: 서울 최종 완결', sub: '스토리 클리어 시 해금', ok: !!state.storyCleared, run: () => playSeasonOutro('seoul') },
+    { label: '💖 유키 공식 연애 성사 아웃트로', sub: '유키 연인 달성 시 해금', ok: (state.lovers || []).includes('yuki'), run: () => playRomanceOutro('yuki') },
+    { label: '💖 클로이 공식 연애 성사 아웃트로', sub: '클로이 연인 달성 시 해금', ok: (state.lovers || []).includes('chloe'), run: () => playRomanceOutro('chloe') },
+    { label: '💍 유키 웨딩 & 허니문 피날레', sub: '유키 결혼 달성 시 해금', ok: state.marriedTo === 'yuki' || (state.weddingAlbum || []).includes('wedding_yuki.jpg'), run: () => playWeddingOutro('yuki') },
+    { label: '💍 클로이 웨딩 & 허니문 피날레', sub: '클로이 결혼 달성 시 해금', ok: state.marriedTo === 'chloe' || (state.weddingAlbum || []).includes('wedding_chloe.jpg'), run: () => playWeddingOutro('chloe') },
+    { label: '👑 시크릿 트리플 웨딩 피날레', sub: '시크릿 합동결혼 해금 시', ok: state.marriedTo === 'triple' || (state.weddingAlbum || []).includes('wedding_triple.jpg'), run: () => playWeddingOutro('triple') },
+  ];
+  list.forEach((item) => {
+    const b = document.createElement('button');
+    b.className = 'activity-item-btn';
+    b.style.opacity = item.ok ? '1' : '0.5';
+    b.innerHTML = `<div class="act-title">${item.ok ? '▶️' : '🔒'} ${item.label}</div><div class="act-desc">${item.ok ? '터치하여 풀스크린 감상!' : item.sub}</div>`;
+    b.addEventListener('click', () => {
+      if (!item.ok) { sfx.click(); showToast(`🔒 ${item.sub}`, 'warn'); return; }
+      sfx.powerup();
+      elActivityModal.classList.add('hidden');
+      item.run();
+    });
+    elActivityList.appendChild(b);
+  });
+  elActivityModal.classList.remove('hidden');
+}
+
+function openHeroRecordsModal() {
+  const rec = state.records || {};
+  const ownedSp = Object.keys(state.spirits || {}).filter((k) => (state.spirits[k] || 0) > 0).length;
+  const luxCnt = (state.givenLuxuryGifts || []).length;
+  elActivityModalTitle.textContent = '🏆 영웅 명예 전적 & 챌린지 랭킹';
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+
+  const card = document.createElement('div');
+  card.className = 'oblivion-banner';
+  card.style.textAlign = 'left';
+  card.style.lineHeight = '1.65';
+  card.innerHTML = `
+    <div style="font-weight:900;font-size:0.95rem;margin-bottom:4px;">🛡️ Lv.${state.level || 1} ${getHeroRankTitle(state.level || 1)}</div>
+    <div style="font-size:0.8rem;">
+      💥 <b>최대 한 방 데미지:</b> ${(rec.maxHitDmg || 0).toLocaleString()} DMG<br/>
+      ⚡ <b>최단 턴 격파 기록:</b> ${(rec.fastestWinTurns && rec.fastestWinTurns < 99) ? `${rec.fastestWinTurns}턴 컷` : '기록 없음'}<br/>
+      ⚔️ <b>총 참교육 승리:</b> ${state.winCount || 0}승 · <b>배틀타워 최고:</b> ${state.bestTowerFloor || 0}층<br/>
+      🛡️ <b>노데미지 완승:</b> ${rec.noDmgWins || 0}회 · <b>3턴 스피드:</b> ${rec.speedWins || 0}회 · <b>3체인:</b> ${rec.chainWins || 0}회<br/>
+      👻 <b>정령 도감:</b> ${ownedSp}/100종 · 💎 <b>명품 선물 컬렉션:</b> ${luxCnt}/100종
+    </div>
+  `;
+  elActivityList.appendChild(card);
+  elActivityModal.classList.remove('hidden');
+}
+
+function openVipShopModal() {
+  if (!Array.isArray(state.givenLuxuryGifts)) state.givenLuxuryGifts = [];
+  elActivityModalTitle.textContent = `💎 VIP 럭셔리 부티크 & 가챠 (${state.points.toLocaleString()} P)`;
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+
+  const pullSpiritOnce = () => {
+    const unowned = SPIRITS_50.filter((s) => !(state.spirits?.[s.id] > 0));
+    const pick = unowned.length > 0 && Math.random() < 0.75
+      ? unowned[Math.floor(Math.random() * unowned.length)]
+      : SPIRITS_50[Math.floor(Math.random() * SPIRITS_50.length)];
+    const res = grantSpirit(pick.id, true);
+    return `${pick.name} (${res?.isNew ? '✨신규!' : `★${res?.awakeLv || 1}`})`;
+  };
+
+  const g1 = document.createElement('button');
+  g1.className = 'activity-item-btn';
+  g1.innerHTML = '<div class="act-title">🎰 수호정령 럭키 가챠 1회 (500 P)</div><div class="act-desc">75% 확률로 미보유 정령 우선 출현!</div>';
+  g1.addEventListener('click', () => {
+    if (state.points < 500) { showToast('💸 도덕P가 부족합니다 (500P 필요)', 'warn'); return; }
+    state.points -= 500;
+    const got = pullSpiritOnce();
+    sfx.victory();
+    showToast(`🎰 정령 가챠 결과: ${got}!`, 'break');
+    saveGame();
+    openVipShopModal();
+    render();
+  });
+  elActivityList.appendChild(g1);
+
+  const g10 = document.createElement('button');
+  g10.className = 'activity-item-btn';
+  g10.style.borderColor = '#d97706';
+  g10.style.background = '#fffbeb';
+  g10.innerHTML = '<div class="act-title">🌟 수호정령 10연차 대박 뽑기 (4,200 P)</div><div class="act-desc">16% 할인 + 영웅 고철 +3 보너스 증정!</div>';
+  g10.addEventListener('click', () => {
+    if (state.points < 4200) { showToast('💸 도덕P가 부족합니다 (4,200P 필요)', 'warn'); return; }
+    state.points -= 4200;
+    state.scrap = (state.scrap || 0) + 3;
+    const gots = [];
+    for (let i = 0; i < 10; i++) gots.push(pullSpiritOnce());
+    sfx.victory();
+    showToast(`🌟 10연차 완료! 고철+3 & ${gots[0]} 외 9종 획득!`, 'break');
+    state.log = `🌟 [VIP 10연차 정령 가챠 결과]
+${gots.join(' · ')} (+영웅 고철 +3!)`;
+    saveGame();
+    openVipShopModal();
+    render();
+  });
+  elActivityList.appendChild(g10);
+
+  const elixirBtn = document.createElement('button');
+  elixirBtn.className = 'activity-item-btn';
+  elixirBtn.innerHTML = '<div class="act-title">💊 영구 한계돌파 비약 (2,000 P)</div><div class="act-desc">최대 인내심 +40 · 언변/깡다구/법지식 +2 영구 상승!</div>';
+  elixirBtn.addEventListener('click', () => {
+    if (state.points < 2000) { showToast('💸 도덕P가 부족합니다 (2,000P 필요)', 'warn'); return; }
+    state.points -= 2000;
+    state.maxHp += 40;
+    state.hp = state.maxHp;
+    state.stats.speech += 2;
+    state.stats.guts += 2;
+    state.stats.law += 2;
+    sfx.powerup();
+    showToast('💊 영구 한계돌파 완료!! 최대HP+40 & 전스탯+2!', 'break');
+    saveGame();
+    openVipShopModal();
+    render();
+  });
+  elActivityList.appendChild(elixirBtn);
+
+  ['yuki', 'chloe'].forEach((hKey) => {
+    const hName = hKey === 'yuki' ? '🇯🇵 유키' : '🇺🇸 클로이';
+    const unlocked = hKey === 'yuki' || isFeatureUnlocked(state, 'chloe');
+    if (!unlocked) return;
+    const pool = LUXURY_GIFTS_100.filter((x) => x.target === hKey);
+    const ungiven = pool.filter((x) => !state.givenLuxuryGifts.includes(x.id));
+    const pick = ungiven.length > 0
+      ? ungiven[Math.floor(Math.random() * ungiven.length)]
+      : pool[Math.floor(Math.random() * pool.length)];
+    const btn = document.createElement('button');
+    btn.className = 'activity-item-btn';
+    btn.style.borderColor = '#e11d48';
+    btn.style.background = '#fff1f2';
+    btn.innerHTML = `<div class="act-title">🎁 ${hName} 명품 선물: [${pick.name}] (800 P)</div><div class="act-desc">컬렉션 ${50 - ungiven.length}/50 · 호감 +${pick.loveGain} & 고유 리액션 톡 DM!</div>`;
+    btn.addEventListener('click', () => {
+      if (state.points < 800) { showToast('💸 도덕P가 부족합니다 (800P 필요)', 'warn'); return; }
+      state.points -= 800;
+      if (!state.givenLuxuryGifts.includes(pick.id)) state.givenLuxuryGifts.push(pick.id);
+      addHeroineLove(hKey, pick.loveGain);
+      if (!state.lastContactDay) state.lastContactDay = { yuki: state.day, chloe: state.day };
+      state.lastContactDay[hKey] = state.day;
+      if (state.sulky) state.sulky[hKey] = false;
+      if (!state.dateMessages) state.dateMessages = [];
+      state.dateMessages.unshift({
+        sender: hName,
+        title: `🎁 명품 선물 감동: ${pick.name}`,
+        body: `"${pick.reaction}"`,
+      });
+      state.unreadMessages = (state.unreadMessages || 0) + 1;
+      sfx.victory();
+      showToast(`🎁 ${hName}에게 [${pick.name}] 선물 완료! (호감 +${pick.loveGain})`, 'break');
+      state.log = `🎁 ${hName}: "${pick.reaction}" (호감 +${pick.loveGain})`;
+      saveGame();
+      openVipShopModal();
+      render();
+    });
+    elActivityList.appendChild(btn);
+  });
+
+  elActivityModal.classList.remove('hidden');
 }
 
 // ===== V55.0 / V56.0: 통합 시네마틱 인트로 & 시즌·연애·결혼 아웃트로 엔진 =====

@@ -5,7 +5,13 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V57.2 (GitHub Pages 배포됨)
+## 현재 최신 버전: V58.0 (GitHub Pages 배포됨)
+- **V58.0 (`?v=148`)**:
+  - **100종 명품 선물 & 100가지 고유 반응 (`data/luxuryGifts100.js`, `openVipShopModal`)**: 유키 50종 + 클로이 50종 명품 선물, 선물마다 전부 다른 100가지 고유 리액션 & 톡 DM 발송!
+  - **VIP 럭키 가챠 & 영구 한계돌파 상점 (`openVipShopModal`)**: 도덕P로 수호정령 1회(500P)/10연차(4,200P) 미보유 우선 뽑기 + 영구 한계돌파 비약(2,000P, 최대HP+40·전스탯+2) + 명품 부티크!
+  - **쌍방향 전투 VFX (`triggerPlayerDamage`, `performGuard`)**: 적 공격 피격/가드 시에도 주인공 위(`left: 24%`)에 타격·방어 마법진 VFX 발동!
+  - **시네마틱 회상관 (`openCinemaHallModal`)**: 오프닝 인트로 + 시즌 5종 + 연애 2종 + 결혼 3종(총 11편) 언제든 다시 감상 가능!
+  - **영웅 명예 전적 & 랭킹 (`openHeroRecordsModal`)**: 최대 한 방 데미지(`maxHitDmg`), 최단 턴 격파, 노데미지/3턴/3체인 챌린지 횟수, 명품 컬렉션(X/100) 기록!
 - **V57.2 (`?v=147`)**:
   - **전투 VFX 크기·위치 및 템포 최적화 (`style.css`, `app.js`, `index.html`)**: 이펙트 크기를 무대 높이 안에 딱 맞게(`118px`, 대형 `142px`) 조절하고, 타격 위치를 적 스프라이트 위(`left: 76%`)로 이동 + `0.20초` 임팩트 / `1.32초` 발광 유지 / `1.45초` 턴 전환으로 연출 감상감 극대화.
 - **V57.1 (`?v=146`)**:

@@ -2780,6 +2780,15 @@ body[data-time="midnight"] .hud-exp-text {
   height: 142px;
   filter: drop-shadow(0 0 20px rgba(253, 224, 71, 0.95)) saturate(1.35);
 }
+.vfx-impact-sprite.is-hero-side,
+.vfx-hit-ring.is-hero-side {
+  left: 24% !important;
+  top: 54% !important;
+}
+.vfx-impact-sprite.is-hero-side {
+  width: 108px;
+  height: 108px;
+}
 @keyframes vfxImpactBurst {
   0%   { opacity: 0.2;  transform: translate(-50%, -50%) scale(0.38) rotate(-10deg); }
   16%  { opacity: 1;    transform: translate(-50%, -50%) scale(1.12) rotate(4deg); }
