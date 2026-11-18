@@ -262,6 +262,10 @@ function createNewGameState() {
     pendingLevelUp: null,
     lastDateDay: { yuki: 0, chloe: 0 },
     luckySpirit: null,
+    subSpirit: null,
+    tournamentWins: 0,
+    lastTournamentWeek: -1,
+    pendingWeatherEvent: null,
   };
 }
 
@@ -885,6 +889,9 @@ function advanceTime() {
       const mob = ACT_VILLAINS.find((v) => v.actId === pickAct.id) || VILLAINS[0];
       state.pendingSos = { actId: pickAct.id, enemyId: mob.id };
     }
+  }
+  if (!state.pendingWeatherEvent && Math.random() < 0.16) {
+    state.pendingWeatherEvent = state.weather || 'sunny';
   }
   state.chaosLevel = clamp((state.chaosLevel ?? 25) + 4, 0, 100);
   if (state.chaosLevel <= 30) {
@@ -1579,12 +1586,36 @@ function getSpiritBonuses(spiritIdOverride = null) {
   const isLucky = !!(state.luckySpirit && state.luckySpirit.id === id && (state.luckySpirit.untilDay || 0) >= (state.day || 1));
   const luckyMult = isLucky ? (state.luckySpirit.mult || 2.0) : 1.0;
   const lvMult = (1 + (lv - 1) * 0.22) * (1 + (growthLv - 1) * 0.07) * luckyMult;
+  let atk = Math.round(sp.atk * lvMult) + (growthLv - 1);
+  let spRegen = Math.round(sp.spRegen * lvMult);
+  let crit = Number((sp.crit * lvMult).toFixed(3));
+  let elemBoost = Number((sp.elemBoost * lvMult).toFixed(2));
+  let synergyLabel = '';
+
+  // V47.0: 서브 응원 정령 35% 합산 + 듀오 시너지
+  const subId = !spiritIdOverride ? state.subSpirit : null;
+  if (subId && subId !== id && (state.spirits?.[subId] || 0) > 0) {
+    const subSp = SPIRITS_50.find((x) => x.id === subId);
+    if (subSp) {
+      atk += Math.max(1, Math.round(subSp.atk * 0.35));
+      spRegen += Math.round(subSp.spRegen * 0.35);
+      crit = Number((crit + subSp.crit * 0.35).toFixed(3));
+      if (subSp.element === sp.element) {
+        elemBoost = Number((elemBoost + 0.15).toFixed(2));
+        synergyLabel = `✨ 동속성 페어(${subSp.name} · 속성+15%)`;
+      } else {
+        atk += 5;
+        spRegen += 2;
+        synergyLabel = `🌈 이종 페어(${subSp.name} · 공격+5·사이다+2)`;
+      }
+    }
+  }
   return {
-    atk: Math.round(sp.atk * lvMult) + (growthLv - 1),
-    spRegen: Math.round(sp.spRegen * lvMult),
-    crit: Number((sp.crit * lvMult).toFixed(3)),
+    atk,
+    spRegen,
+    crit,
     element: sp.element,
-    elemBoost: Number((sp.elemBoost * lvMult).toFixed(2)),
+    elemBoost,
     perkId: sp.perkId || null,
     spirit: sp,
     lv,
@@ -1592,6 +1623,7 @@ function getSpiritBonuses(spiritIdOverride = null) {
     isLucky,
     luckyMult,
     luckyGoldBonus: isLucky ? (state.luckySpirit.goldBonus || 0.2) : 0,
+    synergyLabel,
   };
 }
 
@@ -3702,6 +3734,22 @@ function render() {
       }, 80);
     }
 
+    // V47.0: 기상특보 돌발 이벤트 배너
+    if (state.phase === 'map' && state.pendingWeatherEvent) {
+      const wObj = WEATHERS.find((w) => w.id === state.pendingWeatherEvent) || WEATHERS[0];
+      const wBtn = document.createElement('button');
+      wBtn.className = 'choice-btn row-btn';
+      wBtn.style.gridColumn = 'span 2';
+      wBtn.style.background = 'linear-gradient(180deg, #ecfeff 0%, #cffafe 100%)';
+      wBtn.style.borderColor = '#0891b2';
+      wBtn.innerHTML = `<span>🌪️ [기상특보] ${wObj.label} 돌발 현장!</span><span class="choice-sub" style="color:#0e7490;">날씨 특훈 or 시민 도움으로 희귀 보상 ▶</span>`;
+      wBtn.addEventListener('click', () => {
+        sfx.click();
+        openWeatherEventModal();
+      });
+      elChoicesPanel.appendChild(wBtn);
+    }
+
     // V42.0: 타 지역 긴급 SOS 지원 요청 배너
     if (state.phase === 'map' && state.pendingSos) {
       const sosAct = KOREA_ACTS.find((a) => a.id === state.pendingSos.actId);
@@ -3882,6 +3930,17 @@ function render() {
       });
       elActivityList.appendChild(dBtn);
 
+      const tourBtn = document.createElement('button');
+      tourBtn.className = 'activity-item-btn';
+      const curWeek = Math.floor((state.day - 1) / 7);
+      const tourDone = (state.lastTournamentWeek ?? -1) >= curWeek;
+      tourBtn.innerHTML = `<div class="act-title">🏟️ 주간 전국 시민영웅 토너먼트 (우승 ${state.tournamentWins || 0}회)</div><div class="act-desc">${tourDone ? '이번 주 토너먼트 우승 완료! 다음 주에 재개최' : '3연전 돌파 시 +200P · 랜덤 정령석 · 명성 +4!'}</div>`;
+      tourBtn.addEventListener('click', () => {
+        sfx.click();
+        openTournamentModal();
+      });
+      elActivityList.appendChild(tourBtn);
+
       const towerUnlocked = isFeatureUnlocked(state, 'foundation');
       const tBtn = document.createElement('button');
       tBtn.className = 'activity-item-btn';
@@ -3952,6 +4011,15 @@ function render() {
         openSkillEquipModal('speech');
       });
       elActivityList.appendChild(skDeckBtn);
+
+      const profBtn = document.createElement('button');
+      profBtn.className = 'activity-item-btn';
+      profBtn.innerHTML = '<div class="act-title">🪪 내 시민영웅 종합 프로필 카드</div><div class="act-desc">집 · 연인 · 콩이 · 정령 · 5대도시 · 업적 한눈에 보기!</div>';
+      profBtn.addEventListener('click', () => {
+        sfx.click();
+        openHeroProfileModal();
+      });
+      elActivityList.appendChild(profBtn);
 
       const lifeItem = document.createElement('button');
       lifeItem.className = 'activity-item-btn';
@@ -8706,11 +8774,28 @@ function openSpiritModal(filterEl = 'all') {
       eqBtn.addEventListener('click', () => {
         sfx.powerup();
         state.equippedSpirit = isEq ? null : sp.id;
+        if (state.subSpirit === state.equippedSpirit) state.subSpirit = null;
         saveGame();
         openSpiritModal(filterEl);
         render();
       });
       btnCol.appendChild(eqBtn);
+
+      const isSub = state.subSpirit === sp.id;
+      const subBtn = document.createElement('button');
+      subBtn.className = 'use-btn';
+      subBtn.style.cssText = isSub ? 'background:#7c3aed;font-size:0.68rem;padding:4px 6px;' : 'background:#6366f1;font-size:0.68rem;padding:4px 6px;';
+      subBtn.disabled = isEq;
+      subBtn.textContent = isSub ? '🤝서브중' : '서브응원';
+      subBtn.addEventListener('click', () => {
+        sfx.powerup();
+        state.subSpirit = isSub ? null : sp.id;
+        showToast(state.subSpirit ? `🤝 [${sp.name}] 서브 응원 배치! (능력치 35% + 페어 시너지!)` : '서브 정령 해제', 'good');
+        saveGame();
+        openSpiritModal(filterEl);
+        render();
+      });
+      btnCol.appendChild(subBtn);
       if (prog.lv < 20) {
         const candyBtn = document.createElement('button');
         candyBtn.className = 'use-btn';
@@ -10790,6 +10875,161 @@ function openSkillEquipModal(activeTab = 'speech') {
     elActivityList.appendChild(row);
   });
 
+  elActivityModal.classList.remove('hidden');
+}
+
+// ============================================================
+// V47.0: 주간 토너먼트 · 기상특보 이벤트 · 시민영웅 종합 프로필 카드
+// ============================================================
+function openTournamentModal(round = 1) {
+  const curWeek = Math.floor(((state.day || 1) - 1) / 7);
+  if ((state.lastTournamentWeek ?? -1) >= curWeek && round === 1) {
+    showToast('🏟️ 이번 주 토너먼트는 이미 우승했습니다! 다음 주에 다시 도전하세요.', 'warn');
+    return;
+  }
+  const foes = [
+    { name: '🍲 전주 비빔 자경단장', reqPower: 18, desc: '1회전 · 기본 스탯 & 언변 테스트' },
+    { name: '😈 마계 인천 네온 헌터', reqPower: 38, desc: '준결승 · 정령 & 장비 화력 테스트' },
+    { name: '👑 서울 전설의 완장 선배', reqPower: 62, desc: '결승전 · 총합 전투력 최종 승부!' },
+  ];
+  const foe = foes[round - 1];
+  const myPower = Math.round((state.stats.speech + state.stats.guts + state.stats.law) * 0.8 + (state.level || 1) * 1.3 + (getEquippedBonuses().atk || 0) * 0.6 + (getSpiritBonuses().atk || 0) * 0.5);
+
+  elActivityModalTitle.textContent = `🏟️ 전국 시민영웅 토너먼트 (${round}/3라운드)`;
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+
+  const banner = document.createElement('div');
+  banner.className = 'oblivion-banner';
+  banner.innerHTML = `<b>상대: ${foe.name}</b><br>${foe.desc}<br>내 전투 지수: <b style="color:#0369a1;">${myPower}</b> vs 상대 기준: <b style="color:#b91c1c;">${foe.reqPower}</b>`;
+  elActivityList.appendChild(banner);
+
+  const fightBtn = document.createElement('button');
+  fightBtn.className = 'activity-item-btn';
+  const winRate = clamp(Math.round(50 + (myPower - foe.reqPower) * 2.2), 18, 95);
+  fightBtn.innerHTML = `<div class="act-title">⚔️ ${round}라운드 승부! (예상 승률 ${winRate}%)</div><div class="act-desc">승리 시 다음 라운드 진출 · 우승 시 +200P · 정령석 · 명성 +4!</div>`;
+  fightBtn.addEventListener('click', () => {
+    if (Math.random() * 100 < winRate) {
+      sfx.victory();
+      if (round < 3) {
+        showToast(`🏆 ${round}라운드 승리! 다음 상대가 기다립니다!`, 'good');
+        openTournamentModal(round + 1);
+      } else {
+        state.lastTournamentWeek = curWeek;
+        state.tournamentWins = (state.tournamentWins || 0) + 1;
+        state.points += 200;
+        state.fame = (state.fame || 0) + 4;
+        const rPick = RUNE_STONES[Math.floor(Math.random() * RUNE_STONES.length)];
+        if (!Array.isArray(state.ownedRunes)) state.ownedRunes = [];
+        state.ownedRunes.push(rPick.id);
+        restoreSkillPp('full');
+        elActivityModal.classList.add('hidden');
+        showToast(`👑 토너먼트 우승!! +200P · [${rPick.name}] · 명성 +4!`, 'break');
+        state.log = `🏟️ [주간 토너먼트 우승!!] 전국 자경단 고수들을 제치고 챔피언에 올랐습니다! (+200P · ${rPick.name})`;
+        saveGame();
+        render();
+      }
+    } else {
+      sfx.damage();
+      state.hp = clamp(state.hp - 20, 1, state.maxHp);
+      state.points += 25;
+      elActivityModal.classList.add('hidden');
+      showToast('💦 아쉽게 패배... 참가상 +25P 획득!', 'warn');
+      state.log = `🏟️ ${round}라운드에서 [${foe.name}]에게 석패했습니다. 다음 주를 기약하세요! (+25P)`;
+      saveGame();
+      render();
+    }
+  });
+  elActivityList.appendChild(fightBtn);
+  elActivityModal.classList.remove('hidden');
+}
+
+function openWeatherEventModal() {
+  const wId = state.pendingWeatherEvent || state.weather || 'sunny';
+  const wObj = WEATHERS.find((w) => w.id === wId) || WEATHERS[0];
+  elActivityModalTitle.textContent = `🌪️ 기상특보 — ${wObj.label}`;
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+
+  const banner = document.createElement('div');
+  banner.className = 'oblivion-banner';
+  banner.textContent = `현재 [${wObj.label}] 기상 상태입니다! 거리의 돌발 상황에 어떻게 대처할까요?`;
+  elActivityList.appendChild(banner);
+
+  const helpBtn = document.createElement('button');
+  helpBtn.className = 'activity-item-btn';
+  helpBtn.innerHTML = '<div class="act-title">☂️ 날씨 속 곤란한 시민 돕기</div><div class="act-desc">명성 +2 · +40P · 전 기술 PP +3 · 랜덤 재료 1개</div>';
+  helpBtn.addEventListener('click', () => {
+    state.pendingWeatherEvent = null;
+    state.fame = (state.fame || 0) + 2;
+    state.points += 40;
+    restoreSkillPp(3);
+    const keys = Object.keys(INGREDIENT_META);
+    const ing = keys[Math.floor(Math.random() * keys.length)];
+    gainIngredient(ing, 1);
+    sfx.victory();
+    elActivityModal.classList.add('hidden');
+    showToast(`☂️ 따뜻한 선행! +40P · 명성 +2 · PP +3`, 'good');
+    state.log = `🌪️ [${wObj.label}] 속에서 시민을 도와 칭찬을 받았습니다! (+40P · ${INGREDIENT_META[ing].name})`;
+    saveGame();
+    render();
+  });
+  elActivityList.appendChild(helpBtn);
+
+  const trainBtn = document.createElement('button');
+  trainBtn.className = 'activity-item-btn';
+  trainBtn.innerHTML = '<div class="act-title">⚡ 악천후 야외 한계 특훈!</div><div class="act-desc">경험치 +35 · 격투 숙련도 +15 · 희귀 정령 조우 찬스!</div>';
+  trainBtn.addEventListener('click', () => {
+    state.pendingWeatherEvent = null;
+    gainHeroExp(35);
+    gainSkillXp('combat', 15);
+    sfx.powerup();
+    elActivityModal.classList.add('hidden');
+    if (Math.random() < 0.45) {
+      rollSpiritEncounter(false, Math.max(10, state.level || 1));
+    }
+    showToast('⚡ 악천후 특훈 완료! (EXP +35 · 격투 XP +15)', 'good');
+    state.log = `🌪️ [${wObj.label}]을 뚫고 특훈을 마쳤습니다!`;
+    saveGame();
+    render();
+  });
+  elActivityList.appendChild(trainBtn);
+  elActivityModal.classList.remove('hidden');
+}
+
+function openHeroProfileModal() {
+  ensureSandboxState();
+  ensureSkillsState();
+  ensureNationalState();
+  const curHouse = HOUSING_TIERS[state.houseTier || 0] || HOUSING_TIERS[0];
+  const spBon = getSpiritBonuses();
+  const subSpObj = state.subSpirit ? SPIRITS_50.find((x) => x.id === state.subSpirit) : null;
+  const ownedSp = Object.keys(state.spirits || {}).filter((k) => (state.spirits[k] || 0) > 0).length;
+  const loversTxt = (state.lovers?.length || 0) > 0
+    ? state.lovers.map((k) => (k === 'yuki' ? '🇯🇵유키' : '🇺🇸클로이')).join(', ')
+    : '솔로 (호감도 쌓는 중)';
+  const petTxt = state.pet?.adopted ? `🐶 콩이 (Lv.${state.pet.level})` : '미입양';
+
+  elActivityModalTitle.textContent = '🪪 시민영웅 종합 프로필 카드';
+  if (elActivityModalImg && curHouse.img) {
+    elActivityModalImg.src = curHouse.img;
+    elActivityModalImg.classList.remove('hidden');
+  }
+  elActivityList.innerHTML = '';
+
+  const card = document.createElement('div');
+  card.className = 'oblivion-banner';
+  card.style.lineHeight = '1.65';
+  card.innerHTML = `
+    <div style="font-size:0.95rem;font-weight:900;color:#9a3412;">🎖️ Lv.${state.level || 1} ${getHeroRankTitle(state.level || 1)} (${getDiffObj().name})</div>
+    <div><b>📍 거주지:</b> ${curHouse.name} &nbsp;|&nbsp; <b>📅 DAY ${state.day}</b></div>
+    <div><b>📊 스탯:</b> 언변 ${state.stats.speech} · 깡다구 ${state.stats.guts} · 법지식 ${state.stats.law} · HP ${state.maxHp}</div>
+    <div><b>⚖️ 평판:</b> 명성 ${state.fame || 0} · 악명 ${state.infamy || 0} | <b>숙련:</b> 은신${state.skills.sneak}·화술${state.skills.speech}·연금${state.skills.alchemy}·격투${state.skills.combat}</div>
+    <div><b>💕 연인:</b> ${loversTxt} &nbsp;|&nbsp; <b>🐶 펫:</b> ${petTxt}</div>
+    <div><b>👻 수호정령:</b> ${spBon.spirit ? `${spBon.spirit.name} (Lv.${spBon.growthLv})` : '없음'}${subSpObj ? ` + 서브(${subSpObj.name})` : ''} · 수집 ${ownedSp}/${SPIRITS_50.length}</div>
+    <div><b>🗺️ 5대 액트 제패:</b> ${state.clearedActs.length}/5 &nbsp;|&nbsp; <b>⚡ 스킬:</b> ${state.unlockedSkills.length}/100 &nbsp;|&nbsp; <b>🏟️ 토너먼트 우승:</b> ${state.tournamentWins || 0}회</div>
+  `;
+  elActivityList.appendChild(card);
   elActivityModal.classList.remove('hidden');
 }
 
