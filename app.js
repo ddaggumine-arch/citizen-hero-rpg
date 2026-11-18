@@ -270,6 +270,9 @@ function createNewGameState() {
     guerrillaVendor: null,
     bossPhase2Triggered: false,
     bossPhase2Pending: false,
+    marriedTo: null,
+    weddingAlbum: [],
+    activeWedding: null,
   };
 }
 
@@ -729,6 +732,11 @@ function handleNewDayRollover() {
     state.points += distBonus;
   }
 
+  if (state.marriedTo) {
+    state.hp = state.maxHp;
+    state.sp = state.maxSp;
+    restoreSkillPp('full');
+  }
   // V16.0: 서울 테마 주식 시세 변동
   if (!state.stockPrices) state.stockPrices = { cider_pharma: 30, manner_ent: 45, hanriver_ev: 60 };
   STOCKS.forEach((st) => {
@@ -4926,6 +4934,40 @@ function render() {
     });
     elChoicesPanel.appendChild(giftBtn);
 
+    // V51.0: 호감도 180+ 결혼식 & 신혼여행 서비스신 (유키 / 클로이 / 트리플)
+    const yLv = state.love?.yuki || 0;
+    const cLv = state.love?.chloe || 0;
+    if (yLv >= 180 || cLv >= 180) {
+      const wedDefs = [
+        { key: 'yuki', ok: yLv >= 180, label: '💒 유키와 결혼 & 교토 신혼여행', sub: `유키 호감 ${yLv}/200 (180+ 달성!) · 전용 웨딩 & 온천/료칸 2컷 ▶` },
+        { key: 'chloe', ok: cLv >= 180, label: '💒 클로이와 결혼 & 몰디브 신혼여행', sub: `클로이 호감 ${cLv}/200 (180+ 달성!) · 전용 웨딩 & 비치/자쿠지 2컷 ▶` },
+        { key: 'triple', ok: yLv >= 180 && cLv >= 180, label: '👑 유키·클로이 트리플 웨딩 & 풀빌라 허니문!!', sub: '양쪽 모두 180+ 달성!! 전설의 3인 웨딩 & 리조트 2컷 ▶' },
+      ];
+      wedDefs.filter((w) => w.ok).forEach((w) => {
+        const wBtn = document.createElement('button');
+        wBtn.className = 'choice-btn row-btn story-main-btn';
+        wBtn.style.gridColumn = 'span 2';
+        wBtn.innerHTML = `<span>${w.label}</span><span class="choice-sub">${w.sub}</span>`;
+        wBtn.addEventListener('click', () => {
+          sfx.victory();
+          state.activeWedding = { route: w.key, step: 0, reply: '' };
+          state.phase = 'wedding_honeymoon';
+          render();
+        });
+        elChoicesPanel.appendChild(wBtn);
+      });
+    }
+    if ((state.weddingAlbum?.length || 0) > 0) {
+      const albBtn = document.createElement('button');
+      albBtn.className = 'choice-btn row-btn';
+      albBtn.style.gridColumn = 'span 2';
+      albBtn.style.background = 'linear-gradient(180deg, #fff0f6 0%, #ffe4e6 100%)';
+      albBtn.style.borderColor = '#e11d48';
+      albBtn.innerHTML = `<span>📸 결혼 · 신혼여행 스페셜 앨범 (${state.weddingAlbum.length}/9)</span><span class="choice-sub" style="color:#9f1239;">해금된 웨딩 & 허니문 일러스트 다시 보기</span>`;
+      albBtn.addEventListener('click', () => { sfx.click(); openWeddingAlbumModal(); });
+      elChoicesPanel.appendChild(albBtn);
+    }
+
     ['yuki', 'chloe'].forEach((k) => {
       if (!state.sulky?.[k]) return;
       const nm = k === 'yuki' ? '유키' : '클로이';
@@ -4944,7 +4986,7 @@ function render() {
         }
         state.points -= 40;
         state.sulky[k] = false;
-        state.love[k] = clamp((state.love[k] || 0) + 5, 0, 100);
+        state.love[k] = clamp((state.love[k] || 0) + 5, 0, 200);
         sfx.victory();
         state.log = `💝 ${nm}에게 진심으로 사과하고 달콤한 디저트를 건넸습니다! ${nm}가 활짝 웃으며 화해했습니다! (호감도 +5)`;
         saveGame();
@@ -4963,7 +5005,7 @@ function render() {
         state.lastHomeVisitDay = state.day;
         state.hp = clamp(state.hp + 35, 1, state.maxHp);
         state.sp = clamp(state.sp + 30, 0, state.maxSp);
-        state.lovers.forEach((lk) => { state.love[lk] = clamp((state.love[lk] || 0) + 5, 0, 100); });
+        state.lovers.forEach((lk) => { state.love[lk] = clamp((state.love[lk] || 0) + 5, 0, 200); });
         state.log = '🏠 연인과 아지트에서 맛있는 야식을 먹으며 오붓한 시간을 보냈습니다! (HP +35 · 사이다 +30 · 연인 호감도 +5)';
         advanceTime();
         saveGame();
@@ -5056,7 +5098,7 @@ function render() {
         const alreadyToday = state.lastKissDay[key] === state.day;
         state.lastKissDay[key] = state.day;
         if (!alreadyToday) {
-          state.love[key] = clamp((state.love[key] || 0) + (ch.love || 8), 0, 100);
+          state.love[key] = clamp((state.love[key] || 0) + (ch.love || 8), 0, 200);
           if (ch.maxHp) state.maxHp += ch.maxHp;
           state.hp = clamp(state.hp + (ch.hp || 40), 1, state.maxHp);
           state.sp = clamp(state.sp + (ch.sp || 40), 0, state.maxSp);
@@ -5146,7 +5188,7 @@ function render() {
         }
         state.points -= (act.cost || 0);
         const ef = act.effect || {};
-        if (ef.love) state.love[key] = clamp((state.love[key] || 0) + ef.love, 0, 100);
+        if (ef.love) state.love[key] = clamp((state.love[key] || 0) + ef.love, 0, 200);
         if (ef.maxHp) state.maxHp += ef.maxHp;
         if (ef.hp) state.hp = clamp(state.hp + ef.hp, 1, state.maxHp);
         if (ef.sp) state.sp = clamp(state.sp + ef.sp, 0, state.maxSp);
@@ -5345,7 +5387,7 @@ function render() {
             return;
           }
           state.points -= gf.cost;
-          state.love[k] = clamp((state.love[k] || 0) + gain, 0, 100);
+          state.love[k] = clamp((state.love[k] || 0) + gain, 0, 200);
           if (!state.lastContactDay) state.lastContactDay = { yuki: state.day, chloe: state.day };
           state.lastContactDay[k] = state.day;
           advanceDailyQuest('care', 1);
@@ -5879,6 +5921,75 @@ function render() {
   }
 
   // 4-R1. 외국어 공부 퀴즈 화면
+  // V51.0: 결혼식 & 신혼여행 로맨틱 서비스신 씬
+  if (state.phase === 'wedding_honeymoon') {
+    const aw = state.activeWedding || { route: 'yuki', step: 0, reply: '' };
+    const rObj = WEDDING_ROUTES[aw.route] || WEDDING_ROUTES.yuki;
+    const sc = rObj.scenes[Math.min(aw.step || 0, rObj.scenes.length - 1)];
+    if (!Array.isArray(state.weddingAlbum)) state.weddingAlbum = [];
+    if (sc.img && !state.weddingAlbum.includes(sc.img)) state.weddingAlbum.push(sc.img);
+
+    elLocation.textContent = `DAY ${state.day} · ${timeLabel} · 💍 ${rObj.title}`;
+    elSceneTag.textContent = `💍 ${aw.step + 1}/${rObj.scenes.length}`;
+    elSceneTag.className = 'scene-tag event';
+    elSceneTitle.textContent = sc.title;
+    elWeaknessPill.classList.add('hidden');
+    elEnemyHpWrap.classList.add('hidden');
+    elQuoteBubble.classList.add('hidden');
+    if (elFrame) elFrame.classList.add('couple-stage');
+    if (sc.img) {
+      elSceneImage.src = `assets/images/romance/${sc.img}?v=122`;
+      elSceneImage.className = 'scene-image';
+      elSceneImage.classList.remove('hidden');
+    }
+    elBattleLog.textContent = aw.reply ? aw.reply : sc.text;
+
+    if (aw.reply || !sc.choices) {
+      const isLast = aw.step >= rObj.scenes.length - 1;
+      const nxt = document.createElement('button');
+      nxt.className = 'choice-btn row-btn story-main-btn';
+      nxt.style.gridColumn = 'span 2';
+      nxt.innerHTML = isLast
+        ? `<span>💖 행복한 신혼생활 시작하기!! (영구 부부 버프 해금) ▶</span><span class="choice-sub">매일 아침 HP·사이다·PP 100% 완충!</span>`
+        : `<span>다음 장면으로 ▶</span><span class="choice-sub">${sc.title}</span>`;
+      nxt.addEventListener('click', () => {
+        if (isLast) {
+          state.marriedTo = aw.route;
+          state.hp = state.maxHp;
+          state.sp = state.maxSp;
+          restoreSkillPp('full');
+          state.activeWedding = null;
+          state.phase = 'romance';
+          sfx.victory();
+          showToast(`💍 [${rObj.title}] 결혼 & 신혼여행 완료!! 영구 부부 버프 ON!`, 'break');
+          saveGame();
+          render();
+          return;
+        }
+        sfx.powerup();
+        state.activeWedding = { ...aw, step: aw.step + 1, reply: '' };
+        saveGame();
+        render();
+      });
+      elChoicesPanel.appendChild(nxt);
+    } else {
+      sc.choices.forEach((ch) => {
+        const cb = document.createElement('button');
+        cb.className = 'choice-btn row-btn';
+        cb.style.gridColumn = 'span 2';
+        cb.innerHTML = `<span>${ch.label}</span><span class="choice-sub">💕 로맨틱 선택</span>`;
+        cb.addEventListener('click', () => {
+          sfx.powerup();
+          state.activeWedding = { ...aw, reply: ch.reply };
+          saveGame();
+          render();
+        });
+        elChoicesPanel.appendChild(cb);
+      });
+    }
+    return;
+  }
+
   if (state.phase === 'lang_quiz') {
     const isJp = state.romanceTarget === 'yuki';
     const hero = isJp ? HEROINES.yuki : HEROINES.chloe;
@@ -5964,7 +6075,7 @@ function render() {
       btn.innerHTML = `<span>${ch.text}</span><span class="choice-sub">💬 대화 선택</span>`;
       btn.addEventListener('click', () => {
         sfx.victory();
-        state.love[key] = clamp((state.love[key] || 0) + (ch.love || 8), 0, 100);
+        state.love[key] = clamp((state.love[key] || 0) + (ch.love || 8), 0, 200);
         if (ch.lawful) state.lawful += ch.lawful;
         if (ch.chaotic) state.chaotic += ch.chaotic;
         if (ch.speech) state.stats.speech += ch.speech;
@@ -6150,7 +6261,7 @@ function render() {
         else sfx.victory();
         vibrate([30, 30, 50]);
 
-        const maxLoveCap = state.someCleared?.[key] ? 100 : 75;
+        const maxLoveCap = (state.someCleared?.[key] || state.lovers?.includes(key)) ? 200 : 75;
         state.love[key] = clamp((state.love[key] || 0) + loveGain, 0, maxLoveCap);
         if (key === 'yuki' && state.love.yuki >= 40) grantClue('clue_cafe');
         if (key === 'chloe' && state.love.chloe >= 40) grantClue('clue_cctv');
@@ -11325,6 +11436,136 @@ function openTrophyHallModal() {
     row.style.opacity = tr.earned ? '1' : '0.55';
     row.innerHTML = `<div class="inv-info"><h4>${tr.earned ? '🏆' : '🔒'} ${tr.name}</h4><p>${tr.desc}</p></div>`;
     elActivityList.appendChild(row);
+  });
+  elActivityModal.classList.remove('hidden');
+}
+
+// ============================================================
+// V51.0: 호감 180+ 결혼식 & 신혼여행 서비스신 (유키 / 클로이 / 트리플)
+// ============================================================
+const WEDDING_ROUTES = {
+  yuki: {
+    title: '🇯🇵 유키와 영원한 약속',
+    scenes: [
+      {
+        title: '🌸 벚꽃 아래의 웨딩 마치',
+        img: 'wedding_yuki.jpg',
+        text: '만개한 벚꽃잎이 눈처럼 흩날리는 야외 정원.\n순백의 레이스 웨딩드레스를 입은 유키의 가냘픈 손가락에 반지를 끼워주자, 그녀의 뺨이 벚꽃보다 붉게 물들었다.\n"오빠... 이제 평생 내 옆자리, 절대 안 비워줄 거예요."',
+      },
+      {
+        title: '♨️ 교토 료칸 — 김이 피어오르는 노천온천',
+        img: 'honeymoon_yuki_1.jpg',
+        text: '교토의 고즈넉한 프라이빗 료칸. 따뜻한 온천수 김 사이로 수건 한 장만 두른 채 어깨를 맞댄 두 사람.\n유키가 살짝 고개를 기울이며 내 어깨에 기대어 속삭였다.\n"한국에선 맨날 순찰하느라 바빴잖아요... 오늘 밤만큼은 온전히 나만 봐줘요, 여보."',
+        choices: [
+          { label: '💘 유키의 허리를 감싸 안고 귓가에 속삭인다', reply: '"당연하지. 오늘 밤은 세상에서 유키 너 하나뿐이야."\n유키가 숨을 삼키며 수줍게 내 가슴에 얼굴을 묻었다. 온천수보다 뜨거운 온기가 전해져 온다.' },
+          { label: '😘 붉어진 볼에 입을 맞추며 미소 짓는다', reply: '"응, 여보라고 불러줘서 심장 터질 것 같네."\n유키가 작게 웃으며 내 손을 꼭 잡았다. "그럼 계속 불러줄게요... 여보."' },
+        ],
+      },
+      {
+        title: '🕯️ 유카타 차림의 촛불 아래, 둘만의 밤',
+        img: 'honeymoon_yuki_2.jpg',
+        text: '은은한 촛불만 켜진 다다미방. 살짝 흐트러진 꽃무늬 유카타 차림의 유키가 숨결이 닿을 거리까지 다가왔다.\n촉촉한 눈빛으로 나를 올려다보는 그녀의 입술이 살짝 떨리고 있었다.\n"부끄럽지만... 오빠 품이 너무 따뜻해서 떨어지기 싫어요."',
+        choices: [
+          { label: '💖 다정하게 끌어안고 촛불을 끈다', reply: '조용히 어둠이 내린 다다미방. 닿아오는 부드러운 입술과 심장 소리가 교토의 밤을 달콤하게 채웠다...' },
+          { label: '🌹 유키의 머리카락을 넘겨주며 깊게 입 맞춘다', reply: '"평생 이렇게 안아줄게, 유키."\n그녀의 작고 따뜻한 손이 내 옷깃을 꽉 쥐며 깊고 진한 밤이 이어졌다...' },
+        ],
+      },
+    ],
+  },
+  chloe: {
+    title: '🇺🇸 클로이와 선셋 웨딩',
+    scenes: [
+      {
+        title: '🌇 황금빛 노을 루프탑의 뜨거운 키스',
+        img: 'wedding_chloe.jpg',
+        text: '서울의 야경이 황금빛으로 물드는 루프탑 예식장.\n아찔한 머메이드 웨딩드레스를 입은 클로이가 내 목에 두 팔을 감고 모두 앞에서 진하게 입을 맞췄다.\n"드디어 내 남자 됐네, 영웅! Now you are mine forever!"',
+      },
+      {
+        title: '🏖️ 몰디브 석양 — 파도 소리와 뜨거운 포옹',
+        img: 'honeymoon_chloe_1.jpg',
+        text: '에메랄드빛 몰디브 프라이빗 비치. 석양에 젖은 금발을 쓸어 넘기며 비키니 차림의 클로이가 내 품으로 파고들었다.\n"화보 촬영할 때도 이렇게 설렌 적 없어. 오늘 밤 나, 하나도 안 뺄 거니까 각오해?"',
+        choices: [
+          { label: '🔥 클로이를 번쩍 안아 올리며 도발에 응한다', reply: '"각오는 진작 끝났지. 방까지 데려다줄까, 내 모델님?"\n클로이가 까르르 웃으며 내 목을 꽉 감싸 안았다. 석양보다 뜨거운 눈빛이 부딪힌다!' },
+          { label: '💋 파도 소리를 배경으로 목선에 입 맞춘다', reply: '"Mmm... 반칙이야 자기야!"\n클로이의 심장 박동이 손끝까지 그대로 전해지며 해변의 열기가 달아올랐다.' },
+        ],
+      },
+      {
+        title: '🥂 오션뷰 버블 배스 — 샴페인과 유혹',
+        img: 'honeymoon_chloe_2.jpg',
+        text: '통유리 너머로 바다가 펼쳐진 럭셔리 풀빌라 욕실. 풍성한 거품이 가득한 욕조 안에서 클로이가 샴페인 잔을 들고 윙크했다.\n"혼자 들어가면 심심하잖아~ 얼른 안 들어오고 뭐 해, 남편?"',
+        choices: [
+          { label: '🥂 샴페인을 받아 들고 거품 속으로 들어간다', reply: '따뜻한 거품 속에서 맞닿는 시선과 달콤한 샴페인 향기.\n클로이가 장난스럽게 웃으며 내 품에 파고들어 가장 길고 황홀한 밤이 시작되었다...' },
+          { label: '💘 가운을 벗고 다가가 이마와 입술에 키스한다', reply: '"Best honeymoon ever..."\n거품 너머로 비치는 매혹적인 미소와 함께 몰디브의 밤이 깊어만 갔다...' },
+        ],
+      },
+    ],
+  },
+  triple: {
+    title: '👑 전설의 트리플 웨딩 & 풀빌라',
+    scenes: [
+      {
+        title: '💐 양쪽에서 쏟아지는 두 신부의 키스!',
+        img: 'wedding_triple.jpg',
+        text: '세상 어디에도 없던 기적 같은 결혼식!\n완벽한 턱시도를 입은 내 양옆에서 순백의 드레스를 입은 유키와 클로이가 동시에 볼에 입을 맞췄다.\n유키: "셋이서 평생 행복해요!" · 클로이: "우리가 세계 최고 트리오야!"',
+      },
+      {
+        title: '🏊 프라이빗 인피니티 풀 — 둘 다 내 품에',
+        img: 'honeymoon_triple_1.jpg',
+        text: '에메랄드빛 인피니티 풀 한가운데. 수영복 차림의 유키와 클로이가 양팔을 꼭 감싸 안은 채 환하게 미소 짓고 있다.\n클로이: "어느 쪽이 더 좋아? 솔직히 말해봐!"\n유키: "에이, 오빠 마음은 둘 다 똑같죠, 그쵸?"',
+        choices: [
+          { label: '💘 양쪽 모두를 동시에 끌어안고 "둘 다 내 목숨!"', reply: '두 사람이 동시에 얼굴을 붉히며 내 어깨에 기댔다.\n물결 위로 번지는 행복한 웃음소리, 세 사람만의 낙원이 펼쳐졌다!' },
+          { label: '😎 "질문 금지! 오늘 밤 체력전 기대해!"', reply: '"어머 말은 똑바로 했네?!" 클로이가 웃고, 유키가 수줍게 내 손을 잡았다. 두 사람과의 뜨거운 수영장 데이트가 이어졌다!' },
+        ],
+      },
+      {
+        title: '☀️ 실크 파자마 — 세상에서 가장 행복한 아침',
+        img: 'honeymoon_triple_2.jpg',
+        text: '부드러운 아침 햇살이 스며드는 풀빌라 킹사이즈 침대.\n실크 파자마 차림의 유키와 클로이가 밤새 내 품에 파고든 채 곤히 잠들어 있다. 세상 어떤 보물보다 값진 풍경이다.',
+        choices: [
+          { label: '🥰 두 사람의 이마에 번갈아 가며 굿모닝 키스', reply: '유키가 눈을 비비며 "음... 좋은 아침 여보..." 하고 미소 짓고, 클로이도 팔을 더 꽉 감싸 안았다.\n영원히 깨고 싶지 않은 꿈같은 신혼생활이 시작되었다!' },
+          { label: '☕ 살짝 빠져나와 모닝커피를 준비한다 (했다가 붙잡힘)', reply: '"어딜 도망가려고~" 클로이와 유키가 동시에 내 팔을 끌어당겨 침대로 다시 눕혔다. 행복한 2차전 아침이 시작됐다!' },
+        ],
+      },
+    ],
+  },
+};
+
+function openWeddingAlbumModal() {
+  const album = state.weddingAlbum || [];
+  elActivityModalTitle.textContent = `📸 결혼 · 신혼여행 스페셜 앨범 (${album.length}/9)`;
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+
+  const allImgs = [
+    { file: 'wedding_yuki.jpg', title: '🌸 유키 웨딩 마치' },
+    { file: 'honeymoon_yuki_1.jpg', title: '♨️ 유키 교토 노천온천' },
+    { file: 'honeymoon_yuki_2.jpg', title: '🕯️ 유키 촛불 유카타' },
+    { file: 'wedding_chloe.jpg', title: '🌇 클로이 선셋 웨딩' },
+    { file: 'honeymoon_chloe_1.jpg', title: '🏖️ 클로이 몰디브 비치' },
+    { file: 'honeymoon_chloe_2.jpg', title: '🥂 클로이 버블 배스' },
+    { file: 'wedding_triple.jpg', title: '👑 전설의 트리플 웨딩' },
+    { file: 'honeymoon_triple_1.jpg', title: '🏊 인피니티 풀 허니문' },
+    { file: 'honeymoon_triple_2.jpg', title: '☀️ 실크 파자마 모닝' },
+  ];
+
+  allImgs.forEach((it) => {
+    const unlocked = album.includes(it.file);
+    const card = document.createElement('div');
+    card.className = 'inv-item';
+    card.style.opacity = unlocked ? '1' : '0.45';
+    card.innerHTML = unlocked
+      ? `<img src="assets/images/romance/${it.file}?v=122" style="width:68px;height:68px;object-fit:cover;border-radius:8px;border:1.5px solid #e11d48;" /><div class="inv-info"><h4>${it.title}</h4><p>✨ 해금 완료 (터치해서 크게 보기)</p></div>`
+      : `<div class="inv-info"><h4>🔒 ${it.title}</h4><p>호감 180+ 결혼 & 신혼여행 진행 시 해금</p></div>`;
+    if (unlocked) {
+      card.style.cursor = 'pointer';
+      card.addEventListener('click', () => {
+        if (elActivityModalImg) {
+          elActivityModalImg.src = `assets/images/romance/${it.file}?v=122`;
+          elActivityModalImg.classList.remove('hidden');
+        }
+      });
+    }
+    elActivityList.appendChild(card);
   });
   elActivityModal.classList.remove('hidden');
 }
