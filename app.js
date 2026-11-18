@@ -5592,7 +5592,7 @@ function render() {
       albBtn.style.gridColumn = 'span 2';
       albBtn.style.background = 'linear-gradient(180deg, #fff0f6 0%, #ffe4e6 100%)';
       albBtn.style.borderColor = '#e11d48';
-      albBtn.innerHTML = `<span>📸 히로인 시크릿 & 웨딩 스페셜 앨범 (${state.weddingAlbum.length}/17)</span><span class="choice-sub" style="color:#9f1239;">유키·클로이 시크릿 화보 · 웨딩 · 허니문 일러스트 크게 보기</span>`;
+      albBtn.innerHTML = `<span>📸 히로인 시크릿 & 웨딩 스페셜 앨범 (${state.weddingAlbum.length}/23)</span><span class="choice-sub" style="color:#9f1239;">유키·클로이 시크릿 화보 · 웨딩 · 허니문 일러스트 크게 보기</span>`;
       albBtn.addEventListener('click', () => { sfx.click(); openWeddingAlbumModal(); });
       elChoicesPanel.appendChild(albBtn);
     }
@@ -12290,6 +12290,33 @@ const WEDDING_ROUTES = {
           { label: '🌹 유키의 머리카락을 넘겨주며 깊게 입 맞춘다', reply: '"평생 이렇게 안아줄게, 유키."\n그녀의 작고 따뜻한 손이 내 옷깃을 꽉 쥐며 깊고 진한 밤이 이어졌다...' },
         ],
       },
+      {
+        title: '🌙 노천온천 물가의 아찔한 키스 직전',
+        img: 'honeymoon_yuki_3.jpg',
+        text: '달빛 아래 벚꽃잎이 떠다니는 노천탕 가장자리. 젖은 타월 한 장만 걸친 채 서로의 숨결이 닿을 거리까지 마주 앉았다.\n유키가 촉촉한 입술을 살짝 벌리며 떨리는 목소리로 속삭였다.\n"이대로... 키스해도 되죠? 오늘 밤은 절대 안 놓아줄 거예요..."',
+        choices: [
+          { label: '💋 유키의 턱을 살짝 들어 깊게 입 맞춘다', reply: '달콤하고 뜨거운 키스와 함께 온천수의 온기가 온몸을 감쌌다. 유키가 작게 신음하며 내 목을 꽉 감싸 안았다.' },
+          { label: '🔥 타월 위로 허리를 끌어당겨 품에 가둔다', reply: '"앗... 너무 세게 안으면 심장 터져요..." 수줍게 웃으면서도 그녀는 더 깊게 내 품을 파고들었다.' },
+        ],
+      },
+      {
+        title: '🩷 핑크 실크 슬립 — 등 뒤에서 감싼 뜨거운 온기',
+        img: 'honeymoon_yuki_4.jpg',
+        text: '은은한 종이등 조명 아래, 얇은 레이스 끈의 핑크 새틴 슬립만 입은 유키의 가녀린 어깨선을 뒤에서 부드럽게 감싸 안았다.\n내 어깨에 고개를 기대며 눈을 반쯤 감은 유키의 숨소리가 유난히 가쁘다.\n"당신 손이 닿을 때마다... 온몸이 녹아내릴 것 같아요, 여보..."',
+        choices: [
+          { label: '💘 쇄골과 목선에 천천히 입술을 찍는다', reply: '"응...! 거긴 간지러워요..." 유키가 내 팔을 꽉 붙잡으며 황홀한 듯 한숨을 내쉬었다.' },
+          { label: '🌙 그대로 침대 위로 나란히 눕힌다', reply: '부드러운 실크 감촉과 함께 교토의 가장 뜨거운 밤이 깊게 저물어갔다...' },
+        ],
+      },
+      {
+        title: '☀️ 아침 햇살과 흐트러진 실크 캐미솔',
+        img: 'honeymoon_yuki_5.jpg',
+        text: '눈부신 아침 햇살이 스며드는 료칸의 하얀 침대. 얇은 아이보리 실크 캐미솔 차림으로 이불 속에서 내 품에 기댄 유키가 사랑스럽게 나를 바라봤다.\n"잘 잤어요, 여보? 어젯밤 꿈이 아니었네요... 조금만 더 이렇게 안아주세요 ♥"',
+        choices: [
+          { label: '😘 이마에 모닝 키스하며 한 번 더 끌어안는다', reply: '"후훗... 그럼 오늘 체크아웃 시간, 조금만 미뤄도 되죠?" 유키가 내 가슴에 뺨을 비비며 행복하게 미소 지었다.' },
+          { label: '💞 유키의 손을 잡고 손가락에 낀 반지에 입 맞춘다', reply: '영원한 신혼의 아침. 세상의 어떤 빌런도 부럽지 않은 완벽한 행복이 두 사람을 감쌌다.' },
+        ],
+      },
     ],
   },
   chloe: {
@@ -12316,6 +12343,33 @@ const WEDDING_ROUTES = {
         choices: [
           { label: '🥂 샴페인을 받아 들고 거품 속으로 들어간다', reply: '따뜻한 거품 속에서 맞닿는 시선과 달콤한 샴페인 향기.\n클로이가 장난스럽게 웃으며 내 품에 파고들어 가장 길고 황홀한 밤이 시작되었다...' },
           { label: '💘 가운을 벗고 다가가 이마와 입술에 키스한다', reply: '"Best honeymoon ever..."\n거품 너머로 비치는 매혹적인 미소와 함께 몰디브의 밤이 깊어만 갔다...' },
+        ],
+      },
+      {
+        title: '🔥 몰디브 에메랄드 바다 — 힙을 감싼 격정적 키스',
+        img: 'honeymoon_chloe_3.jpg',
+        text: '붉게 타오르는 몰디브 석양 아래, 아찔한 에메랄드 끈 비키니 차림의 클로이가 내 허리에 두 다리를 감고 목에 매달렸다.\n젖은 피부와 탄탄한 골반을 꽉 감싸 안자, 클로이가 숨 막히게 뜨거운 키스를 퍼부어 왔다!\n"Mmm...! 여기서 멈추면 반칙인 거 알지, 자기야?"',
+        choices: [
+          { label: '💥 클로이의 힙을 꽉 받쳐 들고 더 깊게 키스한다', reply: '파도가 치는 바다 한가운데서 세상 누구보다 뜨거운 키스가 이어졌다! 클로이의 숨결이 불타오른다!' },
+          { label: '😏 "당장 빌라로 들어가자"며 그대로 안고 걸어간다', reply: '"Yes!! 기다렸다고, 내 남편!!" 클로이가 환호하며 내 목덜미에 키스 세례를 퍼부었다.' },
+        ],
+      },
+      {
+        title: '🍷 캔들라이트 발코니 — 크림슨 슬립의 아찔한 유혹',
+        img: 'honeymoon_chloe_4.jpg',
+        text: '별빛이 쏟아지는 프라이빗 발코니 소파. 진홍빛 새틴 슬립에 시스루 로브만 걸친 클로이가 내 셔츠 깃을 잡아당기며 요염하게 윙크했다.\n"오늘 밤 드레스코드 완전 내 스타일이지? 이제 넥타이 풀고 이리 와 봐 ♥"',
+        choices: [
+          { label: '💖 셔츠 단추를 풀며 클로이 옆으로 바짝 다가앉는다', reply: '"So hot..." 클로이가 내 가슴에 손을 얹고 장난스럽지만 진심이 담긴 뜨거운 눈빛을 보냈다.' },
+          { label: '🌹 시스루 로브를 살짝 내리며 귓가에 속삭인다', reply: '촛불보다 붉게 달아오른 두 사람의 시선. 몰디브의 밤은 아직 시작도 안 했다...' },
+        ],
+      },
+      {
+        title: '🛁 별빛 자쿠지 — 거품 속에서 맞닿은 심장',
+        img: 'honeymoon_chloe_5.jpg',
+        text: '밤바다가 한눈에 보이는 대리석 자쿠지. 하얀 거품 속에 함께 몸을 담그고 내 품에 등을 기댄 채 샴페인을 든 클로이가 황홀하게 눈을 감았다.\n"당신이랑 함께라면 지구 끝까지도 신혼여행이야. 사랑해, 영웅 ♥"',
+        choices: [
+          { label: '🥂 샴페인 잔을 맞부딪치고 달콤하게 입 맞춘다', reply: '거품처럼 부풀어 오르는 행복감. 클로이가 환하게 웃으며 내 볼에 진한 립스틱 자국을 남겼다!' },
+          { label: '💞 클로이의 맨어깨를 꽉 안고 밤바다를 함께 바라본다', reply: '파도 소리와 샴페인 향기, 그리고 서로의 온기. 영원히 잊지 못할 최고의 허니문이 완성되었다.' },
         ],
       },
     ],
@@ -12352,7 +12406,7 @@ const WEDDING_ROUTES = {
 
 function openWeddingAlbumModal() {
   const album = state.weddingAlbum || [];
-  elActivityModalTitle.textContent = `📸 히로인 시크릿 & 웨딩 스페셜 앨범 (${album.length}/17)`;
+  elActivityModalTitle.textContent = `📸 히로인 시크릿 & 웨딩 스페셜 앨범 (${album.length}/23)`;
   if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
   elActivityList.innerHTML = '';
 
@@ -12368,9 +12422,15 @@ function openWeddingAlbumModal() {
     { file: 'wedding_yuki.jpg', title: '🌸 유키 웨딩 마치' },
     { file: 'honeymoon_yuki_1.jpg', title: '♨️ 유키 교토 노천온천' },
     { file: 'honeymoon_yuki_2.jpg', title: '🕯️ 유키 촛불 유카타' },
+    { file: 'honeymoon_yuki_3.jpg', title: '🌙 유키 온천 키스 직전' },
+    { file: 'honeymoon_yuki_4.jpg', title: '🩷 유키 핑크 실크 백허그' },
+    { file: 'honeymoon_yuki_5.jpg', title: '☀️ 유키 모닝 실크 캐미솔' },
     { file: 'wedding_chloe.jpg', title: '🌇 클로이 선셋 웨딩' },
     { file: 'honeymoon_chloe_1.jpg', title: '🏖️ 클로이 몰디브 비치' },
     { file: 'honeymoon_chloe_2.jpg', title: '🥂 클로이 버블 배스' },
+    { file: 'honeymoon_chloe_3.jpg', title: '🔥 클로이 바다 에메랄드 비키니' },
+    { file: 'honeymoon_chloe_4.jpg', title: '🍷 클로이 크림슨 실크 슬립' },
+    { file: 'honeymoon_chloe_5.jpg', title: '🛁 클로이 별빛 자쿠지 포옹' },
     { file: 'wedding_triple.jpg', title: '👑 전설의 트리플 웨딩', secret: true },
     { file: 'honeymoon_triple_1.jpg', title: '🏊 인피니티 풀 허니문', secret: true },
     { file: 'honeymoon_triple_2.jpg', title: '☀️ 실크 파자마 모닝', secret: true },
