@@ -261,6 +261,7 @@ function createNewGameState() {
     usedDmIdx: { yuki: [], chloe: [] },
     pendingLevelUp: null,
     lastDateDay: { yuki: 0, chloe: 0 },
+    luckySpirit: null,
   };
 }
 
@@ -690,6 +691,19 @@ function handleNewDayRollover() {
   state.weather = wPick.id;
   const fPick = DAILY_FORTUNES[Math.floor(Math.random() * DAILY_FORTUNES.length)];
   state.dailyFortune = fPick.id;
+  if (!state.luckySpirit || state.day > (state.luckySpirit.untilDay || 0)) {
+    const ownedIds = Object.keys(state.spirits || {}).filter((k) => (state.spirits[k] || 0) > 0);
+    if (ownedIds.length > 0) {
+      const others = ownedIds.filter((id) => id !== state.equippedSpirit);
+      const pool = others.length > 0 ? others : ownedIds;
+      const pickId = pool[Math.floor(Math.random() * pool.length)];
+      const spObj = SPIRITS_50.find((x) => x.id === pickId);
+      const rar = spObj?.rarity || 'common';
+      const mult = rar === 'common' ? 3.0 : (rar === 'rare' ? 2.5 : 1.8);
+      const goldBonus = rar === 'common' ? 0.25 : (rar === 'rare' ? 0.20 : 0.15);
+      state.luckySpirit = { id: pickId, untilDay: state.day + 1, mult, goldBonus };
+    }
+  }
   const ds = state.dailyStats || { wins: 0, loveGain: 0 };
 
   // V16.0: 자취방 인테리어 패시브 회복
@@ -1502,6 +1516,12 @@ function getEquippedBonuses() {
   if (setSyn.spRegen) res.spRegen += setSyn.spRegen;
   if (setSyn.crit) res.crit += setSyn.crit;
   const spBon = getSpiritBonuses();
+  const ownedSpCnt = Object.keys(state.spirits || {}).filter((k) => (state.spirits[k] || 0) > 0).length;
+  const colPass = Math.floor(ownedSpCnt / 5);
+  if (colPass > 0) {
+    res.atk += colPass;
+    res.spRegen += colPass;
+  }
   res.atk += spBon.atk;
   res.spRegen += spBon.spRegen;
   res.crit += spBon.crit;
@@ -1556,7 +1576,9 @@ function getSpiritBonuses(spiritIdOverride = null) {
   const lv = state.spirits?.[id] || 0;
   if (!sp || lv <= 0) return { atk: 0, spRegen: 0, crit: 0, element: null, elemBoost: 0, perkId: null, spirit: null, lv: 0, growthLv: 0 };
   const growthLv = getSpiritProgress(id).lv;
-  const lvMult = (1 + (lv - 1) * 0.22) * (1 + (growthLv - 1) * 0.07);
+  const isLucky = !!(state.luckySpirit && state.luckySpirit.id === id && (state.luckySpirit.untilDay || 0) >= (state.day || 1));
+  const luckyMult = isLucky ? (state.luckySpirit.mult || 2.0) : 1.0;
+  const lvMult = (1 + (lv - 1) * 0.22) * (1 + (growthLv - 1) * 0.07) * luckyMult;
   return {
     atk: Math.round(sp.atk * lvMult) + (growthLv - 1),
     spRegen: Math.round(sp.spRegen * lvMult),
@@ -1567,6 +1589,9 @@ function getSpiritBonuses(spiritIdOverride = null) {
     spirit: sp,
     lv,
     growthLv,
+    isLucky,
+    luckyMult,
+    luckyGoldBonus: isLucky ? (state.luckySpirit.goldBonus || 0.2) : 0,
   };
 }
 
@@ -2122,8 +2147,10 @@ function handleEnemyDefeated(enemy) {
   const baseReward = Math.round(enemy.reward * diff.rewardMult * (1 + (state.rewardMultBonus || 0) + (eqBon.rewardMult || 0)));
   const nightBonus = state.timeIndex >= 5 ? Math.round(baseReward * 0.25) : 0;
   const dustBonus = (state.weather || 'sunny') === 'dust' ? 10 : 0;
-  const goldSpBonus = getSpiritBonuses().perkId === 'gold_up' ? Math.round(baseReward * 0.25) : 0;
-  state.points += baseReward + nightBonus + dustBonus + goldSpBonus;
+  const spNowBon = getSpiritBonuses();
+  const goldSpBonus = spNowBon.perkId === 'gold_up' ? Math.round(baseReward * 0.25) : 0;
+  const luckyGold = spNowBon.isLucky ? Math.round(baseReward * (spNowBon.luckyGoldBonus || 0.2)) : 0;
+  state.points += baseReward + nightBonus + dustBonus + goldSpBonus + luckyGold;
   const expSpMult = getSpiritBonuses().perkId === 'exp_up' ? 1.35 : 1;
   const expGain = Math.round((24 + (enemy.reward || 30) * 0.65) * ((isBossId(enemy.id) || enemy.storyOnly) ? 1.6 : 1) * (1 + (eqBon.expMult || 0)) * expSpMult);
   gainHeroExp(expGain);
@@ -2895,6 +2922,30 @@ function render() {
         lines.push(`\n📋 [오늘의 서울 특명 · 완수 시 +250P·강화석+3·청심환+1]\n${dqList}`);
         if (ms.breakingText) lines.push(`🔴 112 긴급 속보: ${ms.breakingText} 출몰 중!`);
         if (ms.teaserMsg) lines.push(`📰 서울 소식: ${ms.teaserMsg}`);
+        const lSpObj = (state.luckySpirit && (state.luckySpirit.untilDay || 0) >= state.day)
+          ? SPIRITS_50.find((x) => x.id === state.luckySpirit.id)
+          : null;
+        if (lSpObj) {
+          lines.push(`🍀 [이틀의 행운 정령] '${lSpObj.name}' 능력치 ${state.luckySpirit.mult}배 + 보상 +${Math.round((state.luckySpirit.goldBonus || 0.2) * 100)}%!`);
+        }
+        const elSwapBtn = document.getElementById('btn-morning-lucky-swap');
+        if (elSwapBtn) {
+          if (lSpObj && state.equippedSpirit !== lSpObj.id) {
+            elSwapBtn.classList.remove('hidden');
+            elSwapBtn.textContent = `🍀 '${lSpObj.name}'(${state.luckySpirit.mult}배)로 교체하고 시작!`;
+            elSwapBtn.onclick = () => {
+              state.equippedSpirit = lSpObj.id;
+              state.pendingMorningSummary = null;
+              elMorningModal.classList.add('hidden');
+              sfx.victory();
+              showToast(`🍀 [${lSpObj.name}] 동행 교체 완료! (${state.luckySpirit.mult}배 행운 버프!)`, 'break');
+              saveGame();
+              render();
+            };
+          } else {
+            elSwapBtn.classList.add('hidden');
+          }
+        }
         lines.push(ms.remainingDays !== null ? `⏳ 서울 골든타임: 결전까지 D-${ms.remainingDays}` : '♾️ 포스트게임 무한 자유모드 진행 중');
         elMorningSummaryBody.textContent = lines.join('\n');
       }
@@ -8642,7 +8693,7 @@ function openSpiritModal(filterEl = 'all') {
       card.innerHTML = `
         <img src="${sp.img}?v=72" alt="${sp.name}" class="item-thumb" style="width:44px;height:44px;object-fit:contain;" />
         <div class="inv-info">
-          <h4 style="color:${rInfo.color};">[${rInfo.short}] ${getSpiritDisplayName(sp)} <span style="color:#0369a1;">Lv.${prog.lv}/20</span> · ★${lv}/5 ${isEq ? '✅동행중' : ''}</h4>
+          <h4 style="color:${rInfo.color};">[${rInfo.short}] ${getSpiritDisplayName(sp)} <span style="color:#0369a1;">Lv.${prog.lv}/20</span> · ★${lv}/5 ${isEq ? '✅동행중' : ''} ${spLive.isLucky ? `<span style="background:#10b981;color:#fff;padding:1px 5px;border-radius:6px;font-size:0.65rem;">🍀행운×${spLive.luckyMult}</span>` : ''}</h4>
           <p><b style="color:#0f766e;">⚡ 현재 버프: 공격 +${spLive.atk}${spLive.spRegen ? ` · 사이다+${spLive.spRegen}` : ''}${spLive.crit ? ` · 치명+${(spLive.crit * 100).toFixed(1)}%` : ''} · 속성+${Math.round(spLive.elemBoost * 100)}%</b> <span style="font-size:0.68rem;color:#b45309;">[${spMs}]</span><br/>${sp.desc}<br/><span style="color:#1e40af;font-size:0.68rem;">📍 출몰: ${sp.zoneHint}</span></p>
           <div class="spirit-exp-track"><div class="spirit-exp-fill" style="width:${expPct}%"></div></div>
         </div>
