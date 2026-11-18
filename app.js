@@ -5824,22 +5824,42 @@ function render() {
     const cLv = state.love?.chloe || 0;
     const yLover = !!state.lovers?.includes('yuki');
     const cLover = !!state.lovers?.includes('chloe');
-    const isStoryCleared = !!(state.storyCleared || (state.clearedActs?.length || 0) >= 4);
+    const isStoryCleared = !!(
+      state.storyCleared
+      || state.freePlayMode
+      || state.epilogueSeen
+      || (state.chapterIndex || 0) >= STORY_CHAPTERS.length
+      || (state.clearedActs?.length || 0) >= 4
+    );
     const hasOneMarriage = state.marriedTo === 'yuki' || state.marriedTo === 'chloe' || state.marriedTo === 'triple'
       || (state.weddingAlbum || []).includes('wedding_yuki.jpg')
       || (state.weddingAlbum || []).includes('wedding_chloe.jpg');
     const tripleSecretUnlocked = hasOneMarriage && yLover && cLover && isStoryCleared && yLv >= 180 && cLv >= 180;
-    const getWedLockReason = (isLover, lv) => {
+    const getWedLockReason = (key, isLover, lv) => {
       const lacks = [];
-      if (!isLover) lacks.push('고백해서 연애 시작');
+      if (!isLover) {
+        const subLacks = [];
+        if (key === 'yuki') {
+          if ((state.lang?.jp || 0) < 6) subLacks.push(`일어Lv.${state.lang?.jp || 0}/6`);
+          if ((state.dateCount?.yuki || 0) < 3) subLacks.push(`데이트${state.dateCount?.yuki || 0}/3`);
+          if ((state.lawful || 0) < 20) subLacks.push(`모범${state.lawful || 0}/20`);
+          if ((state.stats?.speech || 0) < 5) subLacks.push(`언변${state.stats?.speech || 0}/5`);
+        } else {
+          if ((state.lang?.en || 0) < 6) subLacks.push(`영어Lv.${state.lang?.en || 0}/6`);
+          if ((state.dateCount?.chloe || 0) < 3) subLacks.push(`데이트${state.dateCount?.chloe || 0}/3`);
+          if ((state.stats?.guts || 0) < 5) subLacks.push(`배짱${state.stats?.guts || 0}/5`);
+          if ((state.followers || 0) < 500) subLacks.push(`팔로워${state.followers || 0}/500`);
+        }
+        lacks.push(subLacks.length ? `고백 필요(${subLacks.join(', ')})` : '자유 데이트로 고백 완료 필요');
+      }
       if (!isStoryCleared) lacks.push('스토리 모드 클리어');
       if (lv < 180) lacks.push(`호감 180+ (${lv}/180)`);
       return lacks.join(' · ');
     };
     if (yLover || cLover || yLv >= 100 || cLv >= 100) {
       const wedDefs = [
-        { key: 'yuki', show: yLover || yLv >= 100, ok: yLover && isStoryCleared && yLv >= 180, lock: getWedLockReason(yLover, yLv), label: '💒 유키와 결혼 & 교토 신혼여행', sub: `유키 호감 ${yLv}/200 · 전용 웨딩 & 온천/료칸 2컷 ▶` },
-        { key: 'chloe', show: cLover || cLv >= 100, ok: cLover && isStoryCleared && cLv >= 180, lock: getWedLockReason(cLover, cLv), label: '💒 클로이와 결혼 & 몰디브 신혼여행', sub: `클로이 호감 ${cLv}/200 · 전용 웨딩 & 비치/자쿠지 2컷 ▶` },
+        { key: 'yuki', show: yLover || yLv >= 100, ok: yLover && isStoryCleared && yLv >= 180, lock: getWedLockReason('yuki', yLover, yLv), label: '💒 유키와 결혼 & 교토 신혼여행', sub: `유키 호감 ${yLv}/200 · 전용 웨딩 & 온천/료칸 2컷 ▶` },
+        { key: 'chloe', show: cLover || cLv >= 100, ok: cLover && isStoryCleared && cLv >= 180, lock: getWedLockReason('chloe', cLover, cLv), label: '💒 클로이와 결혼 & 몰디브 신혼여행', sub: `클로이 호감 ${cLv}/200 · 전용 웨딩 & 비치/자쿠지 2컷 ▶` },
         { key: 'triple', show: tripleSecretUnlocked, ok: tripleSecretUnlocked, lock: '', label: '👑 [시크릿 해금!!] 유키·클로이 트리플 웨딩 & 풀빌라 허니문!!', sub: '기혼+양쪽 연인+180+ 달성!! 전설의 3인 웨딩 & 리조트 2컷 ▶' },
       ];
       wedDefs.filter((w) => w.show).forEach((w) => {
@@ -7387,6 +7407,10 @@ function render() {
           sfx.victory();
           const prevCh = state.chapterIndex;
           state.chapterIndex += 1;
+          if (state.chapterIndex >= STORY_CHAPTERS.length) {
+            state.storyCleared = true;
+            state.freePlayMode = true;
+          }
           state.storySceneIndex = 0;
           state.unreadMessages += 1;
           gainHeroExp(50);

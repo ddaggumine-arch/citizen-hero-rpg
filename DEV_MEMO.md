@@ -5,7 +5,9 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V60.0 (GitHub Pages 배포됨)
+## 현재 최신 버전: V60.1 (GitHub Pages 배포됨)
+- **V60.1 (`?v=153`)**:
+  - **결혼 해금 판정 보강**: `isStoryCleared`가 `freePlayMode`, `epilogueSeen`, `chapterIndex >= STORY_CHAPTERS.length`까지 인식하고 `completeChapterOnly`에서도 마지막 챕터 완주 시 `storyCleared`/`freePlayMode`를 세팅하도록 수정. 미해금 시 부족한 고백 세부 조건(어학/데이트/스탯)도 정확히 표시!
 - **V60.0 (`?v=152`)**:
   - **전투 화면 슬림화 & 적 이미지 터치 스캐너 (`openEnemyInspectModal`, `#enemy-inspect-hint`)**: 상단 전투 배지(`#combat-badges`)를 가드·피버·핵심 상태 1줄로 압축하고, 약점·성향·기질·회피율·기절면역·별풍선 미션·패시브 목록은 적 이미지/전단지/레벨배지 또는 `🔍 적 정보` 터치 시 팝업으로 확인하도록 개편!
   - **전투 중 토스트 가림 최소화 (`showToast`, `fever-ready-pulse`)**: 전투 중 토스트는 최대 1개·`1050ms`로 제한하고, 피버 100% 충전 시 상단 2줄 배너 대신 `[노란 완장 풀개방!!]` 버튼 황금 펄스 강조로 대체!
