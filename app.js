@@ -787,13 +787,13 @@ function handleNewDayRollover() {
       const decayAmt = langLv >= 15 ? 3 : (langLv >= 10 ? 4 : 6);
       const gap = state.day - (state.lastContactDay[lk] || state.day);
       if (gap >= graceDays) {
-        state.love[lk] = clamp((state.love[lk] || 0) - decayAmt, 0, 100);
+        state.love[lk] = clamp((state.love[lk] || 0) - decayAmt, 0, 200);
         const nm = lk === 'yuki' ? '유키' : '클로이';
         if (!state.dateMessages) state.dateMessages = [];
         state.dateMessages.unshift({
           sender: lk === 'yuki' ? '🇯🇵 유키' : '🇺🇸 클로이',
           title: `DAY ${state.day} · 💔 서운함 경고`,
-          body: `"요즘 ${gap}일째 너무 소홀한 거 아니에요...?${langLv >= 15 ? ' (언어 Lv.15+ 신뢰 보너스로 완화!)' : ''} (호감도 -${decayAmt} → ${state.love[lk]}/100)"`,
+          body: `"요즘 ${gap}일째 너무 소홀한 거 아니에요...?${langLv >= 15 ? ' (언어 Lv.15+ 신뢰 보너스로 완화!)' : ''} (호감도 -${decayAmt} → ${state.love[lk]}/200)"`,
         });
         state.unreadMessages += 1;
         if (state.love[lk] < 50) {
@@ -3747,8 +3747,8 @@ function render() {
         if (ch.guts) state.stats.guts += ch.guts;
         if (ch.maxHp) { state.maxHp += ch.maxHp; state.hp = clamp(state.hp + ch.maxHp, 1, state.maxHp); }
         if (ch.fullHeal) state.hp = state.maxHp;
-        if (ch.yukiLove && isFeatureUnlocked(state, 'yuki')) state.love.yuki = clamp((state.love.yuki || 0) + ch.yukiLove, 0, state.someCleared?.yuki ? 100 : 75);
-        if (ch.chloeLove && isFeatureUnlocked(state, 'chloe')) state.love.chloe = clamp((state.love.chloe || 0) + ch.chloeLove, 0, state.someCleared?.chloe ? 100 : 75);
+        if (ch.yukiLove && isFeatureUnlocked(state, 'yuki')) state.love.yuki = clamp((state.love.yuki || 0) + ch.yukiLove, 0, state.someCleared?.yuki ? 200 : 75);
+        if (ch.chloeLove && isFeatureUnlocked(state, 'chloe')) state.love.chloe = clamp((state.love.chloe || 0) + ch.chloeLove, 0, state.someCleared?.chloe ? 200 : 75);
         state.phase = 'map';
         state.log = `🎉 주말 특별 이벤트 완료!${weekBonus > 0 ? ` (주간 성적표 보너스 +${weekBonus} P)` : ''}`;
         saveGame();
@@ -4740,8 +4740,8 @@ function render() {
     elQuoteBubble.classList.add('hidden');
     showSceneCard(
       '💘 ROMANCE & LANGUAGE',
-      `🇯🇵 유키(일어 Lv.${state.lang.jp}/6) 호감 ${state.love.yuki}/100 · 데이트 ${state.dateCount.yuki || 0}/3 ${state.lovers.includes('yuki') ? '💖' : (state.sulky.yuki ? '💢' : '')}\n` +
-      `🇺🇸 클로이(영어 Lv.${state.lang.en}/6) 호감 ${state.love.chloe}/100 · 데이트 ${state.dateCount.chloe || 0}/3 ${state.lovers.includes('chloe') ? '💖' : (state.sulky.chloe ? '💢' : '')}\n` +
+      `🇯🇵 유키(일어 Lv.${state.lang.jp}/6) 호감 ${state.love.yuki}/200 · 데이트 ${state.dateCount.yuki || 0}/3 ${state.lovers.includes('yuki') ? '💖' : (state.sulky.yuki ? '💢' : '')}\n` +
+      `🇺🇸 클로이(영어 Lv.${state.lang.en}/6) 호감 ${state.love.chloe}/200 · 데이트 ${state.dateCount.chloe || 0}/3 ${state.lovers.includes('chloe') ? '💖' : (state.sulky.chloe ? '💢' : '')}\n` +
       `고백: 호감95+어학Lv.6+데이트3회 (유키:모범20·언변5 / 클로이:배짱5·팔로워500)`,
       '호감도 35 미만: 알아가기 단계 · 75: 썸 위기 · 어학 공부 하루 1회!'
     );
@@ -5357,8 +5357,8 @@ function render() {
         sub: '파티 유대 +1 · 양쪽 호감 +6 · 인내심 MAX',
         run: () => {
           state.partnerBond = (state.partnerBond || 1) + 1;
-          state.love.yuki = clamp((state.love.yuki || 0) + 6, 0, 100);
-          state.love.chloe = clamp((state.love.chloe || 0) + 6, 0, 100);
+          state.love.yuki = clamp((state.love.yuki || 0) + 6, 0, 200);
+          state.love.chloe = clamp((state.love.chloe || 0) + 6, 0, 200);
           state.hp = state.maxHp;
           state.sp = state.maxSp;
           state.log = `🧺 [트리플 피크닉 대성공!] 완벽한 추억이 쌓였습니다! (파티 유대 Lv.${state.partnerBond} · 양쪽 호감 +6 · HP/SP MAX!)`;
@@ -5373,8 +5373,8 @@ function render() {
           state.stats.law += 1;
           state.maxHp += 12;
           state.hp = state.maxHp;
-          state.love.yuki = clamp((state.love.yuki || 0) + 4, 0, 100);
-          state.love.chloe = clamp((state.love.chloe || 0) + 4, 0, 100);
+          state.love.yuki = clamp((state.love.yuki || 0) + 4, 0, 200);
+          state.love.chloe = clamp((state.love.chloe || 0) + 4, 0, 200);
           state.log = '🐶 [피크닉 특훈 완료!] 콩이와 뛰어놀며 전스탯 +1 · 최대 인내심 +12 상승!';
         },
       },
@@ -5411,8 +5411,8 @@ function render() {
     const chloeGiftUnlocked = unlockedHeroines.includes('chloe');
     showSceneCard(
       '🎁 GIFT SHOP',
-      ` 🇯🇵 유키 호감도: ${state.love?.yuki || 0}/100\n` +
-      (chloeGiftUnlocked ? ` 🇺🇸 클로이 호감도: ${state.love?.chloe || 0}/100\n` : ` 🇺🇸 클로이: 🔒 제17화 합류 후 해금\n`) +
+      ` 🇯🇵 유키 호감도: ${state.love?.yuki || 0}/200\n` +
+      (chloeGiftUnlocked ? ` 🇺🇸 클로이 호감도: ${state.love?.chloe || 0}/200\n` : ` 🇺🇸 클로이: 🔒 제17화 합류 후 해금\n`) +
       ` ─────────────────────────\n 선물을 주면 소홀함 페널티가 초기화됩니다!`,
       '취향에 맞는 선물을 골라 마음을 전하세요!'
     );
@@ -6068,13 +6068,13 @@ function render() {
           vibrate(30);
           if (isJp) {
             state.lang.jp += 1;
-            state.love.yuki = clamp(state.love.yuki + 4, 0, state.someCleared?.yuki ? 100 : 75);
+            state.love.yuki = clamp(state.love.yuki + 4, 0, state.someCleared?.yuki ? 200 : 75);
             state.stats.speech += 1;
             if (!state.lastContactDay) state.lastContactDay = { yuki: state.day, chloe: state.day };
             state.lastContactDay.yuki = state.day;
           } else {
             state.lang.en += 1;
-            state.love.chloe = clamp(state.love.chloe + 4, 0, state.someCleared?.chloe ? 100 : 75);
+            state.love.chloe = clamp(state.love.chloe + 4, 0, state.someCleared?.chloe ? 200 : 75);
             state.stats.guts += 1;
             if (!state.lastContactDay) state.lastContactDay = { yuki: state.day, chloe: state.day };
             state.lastContactDay.chloe = state.day;
@@ -6085,8 +6085,8 @@ function render() {
           state.log = `🎉 정답!! ${quiz.reactOk.replace(/호감도\+\d+/g, '호감도+4')}${dayStudyBonus > 0 ? '\n☀️ [낮 스터디 보너스] 도덕점수 +5 P!' : ''}`;
         } else {
           sfx.damage();
-          if (isJp) state.love.yuki = clamp(state.love.yuki - 5, 0, 100);
-          else state.love.chloe = clamp(state.love.chloe - 5, 0, 100);
+          if (isJp) state.love.yuki = clamp(state.love.yuki - 5, 0, 200);
+          else state.love.chloe = clamp(state.love.chloe - 5, 0, 200);
           state.log = `😅 오답! ${quiz.reactNo}`;
         }
         advanceTime();
@@ -6171,10 +6171,10 @@ function render() {
           sfx.victory();
           if (!state.someCleared) state.someCleared = { yuki: false, chloe: false };
           state.someCleared[key] = true;
-          state.love[key] = clamp((state.love[key] || 0) + 12, 0, 100);
+          state.love[key] = clamp((state.love[key] || 0) + 12, 0, 200);
           if (key === 'yuki') grantClue('clue_cafe');
           else grantClue('clue_cctv');
-          state.log = `💖 [썸 돌파 성공!!] ${ch.okLog} (호감도 +12 · 100까지 해금!)`;
+          state.log = `💖 [썸 돌파 성공!!] ${ch.okLog} (호감도 +12 · 200까지 해금!)`;
         } else {
           sfx.damage();
           state.log = `😅 [아쉬운 대처] ${ch.failLog}`;
@@ -6221,11 +6221,11 @@ function render() {
         }
         if (ok) {
           sfx.victory();
-          state.love[key] = clamp((state.love[key] || 0) + 8, 0, state.someCleared?.[key] ? 100 : 75);
+          state.love[key] = clamp((state.love[key] || 0) + 8, 0, state.someCleared?.[key] ? 200 : 75);
           state.log = `✨ ${ch.okText}`;
         } else {
           sfx.damage();
-          state.love[key] = clamp((state.love[key] || 0) - 4, 0, 100);
+          state.love[key] = clamp((state.love[key] || 0) - 4, 0, 200);
           state.log = `💢 ${ch.failText}`;
         }
         advanceTime();
@@ -6327,8 +6327,8 @@ function render() {
 
         // 양다리 질투 리스크: 상대 호감도 60+ 시 30% 확률로 들킴 + 40% 확률로 삐짐(전투 불참)
         if (!isConfess && (state.love[otherKey] || 0) >= 60 && Math.random() < 0.30) {
-          state.love[key] = clamp(state.love[key] - 12, 0, 100);
-          state.love[otherKey] = clamp(state.love[otherKey] - 12, 0, 100);
+          state.love[key] = clamp(state.love[key] - 12, 0, 200);
+          state.love[otherKey] = clamp(state.love[otherKey] - 12, 0, 200);
           const otherName = otherKey === 'yuki' ? '유키' : '클로이';
           if (Math.random() < 0.40) {
             if (!state.sulky) state.sulky = { yuki: false, chloe: false };
@@ -6359,8 +6359,8 @@ function render() {
             sender: key === 'yuki' ? '🇯🇵 유키' : '🇺🇸 클로이',
             title: `DAY ${state.day} · ${ev.title}`,
             body: key === 'yuki'
-              ? `"오늘 정말 행복했어요! 조심히 들어가시고 내일 또 봐요 ♥ (호감도 ${state.love.yuki}/100)"`
-              : `"오늘 진짜 레전드 데이트였어! 다음엔 더 재밌는 데 가자 ♥ (호감도 ${state.love.chloe}/100)"`,
+              ? `"오늘 정말 행복했어요! 조심히 들어가시고 내일 또 봐요 ♥ (호감도 ${state.love.yuki}/200)"`
+              : `"오늘 진짜 레전드 데이트였어! 다음엔 더 재밌는 데 가자 ♥ (호감도 ${state.love.chloe}/200)"`,
           });
           if (state.dateMessages.length > 8) state.dateMessages.pop();
           state.unreadMessages += 1;
@@ -6428,8 +6428,8 @@ function render() {
           if (ef.speech) state.stats.speech += ef.speech;
           if (ef.guts) state.stats.guts += ef.guts;
           if (ef.law) state.stats.law += ef.law;
-          if (ef.loveYuki) state.love.yuki = clamp((state.love.yuki || 0) + ef.loveYuki, 0, 100);
-          if (ef.loveChloe) state.love.chloe = clamp((state.love.chloe || 0) + ef.loveChloe, 0, 100);
+          if (ef.loveYuki) state.love.yuki = clamp((state.love.yuki || 0) + ef.loveYuki, 0, 200);
+          if (ef.loveChloe) state.love.chloe = clamp((state.love.chloe || 0) + ef.loveChloe, 0, 200);
           if (ef.followers) state.followers = (state.followers || 120) + ef.followers;
         }
         if (choice.completeChapterOnly) {
@@ -7587,8 +7587,8 @@ function appendVictoryExpCard(container) {
         if (ef.chaotic) state.chaotic += ef.chaotic;
         if (ef.sp) state.sp = clamp(state.sp + ef.sp, 0, state.maxSp);
         if (ef.followers) state.followers = (state.followers || 120) + ef.followers;
-        if (ef.yukiLove) state.love.yuki = clamp((state.love.yuki || 0) + ef.yukiLove, 0, 100);
-        if (ef.chloeLove) state.love.chloe = clamp((state.love.chloe || 0) + ef.chloeLove, 0, 100);
+        if (ef.yukiLove) state.love.yuki = clamp((state.love.yuki || 0) + ef.yukiLove, 0, 200);
+        if (ef.chloeLove) state.love.chloe = clamp((state.love.chloe || 0) + ef.chloeLove, 0, 200);
         sfx.victory();
         showToast('🐶 콩이와 함께 무개념 견주 참교육 완료!', 'good');
         advanceTime();
