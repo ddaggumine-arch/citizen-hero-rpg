@@ -1517,6 +1517,88 @@ function getActiveIntelTarget() {
   return null;
 }
 
+// ===== V54.0: 갱생 빌런 아지트 6인 & 오늘의 대박 잭팟 & 긴급 패링 QTE =====
+const REFORMED_ALLIES_DATA = [
+  { id: 'cafe_boss',       name: '☕ 카페 콘센트 마왕 (갱생)',  role: '모닝 바리스타',   buffDesc: '매일 아침 무료 아메리카노 조공 (사이다 +25)' },
+  { id: 'parking_villain', name: '🚗 골목 불법주차왕 (갱생)',   role: '전담 발렛',       buffDesc: '자유행동 순찰/이동 시 인내심 +6 소량 회복' },
+  { id: 'noise_villain',   name: '🎧 층간소음 테러범 (갱생)',   role: '방음 장인',       buffDesc: '전투 중 받는 피해 상시 -10% 방어' },
+  { id: 'cinema_boss',     name: '🍿 영화관 빌런 (갱생)',       role: '시사회 스태프',   buffDesc: '데이트·선물 시 20% 확률 도덕P +25 페이백' },
+  { id: 'gym_villain',     name: '💪 헬스장 덤벨러 (갱생)',     role: '피트니스 코치',   buffDesc: '기본 공격력 영구 +5 지원' },
+  { id: 'trash_dumper',    name: '♻️ 무단투기 빌런 (갱생)',     role: '재활용 달인',     buffDesc: '전투 승리 시 35% 확률 영웅 고철 +1 추가' },
+];
+
+function checkReformedAllyUnlock(enemyId) {
+  const found = REFORMED_ALLIES_DATA.find((r) => r.id === enemyId);
+  if (!found) return;
+  if (!Array.isArray(state.reformedAllies)) state.reformedAllies = [];
+  if (state.reformedAllies.includes(enemyId)) return;
+  const wins = state.villainWins?.[enemyId] || 0;
+  if (wins >= 3) {
+    state.reformedAllies.push(enemyId);
+    sfx.victory();
+    showToast(`🤝 [갱생 완료!!] ${found.name}이(가) 아지트 동료로 합류! (${found.buffDesc})`, 'break');
+  }
+}
+
+function openReformedAlliesModal() {
+  const owned = state.reformedAllies || [];
+  elActivityModalTitle.textContent = `🤝 갱생 빌런 아지트 (${owned.length}/${REFORMED_ALLIES_DATA.length})`;
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+
+  const tip = document.createElement('div');
+  tip.className = 'oblivion-banner';
+  tip.textContent = '💡 특정 빌런을 3회 이상 참교육하면 완벽하게 개과천선해 아지트 동료(영구 패시브 버프)로 합류합니다!';
+  elActivityList.appendChild(tip);
+
+  REFORMED_ALLIES_DATA.forEach((ally) => {
+    const isJoined = owned.includes(ally.id);
+    const wins = state.villainWins?.[ally.id] || 0;
+    const card = document.createElement('div');
+    card.className = 'inv-item';
+    card.style.opacity = isJoined ? '1' : '0.6';
+    card.innerHTML = `<div class="inv-info"><h4>${isJoined ? '✅' : '🔒'} ${ally.name} <span style="font-size:0.72rem;color:#6366f1;">[${ally.role}]</span></h4><p>${ally.buffDesc}<br/><span style="color:${isJoined ? '#15803d' : '#b45309'};font-weight:800;">${isJoined ? '✨ 영구 버프 활성화 중!' : `참교육 진행도: ${Math.min(3, wins)}/3회`}</span></p></div>`;
+    elActivityList.appendChild(card);
+  });
+  elActivityModal.classList.remove('hidden');
+}
+
+function startUrgentParryQte(enemy, onResult) {
+  if (!elRomMgOverlay || !elRomMgPanel) { onResult(false); return; }
+  elRomMgOverlay.classList.remove('hidden');
+  let finished = false;
+  let remainMs = 1800;
+  elRomMgPanel.innerHTML = `
+    <div style="text-align:center;">
+      <div style="font-size:12px;color:#fca5a5;font-weight:900;">⚡ 긴급 패링 QTE!!</div>
+      <div style="font-size:17px;font-weight:900;color:#fde047;margin:4px 0;">💢 [${enemy.name}]의 필살 일격!</div>
+      <div style="font-size:12px;color:#e2e8f0;margin-bottom:10px;">시간 안에 터치하면 완벽 회피 + 반격 크리티컬!</div>
+      <button id="qte-parry-btn" class="choice-btn story-main-btn" style="text-align:center;font-size:15px;font-weight:900;padding:14px;">🛡️ 지금 막기!! (<span id="qte-sec">1.8</span>s)</button>
+    </div>
+  `;
+  const btn = document.getElementById('qte-parry-btn');
+  const secEl = document.getElementById('qte-sec');
+  const timer = setInterval(() => {
+    remainMs -= 100;
+    if (secEl) secEl.textContent = Math.max(0, remainMs / 1000).toFixed(1);
+    if (remainMs <= 0 && !finished) {
+      finished = true;
+      clearInterval(timer);
+      elRomMgOverlay.classList.add('hidden');
+      onResult(false);
+    }
+  }, 100);
+  if (btn) {
+    btn.onclick = () => {
+      if (finished) return;
+      finished = true;
+      clearInterval(timer);
+      elRomMgOverlay.classList.add('hidden');
+      onResult(true);
+    };
+  }
+}
+
 function getHeroineLoveCap(key) {
   if (state.lovers?.includes(key)) return 200;
   if (state.someCleared?.[key]) return 100;
@@ -2249,6 +2331,7 @@ function startBattle(enemyId, isRandomEncounter = false) {
     extraLog += `\n🛡️ [오늘의 운세: 수호의 날] 인내심 +15 회복!`;
   }
   state.usedLogicCounter = false;
+  state.usedQteParry = false;
   state.enemyApologyTurns = 0;
   state.isFirstTurn = true;
   state.bossPhase2 = false;
@@ -2395,6 +2478,29 @@ function enemyCounterTurn(enemy, isGuarding = false) {
   const scaledAtk = state.currentEnemyAtk || Math.round(enemy.atk * getDiffObj().atkMult * (1 + (state.ngPlus || 0) * 0.3));
   const eqBonus = getEquippedBonuses();
 
+  if (!isGuarding && !state.usedQteParry && (state.enemyIntent === 'heavy' || state.enemyIntent === 'rage') && Math.random() < 0.40) {
+    state.usedQteParry = true;
+    startUrgentParryQte(enemy, (ok) => {
+      if (ok) {
+        const counter = Math.round(26 + state.stats.guts * 3.5 + state.bonusDmg);
+        state.enemyHp = clamp(state.enemyHp - counter, 0, state.enemyMaxHp);
+        state.sp = clamp(state.sp + 15, 0, state.maxSp);
+        sfx.victory();
+        showToast(`⚡ 긴급 패링 대성공!! 피해 0 + 반격 -${counter} & 사이다 +15!`, 'break');
+        state.log += `\n⚡ [긴급 패링 QTE 성공!!] 적 필살기를 완벽히 흘려내고 반격 -${counter} (사이다 +15)!`;
+        triggerEnemyHit(counter, true, getSkillVfxInfo('guard'));
+        if (state.enemyHp <= 0) { handleEnemyDefeated(enemy); return; }
+        rollNextIntent();
+        saveGame();
+        render();
+      } else {
+        showToast('💥 패링 타이밍 실패! 적의 일격 직격!', 'warn');
+        enemyCounterTurn(enemy, false);
+      }
+    });
+    return;
+  }
+
   if (!isGuarding && !state.usedLogicCounter && Math.random() < 0.18) {
     state.usedLogicCounter = true;
     state.logicCounterIdx = Math.floor(Math.random() * LOGIC_COUNTERS.length);
@@ -2433,6 +2539,9 @@ function enemyCounterTurn(enemy, isGuarding = false) {
     const blocked = Math.max(0, dmg - nextDmg);
     dmg = nextDmg;
     if (blocked > 0) state.log += `\n🛡️ [방어력 경감 -${blocked}]`;
+  }
+  if (state.reformedAllies?.includes('noise_villain') && dmg > 1) {
+    dmg = Math.max(1, Math.round(dmg * 0.90));
   }
   if (spBonTurn.perkId === 'counter_guard' && dmg > 1) {
     dmg = Math.max(2, Math.round(dmg * 0.85));
@@ -2599,6 +2708,11 @@ function handleEnemyDefeated(enemy) {
   }
   if (!state.villainWins) state.villainWins = {};
   state.villainWins[enemy.id] = (state.villainWins[enemy.id] || 0) + 1;
+  checkReformedAllyUnlock(enemy.id);
+  if (state.reformedAllies?.includes('trash_dumper') && Math.random() < 0.35) {
+    state.scrap = (state.scrap || 0) + 1;
+    state.log = (state.log ? state.log + '\n' : '') + '♻️ [갱생 동료 · 재활용 달인] 영웅 고철 +1 추가 수거!';
+  }
   state.enemyBroken = false;
   if (state.guerrilla && state.guerrilla.villainId === enemy.id) {
     state.guerrilla = null;
@@ -2848,7 +2962,8 @@ function performAttack(type, ultPerfect = false) {
   const chloeCrit = (state.lovers?.includes('chloe') && !state.sulky?.chloe ? 0.18 : 0) + eqBonus.crit;
   const allyFirstBonus = state.isFirstTurn && state.allies?.includes('parking_bro') ? 8 : 0;
   const rankBonus = getHeroRankInfo().atkBonus || 0;
-  const sodaBonus = (state.sodaBuffDmg || 0) + rankBonus + eqBonus.atk;
+  const reformedAtk = state.reformedAllies?.includes('gym_villain') ? 5 : 0;
+  const sodaBonus = (state.sodaBuffDmg || 0) + rankBonus + eqBonus.atk + reformedAtk;
   const wasFirstTurn = !!state.isFirstTurn;
   state.isFirstTurn = false;
   if (state.sodaBuffDmg) state.sodaBuffDmg = 0;
@@ -4430,6 +4545,15 @@ function render() {
         openSquadModal();
       });
       elActivityList.appendChild(sqBtn);
+
+      const refBtn = document.createElement('button');
+      refBtn.className = 'activity-item-btn';
+      refBtn.innerHTML = `<div class="act-title">🤝 갱생 빌런 아지트 (${(state.reformedAllies || []).length}/${REFORMED_ALLIES_DATA.length}명)</div><div class="act-desc">3회 참교육한 빌런이 아군 동료로 합류해 영구 버프 지원!</div>`;
+      refBtn.addEventListener('click', () => {
+        sfx.click();
+        openReformedAlliesModal();
+      });
+      elActivityList.appendChild(refBtn);
 
       const towerUnlocked = isFeatureUnlocked(state, 'foundation');
       const tBtn = document.createElement('button');
@@ -6516,6 +6640,46 @@ function render() {
         render();
       });
       elChoicesPanel.appendChild(btn);
+    });
+    return;
+  }
+
+  // 4-R1.15. V54.0 유키 vs 클로이 러브코미디 수라장 이벤트
+  if (state.phase === 'love_triangle_chaos') {
+    elLocation.textContent = `DAY ${state.day} · 💘 러브코미디 수라장!!`;
+    elSceneTag.textContent = '더블 히로인';
+    elSceneTag.className = 'scene-tag event';
+    elSceneTitle.textContent = '💘 길 한복판에서 유키와 클로이가 마주쳤다!!';
+    elWeaknessPill.classList.add('hidden');
+    elEnemyHpWrap.classList.add('hidden');
+    elQuoteBubble.textContent = '"어라? 오늘 나랑 만나기로 하지 않았어요?" / "Hey! 나랑 먼저 약속했잖아!!"';
+    elQuoteBubble.classList.remove('hidden');
+    setSceneImage('assets/images/romance/triple_picnic.jpg?v=122');
+    setLogText('양쪽 팔짱을 꽉 끼고 불꽃 튀는 눈빛으로 나를 올려다보는 유키와 클로이! 과연 이 수라장을 어떻게 돌파할까?!', true);
+    elChoicesPanel.className = 'choices-panel';
+    [
+      { text: '🇯🇵 "오늘은 유키 책 고르는 걸 먼저 도와주기로 했어!"', sub: '유키 호감 +8 · 클로이 약간 토라짐 (-4)', fn: () => { addHeroineLove('yuki', 8); addHeroineLove('chloe', -4); return '🇯🇵 유키가 환하게 웃으며 내 팔을 더 꽉 안았다! (유키 +8 · 클로이 -4)'; } },
+      { text: '🇺🇸 "클로이 전시 촬영 약속이 먼저였지!"', sub: '클로이 호감 +8 · 유키 약간 토라짐 (-4)', fn: () => { addHeroineLove('chloe', 8); addHeroineLove('yuki', -4); return '🇺🇸 클로이가 승리의 윙크를 날리며 카메라를 들었다! (클로이 +8 · 유키 -4)'; } },
+      { text: '🤝 "둘 다 내 최고의 파트너잖아! 내가 디저트 풀코스 쏜다!!" (-60P)', sub: '60P 소모 · 양쪽 호감 +6 & 파티 유대 +1!!', fn: () => {
+        if (state.points < 60) { addHeroineLove('yuki', 2); addHeroineLove('chloe', 2); return '💸 지갑을 열어보니 60P가 부족해 둘이 웃으며 커피만 나눠 마셨다! (양쪽 호감 +2)'; }
+        state.points -= 60;
+        addHeroineLove('yuki', 6);
+        addHeroineLove('chloe', 6);
+        state.partnerBond = (state.partnerBond || 1) + 1;
+        return `🍰 달콤한 케이크 앞에서 두 사람 다 사르르 녹았다! (양쪽 호감 +6 · 파티 유대 Lv.${state.partnerBond}!)`;
+      } },
+    ].forEach((opt) => {
+      const b = document.createElement('button');
+      b.className = 'choice-btn row-btn';
+      b.innerHTML = `<span>${opt.text}</span><span class="choice-sub">${opt.sub}</span>`;
+      b.onclick = () => {
+        sfx.victory();
+        state.log = opt.fn();
+        state.phase = 'map';
+        saveGame();
+        render();
+      };
+      elChoicesPanel.appendChild(b);
     });
     return;
   }
@@ -10096,6 +10260,10 @@ function executeActivity(act, cat) {
         showToast('🎟️ 이번 주 서울 로또는 아쉽게 꽝이었습니다...', 'warn');
       }
     }
+    if (state.reformedAllies?.includes('cafe_boss')) {
+      state.sp = clamp(state.sp + 25, 0, state.maxSp);
+      showToast('☕ [갱생 동료 · 카페 바리스타] 모닝 아이스 아메리카노! (사이다 +25)', 'good');
+    }
     state.log = act.msg + ' (전 기술 PP 100% 완충!)';
     saveGame();
     render();
@@ -10209,6 +10377,35 @@ function executeActivity(act, cat) {
     const picked = pickLevelAppropriateVillain(VILLAINS, state.level || 1);
     state.log = `🚨 [서울 민폐도 비상!] 거리가 난장판이 되어 [${picked.name}]이(가) 기습했습니다!`;
     startBattle(picked.id, true);
+    return;
+  }
+
+  if (state.reformedAllies?.includes('parking_villain') && act.isPatrol) {
+    state.hp = clamp(state.hp + 6, 1, state.maxHp);
+  }
+
+  // V54.0: 9% 확률 오늘의 대박 잭팟 사건!
+  if (Math.random() < 0.09) {
+    const jackpots = [
+      () => { state.points += 350; state.followers = (state.followers || 120) + 1500; return '📺 [대박 잭팟!!] 어제 찍힌 참교육 쇼츠가 100만 조회수를 돌파해 후원금 +350P & 팔로워 +1,500!'; },
+      () => { state.scrap = (state.scrap || 0) + 5; return '💎 [대박 잭팟!!] 골목 고물상에서 희귀 영웅 고철 뭉치(+5개)를 공짜로 얻었습니다!'; },
+      () => { state.points += 250; state.hp = state.maxHp; state.sp = state.maxSp; return '🧧 [대박 잭팟!!] 동네 상인회장님이 감사 금일봉 +250P와 특제 보양식을 대접했습니다! (HP/SP 100%)'; },
+      () => { state.stats.speech += 1; state.stats.guts += 1; state.stats.law += 1; state.skillPoints = (state.skillPoints || 0) + 2; return '🌟 [대박 잭팟!!] 전설의 1대 시민영웅 비급서 발견! (전스탯 +1 · 스킬포인트 +2!)'; },
+    ];
+    const jpMsg = jackpots[Math.floor(Math.random() * jackpots.length)]();
+    sfx.victory();
+    showToast(jpMsg, 'break');
+    state.log = `${act.msg}\n\n${jpMsg}`;
+    saveGame();
+    render();
+    return;
+  }
+
+  // V54.0: 유키 & 클로이 동시 호감 70+ 시 10% 확률 러브코미디 수라장 이벤트!
+  if ((state.love?.yuki || 0) >= 70 && (state.love?.chloe || 0) >= 70 && isFeatureUnlocked(state, 'chloe') && Math.random() < 0.10) {
+    state.phase = 'love_triangle_chaos';
+    saveGame();
+    render();
     return;
   }
 
