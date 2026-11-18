@@ -5,7 +5,9 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V56.1 (GitHub Pages 배포됨)
+## 현재 최신 버전: V56.2 (GitHub Pages 배포됨)
+- **V56.2 (`?v=144`)**:
+  - **포켓몬식 전투 VFX 연출 타임라인 & 속도 토글 (`style.css`, `app.js`)**: 기술 클릭 시 0.15초 후 0.95초간 선명하게 유지되는 VFX 폭발·컷인 배너 + 0.90~0.98초 후 적 반격/승리 화면 전환 + 중복 터치 방지 락 + 전투 배지 내 `🎬 연출` / `⚡ 고속` 원클릭 토글 추가.
 - **V56.1 (`?v=143`)**:
   - **29종 정령(`spirit_69.png` 천마 포함) 인접 조각 자동 클리닝**: 가장자리 삐져나온 옆 정령 날개·발톱 제거 & 중앙 재정렬.
   - **스토리 적 vs 필드 돌발 적 100% 분리 (`isStoryExclusiveEnemy`)**: 순찰·112 속보·지명수배·던전 매복에서 스토리/액트/보스 적이 뜬금없이 등장하지 않도록 차단.

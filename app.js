@@ -988,12 +988,12 @@ function spawnCombatVfx(vfxOpts, isCrit = false) {
     img.className = `vfx-impact-sprite${isBig ? ' is-big' : ''}`;
     img.alt = '';
     elCombatVfxLayer.appendChild(img);
-    setTimeout(() => img.remove(), 660);
+    setTimeout(() => img.remove(), 1020);
 
     const ring = document.createElement('div');
     ring.className = 'vfx-hit-ring';
     elCombatVfxLayer.appendChild(ring);
-    setTimeout(() => ring.remove(), 500);
+    setTimeout(() => ring.remove(), 720);
   }
   if (vfxOpts.skillName && (isCrit || vfxOpts.isBreak || vfxOpts.isFever || (vfxOpts.tier || 1) >= 3)) {
     const prevBanner = elCombatVfxLayer.querySelector('.vfx-cutin-banner');
@@ -1002,7 +1002,7 @@ function spawnCombatVfx(vfxOpts, isCrit = false) {
     banner.className = 'vfx-cutin-banner';
     banner.textContent = vfxOpts.isBreak ? `💥 BREAK! ${vfxOpts.skillName}` : vfxOpts.skillName;
     elCombatVfxLayer.appendChild(banner);
-    setTimeout(() => banner.remove(), 980);
+    setTimeout(() => banner.remove(), 1180);
   }
 }
 
@@ -2201,6 +2201,7 @@ function pickLevelAppropriateVillain(pool, heroLv = state.level || 1) {
 }
 
 function startBattle(enemyId, isRandomEncounter = false) {
+  state.combatInputLock = false;
   state.lastVictoryExp = null;
   const baseEnemy = getEnemyById(enemyId);
   if (!state.villainEncounters) state.villainEncounters = {};
@@ -2980,6 +2981,8 @@ function getSkillEvolution(type) {
 }
 
 function performAttack(type, ultPerfect = false) {
+  if (state.combatInputLock) return;
+  state.combatInputLock = true;
   playHeroAnim('attack');
   const enemy = getEnemyById(state.currentEnemyId);
   const rep = getReputationInfo();
@@ -3018,7 +3021,7 @@ function performAttack(type, ultPerfect = false) {
   const spCost = spBonCost.perkId === 'sp_saver' ? Math.round(baseSpCost * 0.75) : baseSpCost;
   const ppMap = ensureSkillPp();
   if (['speech', 'guts', 'law', 'snap'].includes(type)) {
-    if ((ppMap[type] ?? getMaxSkillPp(type)) <= 0) return;
+    if ((ppMap[type] ?? getMaxSkillPp(type)) <= 0) { state.combatInputLock = false; return; }
     ppMap[type] = Math.max(0, (ppMap[type] ?? getMaxSkillPp(type)) - 1);
   }
   const evo = getSkillEvolution(type);
@@ -3330,17 +3333,31 @@ function performAttack(type, ultPerfect = false) {
   }
   checkStreamMission(type);
   const vfxInfo = getSkillVfxInfo(type);
-  triggerEnemyHit(dmg, isCrit, { ...vfxInfo, isWeak: hitWeakness, isBreak: gotBreakBonusTurn, isFever });
-  if (state.enemyHp <= 0) {
-    handleEnemyDefeated(enemy);
-    return;
-  }
-  if (gotBreakBonusTurn) {
-    saveGame();
-    render();
-    return;
-  }
-  enemyCounterTurn(enemy);
+  const tCfg = state.fastBattle
+    ? { impact: 40, next: 260, win: 320 }
+    : { impact: 150, next: 900, win: 980 };
+  if (elEnemyHpText) elEnemyHpText.textContent = `${state.enemyHp} / ${state.enemyMaxHp}`;
+  if (elEnemyHpBar) elEnemyHpBar.style.width = `${(state.enemyHp / Math.max(1, state.enemyMaxHp)) * 100}%`;
+  if (elBattleLog) elBattleLog.textContent = (state.quote ? `💬 ${state.quote}\n` : '') + (state.log || '');
+
+  setTimeout(() => {
+    triggerEnemyHit(dmg, isCrit, { ...vfxInfo, isWeak: hitWeakness, isBreak: gotBreakBonusTurn, isFever });
+  }, tCfg.impact);
+
+  const stepDelay = state.enemyHp <= 0 ? tCfg.win : tCfg.next;
+  setTimeout(() => {
+    state.combatInputLock = false;
+    if (state.enemyHp <= 0) {
+      handleEnemyDefeated(enemy);
+      return;
+    }
+    if (gotBreakBonusTurn) {
+      saveGame();
+      render();
+      return;
+    }
+    enemyCounterTurn(enemy);
+  }, stepDelay);
 }
 
 function useItem(itemId, invIndex) {
@@ -7581,6 +7598,17 @@ function render() {
           });
         }
       }
+      const spdTog = document.createElement('span');
+      spdTog.className = 'combat-badge is-toggle';
+      spdTog.textContent = state.fastBattle ? '⚡ 고속' : '🎬 연출';
+      spdTog.title = '터치해 전투 VFX 연출 속도 전환 (연출 감상 / 고속)';
+      spdTog.addEventListener('click', () => {
+        sfx.click();
+        state.fastBattle = !state.fastBattle;
+        showToast(state.fastBattle ? '⚡ 고속 전투 모드 ON!' : '🎬 VFX 연출 감상 모드 ON!', 'good');
+        render();
+      });
+      elCombatBadges.appendChild(spdTog);
     }
 
     showEnemyVisual(enemy);
