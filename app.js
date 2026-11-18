@@ -1615,6 +1615,43 @@ function startUrgentParryQte(enemy, onResult) {
   }
 }
 
+// ===== V58.1: 쌍방향 회피율 & 기절 면역/내성 & 궁극기 관통 =====
+function getHeroEvasion() {
+  const lvBonus = Math.min(0.14, (state.level || 1) * 0.004);
+  const spBonus = getSpiritBonuses().perkId === 'first_strike' ? 0.04 : 0;
+  return Math.min(0.35, Number((0.08 + lvBonus + spBonus).toFixed(3)));
+}
+
+function getEnemyEvasion(enemy) {
+  if (!enemy || state.enemyStunned || state.enemyBroken) return 0;
+  const isBoss = isBossId(enemy.id) || !!enemy.isActBoss || !!enemy.storyOnly || enemy.id === HIDDEN_BOSS.id;
+  const isAgile = state.enemyTrait === 'agile' || ['night_biker', 'shorts_terrorist', 'line_cutter'].includes(enemy.id);
+  if (isBoss) return isAgile ? 0.20 : 0.10;
+  return isAgile ? 0.10 : 0.05;
+}
+
+function tryApplyEnemyStun(isUltimate = false) {
+  if (isUltimate) {
+    state.enemyStunned = true;
+    state.enemyStunResistTurns = 0;
+    if (state.enemyStunImmune) {
+      state.log += '\n💥 [궁극기 면역 관통!!] 기절 면역을 뚫고 강제 기절시켰습니다!';
+      showToast('💥 궁극기 면역 관통! 강제 기절!!', 'break');
+    }
+    return true;
+  }
+  if (state.enemyStunImmune) {
+    state.log += '\n🧱 [기절 면역!] 일반 기술로는 기절하지 않습니다! (궁극기로 관통 가능)';
+    return false;
+  }
+  if ((state.enemyStunResistTurns || 0) > 0) {
+    state.log += `\n🛡️ [연속 기절 내성(${state.enemyStunResistTurns}턴)] 방금 기절해서 아직 버팁니다!`;
+    return false;
+  }
+  state.enemyStunned = true;
+  return true;
+}
+
 function getSpiritDuoSynergy() {
   const mainId = state.equippedSpirit;
   const subId = state.subSpirit;
@@ -2337,6 +2374,9 @@ function startBattle(enemyId, isRandomEncounter = false) {
     state.infiltrationQuoteOverride = '"크윽... 방금 네 녀석이 우리 아지트 보급로를 털고 왔다면서?!"';
   }
   state.enemyStunned = false;
+  state.enemyStunResistTurns = 0;
+  state.enemyStunImmune = !!(isBossEnemy && (state.enemyTrait === 'tank' || state.enemyTrait === 'tyrant' || Math.random() < 0.45));
+  if (state.enemyStunImmune) extraLog += '\n🧱 [보스 기믹] 기절 면역(불굴)! (사이다/합동 궁극기로만 관통 가능!)';
   state.enemyExcuseShield = false;
   state.enemyGuardShield = 3;
   state.combatChain = 0;
@@ -2462,6 +2502,7 @@ function enemyCounterTurn(enemy, isGuarding = false) {
 
   if (state.enemyStunned) {
     state.enemyStunned = false;
+    state.enemyStunResistTurns = 2;
     if (state.bossGimmick === 'countdown') state.bossCountdown = 3;
     const wasDanger = state.enemyIntent !== 'normal';
     state.enemyIntent = 'normal';
@@ -2569,6 +2610,18 @@ function enemyCounterTurn(enemy, isGuarding = false) {
     return;
   }
 
+  if ((state.enemyStunResistTurns || 0) > 0) state.enemyStunResistTurns -= 1;
+  if (!isGuarding && Math.random() < getHeroEvasion()) {
+    state.sp = clamp(state.sp + 5, 0, state.maxSp);
+    playHeroAnim('guard');
+    showFloatingText('💨 MISS! 회피! (+5 SP)', 'crit');
+    sfx.click();
+    state.log += '\n💨 [완벽 회피!!] 빌런의 공격을 날렵하게 피해냈습니다! (피해 0 · 사이다 +5)';
+    rollNextIntent();
+    saveGame();
+    render();
+    return;
+  }
   let dmg = Math.round((scaledAtk + Math.floor(Math.random() * 5) - 2) * intentObj.mult * chaosMult);
   if (state.bossGimmick === 'countdown') {
     state.bossCountdown = Math.max(0, (state.bossCountdown || 3) - 1);
@@ -3085,6 +3138,18 @@ function performAttack(type, ultPerfect = false) {
     if ((ppMap[type] ?? getMaxSkillPp(type)) <= 0) { state.combatInputLock = false; return; }
     ppMap[type] = Math.max(0, (ppMap[type] ?? getMaxSkillPp(type)) - 1);
   }
+  const isThreeChainReady = (state.skillChain?.length === 3 && new Set(state.skillChain).size === 3);
+  if (type !== 'special' && !isThreeChainReady && Math.random() < getEnemyEvasion(enemy)) {
+    state.log = `💨 [회피!!] ${enemy.name}이(가) 공격을 날렵하게 피했습니다!! (MISS)`;
+    showFloatingText('💨 MISS! 적 회피!', 'player');
+    sfx.click();
+    const missDelay = state.fastBattle ? 260 : 950;
+    setTimeout(() => {
+      state.combatInputLock = false;
+      enemyCounterTurn(enemy);
+    }, missDelay);
+    return;
+  }
   const evo = getSkillEvolution(type);
   const matchup = getMatchupInfo(enemy, type);
   if (type === 'speech') {
@@ -3367,7 +3432,7 @@ function performAttack(type, ultPerfect = false) {
     state.enemyGuardShield = Math.max(0, (state.enemyGuardShield ?? 3) - shieldDmg);
     if (state.enemyGuardShield <= 0) {
       state.enemyBroken = true;
-      state.enemyStunned = true;
+      tryApplyEnemyStun(false);
       state.enemyGuardShield = 3;
       gotBreakBonusTurn = true;
       const allAttrs = ['speech', 'guts', 'law', 'snap'];
@@ -7631,6 +7696,11 @@ function render() {
       if (fcBadge) activeBadges.push({ cls: 'is-combo', txt: fcBadge });
       const duoB = getSpiritDuoSynergy();
       if (duoB) activeBadges.push({ cls: 'is-break', txt: duoB.label });
+      activeBadges.push({ cls: 'is-combo', txt: `💨회피 ${Math.round(getHeroEvasion() * 100)}%` });
+      const eEva = Math.round(getEnemyEvasion(enemy) * 100);
+      if (eEva > 0) activeBadges.push({ cls: 'is-warn', txt: `🎯적회피 ${eEva}%` });
+      if (state.enemyStunImmune) activeBadges.push({ cls: 'is-warn', txt: '🧱기절면역(궁극관통)' });
+      else if ((state.enemyStunResistTurns || 0) > 0) activeBadges.push({ cls: 'is-warn', txt: `🛡️기절내성(${state.enemyStunResistTurns}턴)` });
       if (state.intelAmbushReady) activeBadges.push({ cls: 'is-break', txt: '🕵️ 첫턴 1.8배 기습!' });
       if (state.lastSkillType) activeBadges.push({ cls: 'is-combo', txt: `직전:${SKILL_ATTR_LABELS[state.lastSkillType] || ''}${(state.repeatSkillCount || 0) >= 1 ? '(연속↓)' : ''}` });
       if (state.nextGuaranteedCrit) activeBadges.push({ cls: 'is-break', txt: '📺 다음 타 확정치명!' });
