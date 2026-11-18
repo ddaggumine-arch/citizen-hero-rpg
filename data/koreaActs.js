@@ -68,7 +68,7 @@ export const KOREA_ACTS = [
     recLvRange: 'Lv.30~50',
     totalEps: 30,
     bossId: 'cafe_boss',
-    bg: 'assets/images/seoul_map_bg.png',
+    bg: 'assets/images/bg_yeouido.jpg?v=146',
     desc: '전국 4개 도시를 평정한 영웅이 서울 최종 흑막과 마주하는 최후의 무대!',
     dungeonName: '🚇 2호선 심야 환승 미궁',
     buffDesc: '전국 5대 액트 완전 제패 시 [대한민국 총괄 영웅] 칭호 부여!',
