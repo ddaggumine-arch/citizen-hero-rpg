@@ -5592,7 +5592,7 @@ function render() {
       albBtn.style.gridColumn = 'span 2';
       albBtn.style.background = 'linear-gradient(180deg, #fff0f6 0%, #ffe4e6 100%)';
       albBtn.style.borderColor = '#e11d48';
-      albBtn.innerHTML = `<span>📸 히로인 시크릿 & 웨딩 스페셜 앨범 (${state.weddingAlbum.length}/23)</span><span class="choice-sub" style="color:#9f1239;">유키·클로이 시크릿 화보 · 웨딩 · 허니문 일러스트 크게 보기</span>`;
+      albBtn.innerHTML = `<span>📸 히로인 시크릿 & 웨딩 스페셜 앨범 (${state.weddingAlbum.length}/27)</span><span class="choice-sub" style="color:#9f1239;">유키·클로이 시크릿 화보 · 웨딩 · 허니문 일러스트 크게 보기</span>`;
       albBtn.addEventListener('click', () => { sfx.click(); openWeddingAlbumModal(); });
       elChoicesPanel.appendChild(albBtn);
     }
@@ -12317,6 +12317,42 @@ const WEDDING_ROUTES = {
           { label: '💞 유키의 손을 잡고 손가락에 낀 반지에 입 맞춘다', reply: '영원한 신혼의 아침. 세상의 어떤 빌런도 부럽지 않은 완벽한 행복이 두 사람을 감쌌다.' },
         ],
       },
+      {
+        title: '🍑 선셋 리조트 풀사이드 — 손잡고 걷는 피치 비키니 뒤태',
+        img: 'honeymoon_yuki_6.jpg',
+        text: '교토에서 넘어온 남국의 프라이빗 리조트. 황금빛 노을이 내려앉은 대리석 풀사이드를 손을 꼭 잡고 나란히 걸었다.\n파스텔 피치 끈 비키니 차림의 유키가 고개를 돌려 수줍게 미소 지으며 속삭였다.\n"이 비키니, 여보 취향일까 봐 일부러 골라봤는데... 어때요? 많이 쳐다봐도 돼요 ♥"',
+        choices: [
+          { label: '💘 "최고로 예뻐서 눈을 못 떼겠어" 허리를 끌어안는다', reply: '"앗... 그렇게 대놓고 말하면 부끄럽잖아요..." 유키가 활짝 웃으며 내 어깨에 얼굴을 살짝 기댔다.' },
+          { label: '🌊 "이대로 물속으로 같이 들어가자!" 손을 이끈다', reply: '"좋아요! 오늘 밤은 수영장에서도 내내 붙어 있어요!"' },
+        ],
+      },
+      {
+        title: '🌊 인피니티 풀 물결 — 젖은 피부로 맞닿은 포옹',
+        img: 'honeymoon_yuki_7.jpg',
+        text: '노을빛이 반짝이는 인피니티 풀. 물속에서 유키가 내 목에 두 팔을 감고 촉촉하게 젖은 채 바짝 안겨왔다.\n"물속이라 그런지... 당신 심장 소리가 바로 전해져요. 이 순간이 영원했으면 좋겠어요."',
+        choices: [
+          { label: '🔥 물속에서 유키의 허리를 꽉 안아 올려 마주 본다', reply: '떨어지는 물방울 사이로 서로의 뜨거운 숨결이 겹쳐지며 시간이 멈춘 듯한 황홀함이 퍼졌다.' },
+          { label: '😘 "영원히 네 옆에 있을게" 코끝을 맞댄다', reply: '유키가 행복에 겨운 미소를 지으며 내 목덜미에 작게 입을 맞췄다.' },
+        ],
+      },
+      {
+        title: '💋 황혼의 풀사이드 — 숨 막히는 딥 키스',
+        img: 'honeymoon_yuki_8.jpg',
+        text: '물 밖 대리석 위로 올라온 두 사람. 석양을 등지고 유키의 잘록한 허리와 힙을 손으로 감싸 쥔 순간, 유키가 먼저 발끝을 들고 내 입술을 깊이 훔쳤다.\n뜨겁고 달콤한 입맞춤에 노을마저 숨을 죽였다.',
+        choices: [
+          { label: '💥 유키의 등을 받쳐 들고 더 깊게 입 맞춘다', reply: '"음... 여보..." 유키의 뺨이 석양보다 진하게 물들며 황홀한 키스가 길게 이어졌다.' },
+          { label: '💖 서로의 손을 꽉 깍지 낀 채 천천히 숨을 고른다', reply: '떨어지기 아쉬운 듯 입술이 살짝 떨어지자마자 두 사람은 다시 눈을 마주 보며 웃었다.' },
+        ],
+      },
+      {
+        title: '✨ 노을빛 속삭임 — 내 손안에 담긴 유키의 미소',
+        img: 'honeymoon_yuki_9.jpg',
+        text: '키스 직후, 촉촉하게 젖은 유키의 뺨을 두 손으로 부드럽게 감쌌다. 코끝이 닿을 거리에서 수줍게 떨리는 속눈썹과 붉은 볼.\n"사랑해요, 여보... 오늘 밤도 나, 당신만 믿고 맡길게요 ♥"',
+        choices: [
+          { label: '🌹 "내가 세상에서 제일 행복하게 해줄게" 다시 입 맞춘다', reply: '황금빛 석양과 함께 유키와의 가장 완벽하고 뜨거운 리조트 허니문이 밤늦도록 계속되었다...' },
+          { label: '🥂 샴페인을 들고 리조트 스위트룸으로 함께 들어간다', reply: '문을 닫는 순간부터 두 사람만의 두 번째 밤이 화려하게 막을 올렸다!' },
+        ],
+      },
     ],
   },
   chloe: {
@@ -12406,7 +12442,7 @@ const WEDDING_ROUTES = {
 
 function openWeddingAlbumModal() {
   const album = state.weddingAlbum || [];
-  elActivityModalTitle.textContent = `📸 히로인 시크릿 & 웨딩 스페셜 앨범 (${album.length}/23)`;
+  elActivityModalTitle.textContent = `📸 히로인 시크릿 & 웨딩 스페셜 앨범 (${album.length}/27)`;
   if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
   elActivityList.innerHTML = '';
 
@@ -12425,6 +12461,10 @@ function openWeddingAlbumModal() {
     { file: 'honeymoon_yuki_3.jpg', title: '🌙 유키 온천 키스 직전' },
     { file: 'honeymoon_yuki_4.jpg', title: '🩷 유키 핑크 실크 백허그' },
     { file: 'honeymoon_yuki_5.jpg', title: '☀️ 유키 모닝 실크 캐미솔' },
+    { file: 'honeymoon_yuki_6.jpg', title: '🍑 유키 선셋 리조트 뒤태' },
+    { file: 'honeymoon_yuki_7.jpg', title: '🌊 유키 인피니티 풀 포옹' },
+    { file: 'honeymoon_yuki_8.jpg', title: '💋 유키 황혼의 딥 키스' },
+    { file: 'honeymoon_yuki_9.jpg', title: '✨ 유키 노을빛 속삭임' },
     { file: 'wedding_chloe.jpg', title: '🌇 클로이 선셋 웨딩' },
     { file: 'honeymoon_chloe_1.jpg', title: '🏖️ 클로이 몰디브 비치' },
     { file: 'honeymoon_chloe_2.jpg', title: '🥂 클로이 버블 배스' },
