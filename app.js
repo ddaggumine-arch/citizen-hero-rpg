@@ -1447,18 +1447,53 @@ function getActionStatValue(actionType) {
   return Math.round(((s.speech || 2) + (s.guts || 2) + (s.law || 2)) / 3);
 }
 
+// ===== V52.1: 적 턴별 태세(스탠스) & 속성 연계 콤보 & 브레이크 약점 시프트 =====
+const ENEMY_STANCES = {
+  none:      { id: 'none',      label: '',                           blockType: null,     tip: '' },
+  earplug:   { id: 'earplug',   label: '🙉 귀막고 우기기 (언변↓)',  blockType: 'speech', tip: '이번 턴 언변 50% 반감! 깡다구·채증 추천' },
+  counter:   { id: 'counter',   label: '😤 적반하장 맞불 (깡다구 반사)', blockType: 'guts', tip: '이번 턴 깡다구 공격 시 반사 피해!' },
+  ironlaw:   { id: 'ironlaw',   label: '🕶️ 법꾸라지 배째기 (법질서↓)', blockType: 'law',  tip: '이번 턴 법질서 45% 반감! 깡다구·채증 추천' },
+  blindspot: { id: 'blindspot', label: '🫥 사각지대 숨기 (채증↓)',  blockType: 'snap',   tip: '이번 턴 채증 45% 반감! 언변·법질서 추천' },
+};
+
+const SKILL_ATTR_LABELS = {
+  speech: '🗣️ 언변',
+  guts:   '🦁 깡다구',
+  law:    '⚖️ 법질서',
+  snap:   '📸 진실',
+};
+
+function getElementComboInfo(prevType, curType) {
+  if (!prevType || prevType === curType) return null;
+  if (!['speech', 'guts', 'law', 'snap'].includes(prevType) || !['speech', 'guts', 'law', 'snap'].includes(curType)) return null;
+  const key = `${prevType}->${curType}`;
+  const table = {
+    'speech->guts': { name: '🔥 팩트 격분',   desc: '방어무시 +30%', dmgMult: 1.30, shieldBreak: 0, spGain: 0,  feverGain: 0,  ptsGain: 0,  guarCrit: false },
+    'guts->law':    { name: '⚡ 현행범 체포', desc: '가드2칸파괴·+15%', dmgMult: 1.15, shieldBreak: 2, spGain: 0,  feverGain: 0,  ptsGain: 0,  guarCrit: false },
+    'law->snap':    { name: '💎 완벽 기소',   desc: '치명확정·+15P', dmgMult: 1.15, shieldBreak: 0, spGain: 0,  feverGain: 0,  ptsGain: 15, guarCrit: true },
+    'snap->speech': { name: '🌊 여론 역전',   desc: '사이다+20·피버+25', dmgMult: 1.15, shieldBreak: 0, spGain: 20, feverGain: 25, ptsGain: 0, guarCrit: false },
+  };
+  return table[key] || { name: '✨ 스위치 연계', desc: '피해 +12%', dmgMult: 1.12, shieldBreak: 0, spGain: 0, feverGain: 0, ptsGain: 0, guarCrit: false };
+}
+
+function getEffectiveWeakness(enemy) {
+  return state.shiftedWeakness || enemy?.weakness || 'speech';
+}
+
 function getMatchupInfo(enemy, actionType) {
   const p = getEnemyPersonality(enemy);
   const statVal = getActionStatValue(actionType);
   const upBonus = statVal >= 50 ? 0.30 : (statVal >= 25 ? 0.15 : 0);
   const downMit = statVal >= 50 ? 0.20 : (statVal >= 25 ? 0.10 : 0);
-  if (p.up.includes(actionType)) {
+  const effWeak = getEffectiveWeakness(enemy);
+  const isShiftedUp = state.shiftedWeakness && actionType === effWeak;
+  if (isShiftedUp || (!state.shiftedWeakness && p.up.includes(actionType))) {
     const base = actionType === 'snap' ? 1.75 : (actionType === 'special' || actionType === 'tag' ? 1.45 : 1.60);
     const spOver = getSpiritBonuses().perkId === 'overdrive' ? 0.25 : 0;
     const mult = Number((base + upBonus + spOver).toFixed(2));
     return { mult, isUp: true, isDown: false, tag: `⬆️ 유리 ${mult}배!`, cls: 'weak' };
   }
-  if (p.down.includes(actionType)) {
+  if (p.down.includes(actionType) && !isShiftedUp) {
     const base = p.id === 'tyrant' ? 0.80 : 0.70;
     const mult = Number(Math.min(0.95, base + downMit).toFixed(2));
     return { mult, isUp: false, isDown: true, tag: `⬇️ 반감 ${mult}배`, cls: 'resist' };
@@ -2013,6 +2048,10 @@ function startBattle(enemyId, isRandomEncounter = false) {
   state.enemyIntent = 'normal';
   state.weakCombo = 0;
   state.skillChain = [];
+  state.lastSkillType = null;
+  state.repeatSkillCount = 0;
+  state.shiftedWeakness = null;
+  state.enemyStance = 'none';
   state.enemyBroken = false;
   state.citizenAssistUsed = false;
   state.feverTurns = 0;
@@ -2057,6 +2096,11 @@ function rollNextIntent() {
   if (r < dangerChance * 0.6) state.enemyIntent = 'heavy';
   else if (r < dangerChance) state.enemyIntent = 'rage';
   else state.enemyIntent = 'normal';
+
+  const stanceKeys = ['earplug', 'counter', 'ironlaw', 'blindspot'];
+  state.enemyStance = Math.random() < 0.55
+    ? stanceKeys[Math.floor(Math.random() * stanceKeys.length)]
+    : 'none';
 }
 
 function triggerMiniEvent(evId) {
@@ -2620,10 +2664,19 @@ function performAttack(type, ultPerfect = false) {
   state.isFirstTurn = false;
   if (state.sodaBuffDmg) state.sodaBuffDmg = 0;
 
+  const prevSkillType = state.lastSkillType || null;
   if (!state.skillChain) state.skillChain = [];
-  if (['speech', 'guts', 'law', 'special'].includes(type)) {
+  if (['speech', 'guts', 'law', 'snap', 'special'].includes(type)) {
     state.skillChain.push(type);
     if (state.skillChain.length > 3) state.skillChain.shift();
+  }
+  if (['speech', 'guts', 'law', 'snap'].includes(type)) {
+    if (prevSkillType === type) {
+      state.repeatSkillCount = (state.repeatSkillCount || 0) + 1;
+    } else {
+      state.repeatSkillCount = 0;
+      state.lastSkillType = type;
+    }
   }
 
   const isFever = (state.feverTurns || 0) > 0;
@@ -2639,7 +2692,7 @@ function performAttack(type, ultPerfect = false) {
   const matchup = getMatchupInfo(enemy, type);
   if (type === 'speech') {
     const base = 18 + state.stats.speech * 4 + state.bonusDmg + allyFirstBonus + sodaBonus;
-    const isWeak = isFever || matchup.isUp || enemy.weakness === 'speech';
+    const isWeak = isFever || matchup.isUp || getEffectiveWeakness(enemy) === 'speech';
     hitWeakness = isWeak;
     const critRoll = isFever || Math.random() < (0.15 + state.critBonus + chloeCrit + (evo.critBonus || 0));
     if (critRoll && chloeCrit > 0) triggerPartnerCallout('chloe', 'Nice Shot! 📸');
@@ -2650,7 +2703,7 @@ function performAttack(type, ultPerfect = false) {
     state.log = `${evo.title}! (적 멘탈 -${dmg}${matchup.isUp ? ` · ${matchup.tag}` : (matchup.isDown ? ` · ${matchup.tag}` : '')}${critRoll ? ' · 치명타!' : ''})`;
   } else if (type === 'guts') {
     const base = 16 + state.stats.guts * 4 + state.bonusDmg + allyFirstBonus;
-    const isWeak = isFever || matchup.isUp || enemy.weakness === 'guts';
+    const isWeak = isFever || matchup.isUp || getEffectiveWeakness(enemy) === 'guts';
     hitWeakness = isWeak;
     const critRoll = isFever || Math.random() < chloeCrit;
     dmg = Math.round(base * (evo.dmgMult || 1) * matchup.mult * (critRoll ? 1.5 : 1));
@@ -2666,7 +2719,7 @@ function performAttack(type, ultPerfect = false) {
     const repBonus = rep.mode === 'lawful' ? 2 : 0;
     const costumeLawBonus = state.costume === 'police' ? 3 : 0;
     const total = roll + state.stats.law + state.diceBonus + repBonus + costumeLawBonus + (evo.diceExtra || 0);
-    const isWeak = isFever || matchup.isUp || enemy.weakness === 'law';
+    const isWeak = isFever || matchup.isUp || getEffectiveWeakness(enemy) === 'law';
     hitWeakness = isWeak;
     state.lawful += 10;
     if (total >= 12 || isFever) {
@@ -2694,7 +2747,7 @@ function performAttack(type, ultPerfect = false) {
     state.log = `${evo.title}! 112·보건소 신고 + 공개 참교육!! (멘탈 -${dmg} · 상성무시 치명 & 기절!)`;
   } else if (type === 'snap') {
     const base = 22 + state.stats.law * 4.0 + state.bonusDmg + allyFirstBonus + eqBonus.atk;
-    const isWeak = isFever || matchup.isUp || enemy.weakness === 'snap';
+    const isWeak = isFever || matchup.isUp || getEffectiveWeakness(enemy) === 'snap';
     hitWeakness = isWeak;
     const critRoll = isFever || Math.random() < (0.20 + state.critBonus + chloeCrit);
     dmg = Math.round(base * (evo.dmgMult || 1) * matchup.mult * (critRoll ? 1.5 : 1));
@@ -2795,11 +2848,54 @@ function performAttack(type, ultPerfect = false) {
   }
 
   if (state.skillChain?.length === 3 && new Set(state.skillChain).size === 3) {
-    dmg += 35;
-    state.sp = clamp(state.sp + 20, 0, state.maxSp);
+    dmg = Math.round(dmg * 1.40);
+    state.sp = clamp(state.sp + 25, 0, state.maxSp);
+    addFever(20);
+    state.enemyGuardShield = Math.max(0, (state.enemyGuardShield ?? 3) - 1);
     state.skillChain = [];
-    state.log += `\n⚡ [삼위일체 참교육 체인!!] 서로 다른 3연타로 추가 피해 +35 & 사이다 +20!`;
-    showToast('⚡ 삼위일체 참교육 콤보! (+35 피해 · 사이다 +20)', 'break');
+    state.log += `\n⚡ [삼위일체 참교육 대폭발!!] 서로 다른 3연타! 피해 1.4배 + 사이다 +25 + 피버 +20% + 가드 1칸 파쇄!`;
+    showToast('⚡ 삼위일체 3속성 체인 대폭발!! (피해 1.4배 · 사이다+25)', 'break');
+  }
+
+  // V52.1: 학습 내성 (같은 속성 연속 사용 시 반감)
+  if (['speech', 'guts', 'law', 'snap'].includes(type) && (state.repeatSkillCount || 0) >= 1) {
+    const repPen = state.repeatSkillCount >= 2 ? 0.45 : 0.65;
+    const penPct = Math.round((1 - repPen) * 100);
+    dmg = Math.max(1, Math.round(dmg * repPen));
+    state.log += `\n🛡️ [패턴 간파!!] 같은 기술 ${state.repeatSkillCount + 1}연속 사용! 적이 간파해 피해 -${penPct}%!`;
+    showToast(`🛡️ 적이 패턴을 간파했습니다! (피해 -${penPct}% · 다른 기술 추천!)`, 'warn');
+  }
+
+  // V52.1: 속성 연계 콤보 (원소 반응)
+  const elemCombo = getElementComboInfo(prevSkillType, type);
+  if (elemCombo) {
+    dmg = Math.round(dmg * (elemCombo.dmgMult || 1));
+    if (elemCombo.guarCrit) isCrit = true;
+    if (elemCombo.shieldBreak > 0) {
+      state.enemyGuardShield = Math.max(0, (state.enemyGuardShield ?? 3) - elemCombo.shieldBreak);
+    }
+    if (elemCombo.spGain > 0) state.sp = clamp(state.sp + elemCombo.spGain, 0, state.maxSp);
+    if (elemCombo.feverGain > 0) addFever(elemCombo.feverGain);
+    if (elemCombo.ptsGain > 0) state.points = (state.points || 0) + elemCombo.ptsGain;
+    state.log += `\n💫 [속성 연계 · ${elemCombo.name}!] ${elemCombo.desc}`;
+    showToast(`💫 ${elemCombo.name}! (${elemCombo.desc})`, 'good');
+  }
+
+  // V52.1: 적의 턴별 태세(스탠스) 대응전
+  const curStance = ENEMY_STANCES[state.enemyStance || 'none'];
+  if (curStance && curStance.blockType === type) {
+    if (curStance.id === 'counter') {
+      const refHp = Math.min(state.hp - 1, 8);
+      if (refHp > 0) state.hp -= refHp;
+      dmg = Math.max(1, Math.round(dmg * 0.75));
+      state.log += `\n😤 [적반하장 맞불!] 깡다구 공격에 적이 반격! (내 인내심 -${refHp} · 피해 -25%)`;
+      showToast(`😤 적반하장 반사! (인내심 -${refHp})`, 'warn');
+    } else {
+      const stanceMult = curStance.id === 'earplug' ? 0.50 : 0.55;
+      dmg = Math.max(1, Math.round(dmg * stanceMult));
+      state.log += `\n${curStance.label} 발동! 피해가 크게 줄었습니다!`;
+      showToast(`${curStance.label} — 다른 속성으로 뚫으세요!`, 'warn');
+    }
   }
 
   if ((state.bossDmgMult || 0) > 0 && (isBossId(enemy.id) || enemy.storyOnly || enemy.id === HIDDEN_BOSS.id)) {
@@ -2857,8 +2953,15 @@ function performAttack(type, ultPerfect = false) {
       state.enemyStunned = true;
       state.enemyGuardShield = 3;
       gotBreakBonusTurn = true;
+      const allAttrs = ['speech', 'guts', 'law', 'snap'];
+      const curWeak = getEffectiveWeakness(enemy);
+      const otherAttrs = allAttrs.filter((a) => a !== curWeak);
+      const nextWeak = otherAttrs[Math.floor(Math.random() * otherAttrs.length)] || 'speech';
+      state.shiftedWeakness = nextWeak;
+      state.repeatSkillCount = 0;
       state.log += `\n💥 [MENTAL BREAK!!] 가드 완파! 빌런 기절 + 공짜 보너스 1턴 획득!!`;
-      showToast('💥 MENTAL BREAK!! 공짜 보너스 1턴 획득!!', 'break');
+      state.log += `\n🔄 [약점 시프트!] 적의 약점이 [${SKILL_ATTR_LABELS[nextWeak]}](으)로 이동했습니다!`;
+      showToast(`💥 MENTAL BREAK!! 약점 → ${SKILL_ATTR_LABELS[nextWeak]} 시프트!`, 'break');
     }
   }
 
@@ -6910,10 +7013,12 @@ function render() {
     elEnemyHpBar.style.width = `${(state.enemyHp / state.enemyMaxHp) * 100}%`;
 
     const intentObj = ENEMY_INTENTS.find((i) => i.id === state.enemyIntent) || ENEMY_INTENTS[0];
+    const stanceObj = ENEMY_STANCES[state.enemyStance || 'none'];
     elEnemyIntentBar.classList.remove('hidden');
     elEnemyIntentBar.className = `enemy-intent-bar${intentObj.isDanger ? ' danger' : ''}`;
     const chainTxt = (state.combatChain || 0) >= 2 ? `🔥 ${state.combatChain} CHAIN (x${(1 + Math.min(0.5, (state.combatChain - 1) * 0.1)).toFixed(1)})` : (state.bossPhase2 ? '💢 2페이즈' : '전투 중');
-    elEnemyIntentBar.innerHTML = `<span>${intentObj.label}</span><span>${chainTxt}</span>`;
+    const stanceTxt = stanceObj && stanceObj.id !== 'none' ? ` · <b>${stanceObj.label}</b>` : '';
+    elEnemyIntentBar.innerHTML = `<span>${intentObj.label}${stanceTxt}</span><span>${chainTxt}</span>`;
 
     if (elCombatBadges) {
       elCombatBadges.innerHTML = '';
@@ -6921,6 +7026,8 @@ function render() {
       const passiveBadges = [];
       const gShield = state.enemyGuardShield ?? 3;
       activeBadges.push({ cls: 'is-combo', txt: `🛡️ 가드 ${'◆'.repeat(gShield)}${'◇'.repeat(Math.max(0, 3 - gShield))}` });
+      if (state.shiftedWeakness) activeBadges.push({ cls: 'is-break', txt: `🔄 약점:${SKILL_ATTR_LABELS[state.shiftedWeakness] || state.shiftedWeakness}` });
+      if (state.lastSkillType) activeBadges.push({ cls: 'is-combo', txt: `직전:${SKILL_ATTR_LABELS[state.lastSkillType] || ''}${(state.repeatSkillCount || 0) >= 1 ? '(연속↓)' : ''}` });
       if (state.nextGuaranteedCrit) activeBadges.push({ cls: 'is-break', txt: '📺 다음 타 확정치명!' });
       if (state.snapExposed) activeBadges.push({ cls: 'is-break', txt: '📸 약점노출 1.4배!' });
       if (state.bossGimmick === 'shield' && (state.bossShield || 0) > 0) activeBadges.push({ cls: 'is-break', txt: `🛡️ 보스실드 ${state.bossShield}겹` });
@@ -7159,9 +7266,22 @@ function render() {
       return `<span class="pp-pill${cls}">${cur}/${mx}</span>`;
     };
 
+    const getStratTag = (attr) => {
+      const st = ENEMY_STANCES[state.enemyStance || 'none'];
+      if (st && st.blockType === attr) return ` <span class="sk-tag is-warn">${st.id === 'counter' ? '😤반사주의' : '🙉태세반감'}</span>`;
+      if (state.lastSkillType === attr) {
+        const nextPen = (state.repeatSkillCount || 0) >= 1 ? '-55%' : '-35%';
+        return ` <span class="sk-tag is-warn">🛡️간파(${nextPen})</span>`;
+      }
+      const cbo = getElementComboInfo(state.lastSkillType, attr);
+      if (cbo) return ` <span class="sk-tag is-combo">⚡${cbo.name}</span>`;
+      if (getEffectiveWeakness(enemy) === attr) return ` <span class="sk-tag is-weak">💥약점</span>`;
+      return '';
+    };
+
     const skills = [
       {
-        title: `${uiImg('skill_fact')}${getEquippedSkill('speech').name}`,
+        title: `${uiImg('skill_fact')}${getEquippedSkill('speech').name}${getStratTag('speech')}`,
         ppKey: 'speech',
         sub: muSpeech.tag ? `${muSpeech.tag} · ${getEquippedSkill('speech').mechTag}` : `${getEquippedSkill('speech').mechTag}`,
         subClass: muSpeech.cls,
@@ -7169,7 +7289,7 @@ function render() {
         action: () => performAttack('speech'),
       },
       {
-        title: `${uiImg('skill_mirror')}${getEquippedSkill('guts').name}`,
+        title: `${uiImg('skill_mirror')}${getEquippedSkill('guts').name}${getStratTag('guts')}`,
         ppKey: 'guts',
         sub: muGuts.tag ? `${muGuts.tag} · ${getEquippedSkill('guts').mechTag}` : `${getEquippedSkill('guts').mechTag} · 사이다↑`,
         subClass: muGuts.cls,
@@ -7177,7 +7297,7 @@ function render() {
         action: () => performAttack('guts'),
       },
       {
-        title: `${uiImg('skill_law')}${getEquippedSkill('law').name}`,
+        title: `${uiImg('skill_law')}${getEquippedSkill('law').name}${getStratTag('law')}`,
         ppKey: 'law',
         sub: muLaw.tag ? `${muLaw.tag} · ${getEquippedSkill('law').mechTag}` : `${getEquippedSkill('law').mechTag} · 🎲12+ 기절`,
         subClass: muLaw.cls,
@@ -7214,7 +7334,7 @@ function render() {
     const snapPp = ppMap.snap ?? getMaxSkillPp('snap');
     snapBtn.disabled = snapPp <= 0;
     const skSnap = getEquippedSkill('snap');
-    snapBtn.innerHTML = `<span class="skill-top-row"><span>${uiImg('skill_snap')}${skSnap.name}</span>${mkPpHtml('snap')}</span><span class="choice-sub ${muSnap.cls}">${snapPp <= 0 ? '횟수 소진 (휴식/아이템 복구)' : (muSnap.tag ? `${muSnap.tag} · ${skSnap.mechTag}` : `${skSnap.mechTag} · 즉시 발동 + 채증+1`)}</span>`;
+    snapBtn.innerHTML = `<span class="skill-top-row"><span>${uiImg('skill_snap')}${skSnap.name}${getStratTag('snap')}</span>${mkPpHtml('snap')}</span><span class="choice-sub ${muSnap.cls}">${snapPp <= 0 ? '횟수 소진 (휴식/아이템 복구)' : (muSnap.tag ? `${muSnap.tag} · ${skSnap.mechTag}` : `${skSnap.mechTag} · 즉시 발동 + 채증+1`)}</span>`;
     snapBtn.addEventListener('click', () => performAttack('snap'));
     if (false) {
     snapBtn.addEventListener('click', () => {

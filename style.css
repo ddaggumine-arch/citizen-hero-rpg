@@ -2817,3 +2817,27 @@ body[data-time="midnight"] .hud-exp-text {
   70%  { filter: brightness(1.1); transform: scale(0.99) translateX(4px); }
   100% { filter: brightness(1); transform: scale(1) translateX(0); }
 }
+.sk-tag {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 5px;
+  border-radius: 5px;
+  font-size: 0.64rem;
+  font-weight: 900;
+  vertical-align: middle;
+}
+.sk-tag.is-combo {
+  background: linear-gradient(90deg, #6d28d9, #db2777);
+  color: #fef08a;
+  box-shadow: 0 1px 4px rgba(109, 40, 217, 0.35);
+}
+.sk-tag.is-warn {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
+.sk-tag.is-weak {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #f59e0b;
+}
