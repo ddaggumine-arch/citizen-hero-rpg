@@ -3062,7 +3062,14 @@ function render() {
     if (elHeroLvBadge) elHeroLvBadge.classList.add('hidden');
     if (elEnemyLvBadge) elEnemyLvBadge.classList.add('hidden');
     if (elWildSpiritSprite) {
-      elWildSpiritSprite.src = `${sp.img}?v=75`;
+      elWildSpiritSprite.onerror = () => {
+        if (!elWildSpiritSprite.dataset.retried) {
+          elWildSpiritSprite.dataset.retried = '1';
+          elWildSpiritSprite.src = `${sp.img}?v=${Date.now()}`;
+        }
+      };
+      delete elWildSpiritSprite.dataset.retried;
+      elWildSpiritSprite.src = `${sp.img}?v=123`;
       elWildSpiritSprite.className = 'wild-spirit-sprite';
       if (capRes?.status === 'resonating') elWildSpiritSprite.classList.add('is-resonating');
       else if (capRes?.status === 'caught') elWildSpiritSprite.classList.add('is-caught-fly');
@@ -3145,7 +3152,7 @@ function render() {
         elRomMgOverlay.classList.remove('hidden');
         elRomMgPanel.innerHTML = `
           <div style="text-align:center;margin-bottom:8px;">
-            <img src="${sp.img}?v=72" alt="${sp.name}" style="width:68px;height:68px;object-fit:contain;" />
+            <img src="${sp.img}?v=123" alt="${sp.name}" style="width:68px;height:68px;object-fit:contain;" />
             <div style="font-weight:900;font-size:16px;margin-top:4px;">💫 ${sp.name} — ${capRes.label}</div>
             <div style="font-size:12px;color:#fde047;font-weight:800;">기본 포획률 ${capRes.baseRate}% · 🎯 중앙 골드존 +25% · ✨ +10%</div>
           </div>
@@ -6894,7 +6901,7 @@ function render() {
     const eqSpCombat = getSpiritBonuses().spirit;
     if (elSpiritSprite) {
       elSpiritSprite.classList.toggle('hidden', !eqSpCombat);
-      if (eqSpCombat) elSpiritSprite.src = `${eqSpCombat.img}?v=71`;
+      if (eqSpCombat) elSpiritSprite.src = `${eqSpCombat.img}?v=123`;
     }
     elQuoteBubble.classList.add('hidden');
     elBattleLog.textContent = (state.quote ? `💬 ${state.quote}\n` : '') + (state.log || '');
@@ -9025,7 +9032,7 @@ function openSpiritModal(filterEl = 'all') {
       const spLive = getSpiritBonuses(sp.id);
       const spMs = prog.lv >= 20 ? '🌟만렙각성(협공1.5배)' : (prog.lv >= 10 ? '⚡시작SP+15' : (prog.lv >= 5 ? '💥협공률+10%' : 'Lv.5 협공↑'));
       card.innerHTML = `
-        <img src="${sp.img}?v=72" alt="${sp.name}" class="item-thumb" style="width:44px;height:44px;object-fit:contain;" />
+        <img src="${sp.img}?v=123" alt="${sp.name}" class="item-thumb" style="width:44px;height:44px;object-fit:contain;" />
         <div class="inv-info">
           <h4 style="color:${rInfo.color};">[${rInfo.short}] ${getSpiritDisplayName(sp)} <span style="color:#0369a1;">Lv.${prog.lv}/20</span> · ★${lv}/5 ${isEq ? '✅동행중' : ''} ${spLive.isLucky ? `<span style="background:#10b981;color:#fff;padding:1px 5px;border-radius:6px;font-size:0.65rem;">🍀행운×${spLive.luckyMult}</span>` : ''}</h4>
           <p><b style="color:#0f766e;">⚡ 현재 버프: 공격 +${spLive.atk}${spLive.spRegen ? ` · 사이다+${spLive.spRegen}` : ''}${spLive.crit ? ` · 치명+${(spLive.crit * 100).toFixed(1)}%` : ''} · 속성+${Math.round(spLive.elemBoost * 100)}%</b> <span style="font-size:0.68rem;color:#b45309;">[${spMs}]</span><br/>${sp.desc}<br/><span style="color:#1e40af;font-size:0.68rem;">📍 출몰: ${sp.zoneHint}</span></p>
