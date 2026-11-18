@@ -5,7 +5,15 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V65.0 (GitHub Pages 배포됨)
+## 현재 최신 버전: V66.0 (GitHub Pages 배포됨)
+- **V66.0 (`?v=160`)**:
+  - **랜덤 인카운터 스토리 적 출몰/후일담 오발동 원천 차단**:
+    - `pickLevelAppropriateVillain` 내 `lv` 미정의(`ReferenceError`) 버그를 `heroLv`로 수정, 배틀타워 풀에서도 `isStoryExclusiveEnemy` 제외.
+    - `startBattle(enemyId, true)`(랜덤 인카운터)에서 스토리 전용 적이 들어오면 자동으로 일반 빌런으로 교체.
+    - `handleEnemyDefeated`에서 `state.isRandomBattle` / `towerFloor` / `nightmareFloor` 전투 중에는 절대 메인 스토리 챕터 진행(`chapterIndex++`) 및 `pendingStoryAftermath` 후일담을 발동하지 않도록 격리!
+  - **즉결심판 & 팔로워 실전 가치 대폭 상향**:
+    - **즉결심판**: 승소 시 **강화석 +2~5개**, **3전투 법전(`law`) 피해 +25%** 버프(`courtBuffBattles`), 채증 3건+ 일괄 기소 시 **[우황청심환] +1 압수**!
+    - **팔로워 (`getFollowerCombatBonuses`)**: 1만명당 전투 포인트 보상 +10%(최대 +50%), 구간별 영구 공격력 보너스(`+2~12`), 1,000명+ 시 전투 시작 30% 확률로 `☕ 구독자 커피차 응원!(사이다+20·피버+15%)` 발동!
 - **V65.0 (`?v=159`)**:
   - **숨은 메뉴 대통합 활성화**:
     - **빌런 도감 (`openVillainCodexModal`)**: `5/10/15/20/30`종 달성마다 도감 안에서 영구 `최대HP+30 · 공격+4 · 강화석+3` 수령 가능!

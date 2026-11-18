@@ -1873,6 +1873,15 @@ function startUrgentParryQte(enemy, onResult) {
 }
 
 // ===== V58.1: 쌍방향 회피율 & 기절 면역/내성 & 궁극기 관통 =====
+
+function getFollowerCombatBonuses() {
+  const f = state.followers || 120;
+  const rewardMultBonus = Math.min(0.50, Math.floor(f / 10000) * 0.10);
+  const atkBonus = f >= 100000 ? 12 : (f >= 50000 ? 8 : (f >= 20000 ? 5 : (f >= 5000 ? 2 : 0)));
+  const spBonus = f >= 100000 ? 40 : (f >= 50000 ? 25 : (f >= 20000 ? 15 : (f >= 5000 ? 8 : 0)));
+  return { rewardMultBonus, atkBonus, spBonus };
+}
+
 function getHeroEvasion() {
   const lvBonus = Math.min(0.14, (state.level || 1) * 0.004);
   const spBonus = getSpiritBonuses().perkId === 'first_strike' ? 0.04 : 0;
@@ -2510,7 +2519,7 @@ function pickLevelAppropriateVillain(pool, heroLv = state.level || 1) {
   const filtered = safePool.filter((v) => {
     const dId = v.district || getDistrictIdForEnemy(v.id);
     const dInfo = SEOUL_DISTRICTS.find((d) => d.id === dId);
-    return (dInfo?.minLv || 1) <= lv + 4;
+    return (dInfo?.minLv || 1) <= heroLv + 4;
   });
   const candidates = filtered.length > 0 ? filtered : safePool.filter((v) => {
     const dId = v.district || getDistrictIdForEnemy(v.id);
@@ -2528,7 +2537,10 @@ function startBattle(enemyId, isRandomEncounter = false) {
   state.battleDamageTaken = 0;
   state.battleChainClears = 0;
   state.lastVictoryExp = null;
-  const baseEnemy = getEnemyById(enemyId);
+  let baseEnemy = getEnemyById(enemyId);
+  if (isRandomEncounter && isStoryExclusiveEnemy(baseEnemy)) {
+    baseEnemy = pickLevelAppropriateVillain(VILLAINS, state.level || 1);
+  }
   if (!state.villainEncounters) state.villainEncounters = {};
   state.villainEncounters[baseEnemy.id] = (state.villainEncounters[baseEnemy.id] || 0) + 1;
   const floor = state.towerFloor || 0;
@@ -2678,6 +2690,15 @@ function startBattle(enemyId, isRandomEncounter = false) {
   state.houseShield = (state.houseTier || 0) >= 1 ? Math.round((state.maxHp || 140) * Math.min(0.25, state.houseTier * 0.05)) : 0;
   if (state.houseShield > 0) {
     extraLog += `\n🏠 [하우스 티어 ${state.houseTier} 가호!] 전투 보호막 +${state.houseShield} 전개!`;
+  }
+  const fBon = getFollowerCombatBonuses();
+  if ((state.followers || 120) >= 1000 && Math.random() < 0.30) {
+    state.sp = clamp(state.sp + 20, 0, state.maxSp);
+    addFever(15);
+    extraLog += `\n☕ [구독자 커피차 응원!] 팔로워들이 보낸 사이다 +20 · 피버 +15%!`;
+  }
+  if ((state.courtBuffBattles || 0) > 0) {
+    extraLog += `\n⚖️ [승소의 판결문 발동 중] 법전 피해 +25% (${state.courtBuffBattles}전투 남음)`;
   }
   if (state.intelAmbushReady) {
     state.enemyGuardShield = 2;
@@ -3006,6 +3027,9 @@ function enemyCounterTurn(enemy, isGuarding = false) {
 function handleEnemyDefeated(enemy) {
   if ((state.spicyBuffBattles || 0) > 0) state.spicyBuffBattles -= 1;
   if ((state.pokerCritBattles || 0) > 0) state.pokerCritBattles -= 1;
+  if ((state.courtBuffBattles || 0) > 0) state.courtBuffBattles -= 1;
+  const fRewBonus = Math.round((enemy.reward || 0) * (getFollowerCombatBonuses().rewardMultBonus || 0));
+  if (fRewBonus > 0) state.points += fRewBonus;
   state.quote = enemy.defeatQuote;
   const diff = getDiffObj();
   const eqBon = getEquippedBonuses();
@@ -3229,7 +3253,7 @@ function handleEnemyDefeated(enemy) {
 
   const prevCh = state.chapterIndex;
   const currentCh = STORY_CHAPTERS[state.chapterIndex];
-  if (currentCh && currentCh.bossId === enemy.id) {
+  if (!state.isRandomBattle && !(state.towerFloor > 0) && !(state.nightmareFloor > 0) && currentCh && currentCh.bossId === enemy.id) {
     state.chapterIndex += 1;
     state.storySceneIndex = 0;
     state.lastMainStoryDay = state.day;
@@ -3548,7 +3572,10 @@ function performAttack(type, ultPerfect = false) {
   const spElemMult = spElemMatch ? (1 + (spBonAtk.elemBoost || 0)) : 1;
   const isBossNow = isBossId(enemy.id) || !!enemy.storyOnly || enemy.id === HIDDEN_BOSS.id;
   const spBossMult = (isBossNow && spBonAtk.perkId === 'boss_slayer') ? 1.20 : 1;
-  const spicyMult = (state.spicyBuffBattles || 0) > 0 ? 1.2 : 1.0;
+  const fAtkAdd = getFollowerCombatBonuses().atkBonus || 0;
+  if (fAtkAdd > 0) dmg += fAtkAdd;
+  const courtLawMult = (type === 'law' && (state.courtBuffBattles || 0) > 0) ? 1.25 : 1.0;
+  const spicyMult = ((state.spicyBuffBattles || 0) > 0 ? 1.2 : 1.0) * courtLawMult;
   if (setAtkMult > 1 || spElemMult > 1 || spBossMult > 1 || spicyMult > 1) dmg = Math.round(dmg * setAtkMult * spElemMult * spBossMult * spicyMult);
   if (state.bossGimmick === 'shield' && (state.bossShield || 0) > 0) {
     const breakHits = (hitWeakness || type === 'law' || type === 'special') ? (type === 'special' ? 2 : 1) : 0;
@@ -5138,7 +5165,7 @@ function render() {
         sfx.powerup();
         elActivityModal.classList.add('hidden');
         state.towerFloor = 1;
-        const pool = [...VILLAINS, ...GUERRILLA_VILLAINS];
+        const pool = [...VILLAINS, ...GUERRILLA_VILLAINS].filter((v) => !isStoryExclusiveEnemy(v));
         const pick = pool[Math.floor(Math.random() * pool.length)];
         startBattle(pick.id);
       });
@@ -8832,14 +8859,22 @@ function appendVictoryExpCard(container) {
         const cnt = state.pendingReports || 1;
         if (idx === cs.answer) {
           const earned = Math.round(cnt * 25 * 2.5);
+          const scrapGain = Math.min(5, cnt + 1);
           state.points += earned;
+          state.scrap = (state.scrap || 0) + scrapGain;
+          state.courtBuffBattles = (state.courtBuffBattles || 0) + 3;
           state.lawful += 15;
           state.followers = (state.followers || 120) + 400;
           state.chaosLevel = clamp((state.chaosLevel ?? 25) - cnt * 6, 0, 100);
+          let seizeMsg = '';
+          if (cnt >= 3) {
+            state.inventory.push('cheongsimhwan');
+            seizeMsg = ' · 압수품 [우황청심환] +1!';
+          }
           state.pendingReports = 0;
           sfx.victory();
-          showToast(`⚖️ 승소!! 벌금 +${earned} P · 팔로워 +400!`, 'good');
-          state.log = `${cs.okMsg}\n(+${earned} P · 모범시민 +15 · 팔로워 +400)`;
+          showToast(`⚖️ 승소!! +${earned}P · 강화석+${scrapGain} · 법전+25% 버프!`, 'break');
+          state.log = `${cs.okMsg}\n(+${earned} P · 강화석 +${scrapGain} · 3전투 법전 피해 +25% · 팔로워 +400${seizeMsg})`;
         } else {
           state.points += 5;
           state.lawful += 3;
