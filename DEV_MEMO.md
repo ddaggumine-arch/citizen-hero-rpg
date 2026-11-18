@@ -5,7 +5,13 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V55.0 (GitHub Pages 배포됨)
+## 현재 최신 버전: V56.0 (GitHub Pages 배포됨)
+- **V56.0 (`?v=142`)**:
+  - **오프닝 인트로 이미지 누락 수정 & 수호정령 추가 (`app.js`, `index.html`)**: 누락된 `romance/triple_picnic.jpg` 경로를 `assets/images/triple_picnic.jpg` 로 수정하고, `spirit_43/50/100.png` 수호정령 스프라이트를 오프닝에 정식 합류.
+  - **통합 시네마틱 아웃트로 엔진 (`playCinematicSequence`) + 10종 아웃트로 추가**:
+    - 전주/평택/동탄/마계 인천/서울 **시즌 완결 아웃트로 5종** (`playSeasonOutro`, 모두 `SKIP ⏭` 지원)
+    - 유키/클로이 **연애 성사 아웃트로 2종** (`playRomanceOutro`)
+    - 유키/클로이/합동(트리플) **결혼식 피날레 아웃트로 3종** (`playWeddingOutro`)
 - **V55.0 (`?v=140`)**:
   - **시네마틱 5막 오프닝 인트로 & TOUCH TO START (`index.html`, `style.css`, `app.js`)**: 새로고침/접속 시 풀스크린 오프닝 몽타주(배경·영웅·유키·클로이·16종 VFX 폭발·타이틀 로고 착지) + `✨ 화면을 터치하세요 · TOUCH TO START ✨` + 우측 상단 `SKIP ⏭` 버튼 추가.
 - **V54.4 (`?v=139`)**:

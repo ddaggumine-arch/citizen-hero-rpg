@@ -6398,7 +6398,10 @@ function render() {
       if (epObj.ep >= arr.length) {
         st.cleared = true;
         state.someCleared[hKey] = true;
-        if (!state.lovers.includes(hKey)) state.lovers.push(hKey);
+        if (!state.lovers.includes(hKey)) {
+          state.lovers.push(hKey);
+          setTimeout(() => playRomanceOutro(hKey), 150);
+        }
         showToast(`💖 [${hName} 연애 스토리 20화 완결!!] 정식 연인 & 자유 데이트 해금!`, 'break');
       } else {
         showToast(`💕 ${hName} ${epObj.ep}화 클리어!`, 'good');
@@ -6584,6 +6587,7 @@ function render() {
       nxt.addEventListener('click', () => {
         if (isLast) {
           state.marriedTo = aw.route;
+          setTimeout(() => playWeddingOutro(aw.route), 150);
           state.hp = state.maxHp;
           state.sp = state.maxSp;
           restoreSkillPp('full');
@@ -6691,7 +6695,7 @@ function render() {
     elEnemyHpWrap.classList.add('hidden');
     elQuoteBubble.textContent = '"어라? 오늘 나랑 만나기로 하지 않았어요?" / "Hey! 나랑 먼저 약속했잖아!!"';
     elQuoteBubble.classList.remove('hidden');
-    setSceneImage('assets/images/romance/triple_picnic.jpg?v=122');
+    setSceneImage('assets/images/triple_picnic.jpg?v=142');
     setLogText('양쪽 팔짱을 꽉 끼고 불꽃 튀는 눈빛으로 나를 올려다보는 유키와 클로이! 과연 이 수라장을 어떻게 돌파할까?!', true);
     elChoicesPanel.className = 'choices-panel';
     [
@@ -6944,6 +6948,7 @@ function render() {
         if (ch.followers) state.followers = (state.followers || 120) + ch.followers;
         if (ch.becomeLover && !state.lovers.includes(key)) {
           state.lovers.push(key);
+          setTimeout(() => playRomanceOutro(key), 150);
         }
 
         // 양다리 질투 리스크: 상대 호감도 60+ 시 30% 확률로 들킴 + 40% 확률로 삐짐(전투 불참)
@@ -8463,9 +8468,11 @@ function appendVictoryExpCard(container) {
         render();
         return;
       }
+      const clearedBossAct = am.isBoss ? am.actId : null;
       state.pendingActAftermath = null;
       state.phase = 'map';
       sfx.victory();
+      if (clearedBossAct) setTimeout(() => playSeasonOutro(clearedBossAct), 120);
       saveGame();
       render();
     });
@@ -8580,6 +8587,7 @@ function appendVictoryExpCard(container) {
         const ending = evaluateEnding(state, false);
         state.achievedEndingId = ending.id;
         state.phase = 'victory';
+        setTimeout(() => playSeasonOutro('seoul'), 120);
         state.log = buildFullEndingText(ending, state);
       }
       saveGame();
@@ -12512,122 +12520,323 @@ if (elSeoulMinimap && !elSeoulMinimap.dataset.pinBound) {
   });
 }
 
-// ===== V55.0: 시네마틱 오프닝 인트로 & TOUCH TO START =====
-function initCinematicIntro() {
+// ===== V55.0 / V56.0: 통합 시네마틱 인트로 & 시즌·연애·결혼 아웃트로 엔진 =====
+function playCinematicSequence({ scenes, logoSub, logoMain, logoVer, jumpToLastOnTap = true }) {
   const overlay = document.getElementById('intro-splash-overlay');
   if (!overlay) return;
   const bgEl = document.getElementById('intro-bg-layer');
   const castEl = document.getElementById('intro-hero-cast');
   const vfxEl = document.getElementById('intro-vfx-burst');
   const logoEl = document.getElementById('intro-logo-wrap');
+  const logoSubEl = logoEl?.querySelector('.intro-logo-sub');
+  const logoMainEl = logoEl?.querySelector('.intro-logo-main');
+  const logoVerEl = logoEl?.querySelector('.intro-logo-ver');
   const capEl = document.getElementById('intro-caption-box');
   const touchEl = document.getElementById('intro-touch-prompt');
   const skipBtn = document.getElementById('intro-skip-btn');
 
-  const scenes = [
-    {
-      bg: 'assets/images/bg_boss_final.jpg?v=140',
-      castHtml: `<img src="assets/images/bg_gangnam.jpg?v=140" class="intro-cut-img" alt="혼돈의 도시" />`,
-      vfx: '',
-      caption: '2026년, 무질서와 민폐가 뒤덮인 대한민국...',
-      showLogo: false,
-    },
-    {
-      bg: 'assets/images/act_patrol.jpg?v=140',
-      castHtml: `<img src="assets/images/hero_attack.png?v=140" class="intro-cut-sprite" alt="시민영웅" />`,
-      vfx: 'assets/images/vfx/vfx_speech_4.png?v=140',
-      caption: '단 하나의 노란 완장이 어둠을 가른다!!',
-      showLogo: false,
-    },
-    {
-      bg: 'assets/images/bg_seongsu.jpg?v=140',
-      castHtml: `<img src="assets/images/romance/triple_picnic.jpg?v=140" class="intro-cut-img" alt="동료들" />`,
-      vfx: '',
-      caption: '유키, 클로이, 콩이... 그리고 수호정령들과 함께!',
-      showLogo: false,
-    },
-    {
-      bg: 'assets/images/bg_gangnam.jpg?v=140',
-      castHtml: `<img src="assets/images/romance/chloe_ep04_photobooth.jpg?v=140" class="intro-cut-img" style="max-width:44%;" /><img src="assets/images/romance/yuki_ep19_hugtears.jpg?v=140" class="intro-cut-img" style="max-width:44%;" />`,
-      vfx: 'assets/images/vfx/vfx_snap_4.png?v=140',
-      caption: '전국 5대 도시를 제패할 최강의 참교육이 시작된다!!',
-      showLogo: false,
-    },
-    {
-      bg: 'assets/images/bg_yeouido.jpg?v=140',
-      castHtml: '',
-      vfx: 'assets/images/vfx/vfx_law_4.png?v=140',
-      caption: '전주 · 평택 · 동탄 · 인천 · 서울 — 예절을 지켜라!',
-      showLogo: true,
-    },
-  ];
+  if (logoSubEl && logoSub) logoSubEl.textContent = logoSub;
+  if (logoMainEl && logoMain) logoMainEl.textContent = logoMain;
+  if (logoVerEl && logoVer) logoVerEl.textContent = logoVer;
 
+  overlay.classList.remove('hidden', 'is-leaving');
   let curIdx = 0;
   let closed = false;
   let timer = null;
 
-  const renderIntroScene = (idx) => {
+  const renderSeqScene = (idx) => {
     const s = scenes[idx];
     if (!s) return;
     if (bgEl) bgEl.style.backgroundImage = `url('${s.bg}')`;
     if (castEl) castEl.innerHTML = s.castHtml || '';
     if (vfxEl) vfxEl.innerHTML = s.vfx ? `<img src="${s.vfx}" class="intro-vfx-img" alt="" />` : '';
-    if (capEl) capEl.textContent = s.caption;
+    if (capEl) capEl.textContent = s.caption || '';
     if (logoEl) logoEl.classList.toggle('hidden', !s.showLogo);
     if (touchEl) {
       touchEl.textContent = s.showLogo
-        ? '✨ 화면을 터치하세요 · TOUCH TO START ✨'
-        : '✨ 터치하면 타이틀로 · SKIP으로 바로 시작 ✨';
+        ? '✨ 화면을 터치하세요 · TOUCH TO CONTINUE ✨'
+        : '✨ 터치하면 다음/엔딩 · SKIP ⏭ 으로 스킵 ✨';
     }
   };
 
-  const closeIntro = () => {
+  const closeSeq = () => {
     if (closed) return;
     closed = true;
     if (timer) clearInterval(timer);
+    overlay.onclick = null;
+    overlay.onkeydown = null;
+    if (skipBtn) skipBtn.onclick = null;
     try { sfx.powerup(); } catch {}
     overlay.classList.add('is-leaving');
-    setTimeout(() => overlay.classList.add('hidden'), 560);
+    setTimeout(() => overlay.classList.add('hidden'), 540);
   };
 
-  renderIntroScene(0);
+  renderSeqScene(0);
   timer = setInterval(() => {
     if (closed) return;
     if (curIdx < scenes.length - 1) {
       curIdx += 1;
-      renderIntroScene(curIdx);
+      renderSeqScene(curIdx);
     } else {
       clearInterval(timer);
     }
-  }, 2100);
+  }, 2200);
 
   if (skipBtn) {
-    skipBtn.addEventListener('click', (e) => {
+    skipBtn.onclick = (e) => {
       e.stopPropagation();
-      closeIntro();
-    });
+      closeSeq();
+    };
   }
-  overlay.addEventListener('click', () => {
-    if (curIdx < scenes.length - 1) {
+  overlay.onclick = () => {
+    if (jumpToLastOnTap && curIdx < scenes.length - 1) {
       curIdx = scenes.length - 1;
       if (timer) clearInterval(timer);
       try { sfx.click(); } catch {}
-      renderIntroScene(curIdx);
+      renderSeqScene(curIdx);
     } else {
-      closeIntro();
+      closeSeq();
     }
-  });
-  overlay.addEventListener('keydown', (e) => {
+  };
+  overlay.onkeydown = (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      if (curIdx < scenes.length - 1) {
-        curIdx = scenes.length - 1;
-        if (timer) clearInterval(timer);
-        renderIntroScene(curIdx);
-      } else {
-        closeIntro();
-      }
+      overlay.onclick();
     }
+  };
+}
+
+function initCinematicIntro() {
+  playCinematicSequence({
+    logoSub: 'SEOUL 2026 · TEXT ACTION RPG',
+    logoMain: '🛡️ 시민영웅: 예절 수호자',
+    logoVer: 'DELUXE EDITION',
+    scenes: [
+      {
+        bg: 'assets/images/bg_boss_final.jpg?v=142',
+        castHtml: `<img src="assets/images/bg_gangnam.jpg?v=142" class="intro-cut-img" alt="혼돈의 도시" />`,
+        vfx: '',
+        caption: '2026년, 무질서와 민폐가 뒤덮인 대한민국...',
+        showLogo: false,
+      },
+      {
+        bg: 'assets/images/act_patrol.jpg?v=142',
+        castHtml: `<img src="assets/images/hero_attack.png?v=142" class="intro-cut-sprite" alt="시민영웅" />`,
+        vfx: 'assets/images/vfx/vfx_speech_4.png?v=142',
+        caption: '단 하나의 노란 완장이 어둠을 가른다!!',
+        showLogo: false,
+      },
+      {
+        bg: 'assets/images/bg_seongsu.jpg?v=142',
+        castHtml: `<img src="assets/images/triple_picnic.jpg?v=142" class="intro-cut-img" style="max-width:52%;" /><img src="assets/images/spirit_43.png?v=142" class="intro-cut-sprite" style="height:125px;" /><img src="assets/images/spirit_100.png?v=142" class="intro-cut-sprite" style="height:140px;" />`,
+        vfx: '',
+        caption: '유키, 클로이, 콩이... 그리고 수호정령들과 함께!',
+        showLogo: false,
+      },
+      {
+        bg: 'assets/images/bg_gangnam.jpg?v=142',
+        castHtml: `<img src="assets/images/romance/chloe_ep04_photobooth.jpg?v=142" class="intro-cut-img" style="max-width:44%;" /><img src="assets/images/romance/yuki_ep19_hugtears.jpg?v=142" class="intro-cut-img" style="max-width:44%;" />`,
+        vfx: 'assets/images/vfx/vfx_snap_4.png?v=142',
+        caption: '전국 5대 도시를 제패할 최강의 참교육이 시작된다!!',
+        showLogo: false,
+      },
+      {
+        bg: 'assets/images/bg_yeouido.jpg?v=142',
+        castHtml: `<img src="assets/images/spirit_50.png?v=142" class="intro-cut-sprite" style="height:150px;opacity:0.9;" />`,
+        vfx: 'assets/images/vfx/vfx_law_4.png?v=142',
+        caption: '전주 · 평택 · 동탄 · 인천 · 서울 — 예절을 지켜라!',
+        showLogo: true,
+      },
+    ],
+  });
+}
+
+function playSeasonOutro(actId) {
+  const cfgMap = {
+    jeonju: {
+      sub: 'SEASON 1 CLEAR · 전주 한옥마을 제패',
+      main: '🍲 전주 시즌 완결!!',
+      ver: 'NEXT STAGE ➔ 🚆 평택',
+      bg1: 'assets/images/bg_mapo.jpg?v=142',
+      bg2: 'assets/images/bg_seongsu.jpg?v=142',
+      c1: '예절을 잃었던 전주의 거리에 다시 평화가 찾아왔다!',
+      c2: '전주 수호 룬스톤 각성! 이제 항구의 도시 평택으로 향한다!!',
+    },
+    pyeongtaek: {
+      sub: 'SEASON 2 CLEAR · 평택항구 완전 정복',
+      main: '🚆 평택 시즌 완결!!',
+      ver: 'NEXT STAGE ➔ 🏙️ 동탄',
+      bg1: 'assets/images/bg_seongsu.jpg?v=142',
+      bg2: 'assets/images/bg_jongno.jpg?v=142',
+      c1: '평택역과 부두의 악질 빌런들이 모두 무릎을 꿇었다!',
+      c2: '뜨거운 환호 속에 다음 전장, 동탄 신도시의 문이 열린다!!',
+    },
+    dongtan: {
+      sub: 'SEASON 3 CLEAR · 동탄 신도시 수호',
+      main: '🏙️ 동탄 시즌 완결!!',
+      ver: 'NEXT STAGE ➔ 😈 마계 인천',
+      bg1: 'assets/images/bg_jongno.jpg?v=142',
+      bg2: 'assets/images/bg_gangnam.jpg?v=142',
+      c1: '동탄 호수공원의 밤을 지키며 영웅의 이름은 전설이 되었다!',
+      c2: '이제 최악의 마경, [마계 인천] 결전이 눈앞에 다가온다...!!',
+    },
+    incheon: {
+      sub: 'SEASON 4 CLEAR · 마계 인천 정복 완료!!',
+      main: '😈 마계 인천 시즌 완결!!',
+      ver: 'FINAL STAGE ➔ 👑 서울',
+      bg1: 'assets/images/bg_gangnam.jpg?v=142',
+      bg2: 'assets/images/bg_yeouido.jpg?v=142',
+      c1: '가장 험난했던 마계 인천마저 노란 완장 앞에 평정되었다!',
+      c2: '드디어 최후의 무대, 서울 심장부로 진격할 시간이다!!',
+    },
+    seoul: {
+      sub: 'GRAND FINALE · 대한민국 예절의 수호신',
+      main: '👑 서울 최종 시즌 완결!!',
+      ver: 'LEGEND NEVER ENDS',
+      bg1: 'assets/images/bg_boss_final.jpg?v=142',
+      bg2: 'assets/images/bg_yeouido.jpg?v=142',
+      c1: '어둠의 흑막까지 완벽하게 참교육하고 서울에 빛이 돌아왔다!',
+      c2: '당신은 영원히 기억될 위대한 시민영웅입니다! 감사합니다!!',
+    },
+  };
+  const cfg = cfgMap[actId] || cfgMap.seoul;
+  playCinematicSequence({
+    logoSub: cfg.sub,
+    logoMain: cfg.main,
+    logoVer: cfg.ver,
+    scenes: [
+      {
+        bg: cfg.bg1,
+        castHtml: `<img src="assets/images/hero_idle.png?v=142" class="intro-cut-sprite" />`,
+        vfx: 'assets/images/vfx/vfx_guts_4.png?v=142',
+        caption: cfg.c1,
+        showLogo: false,
+      },
+      {
+        bg: cfg.bg2,
+        castHtml: `<img src="assets/images/spirit_50.png?v=142" class="intro-cut-sprite" style="height:140px;" /><img src="assets/images/spirit_100.png?v=142" class="intro-cut-sprite" style="height:155px;" />`,
+        vfx: 'assets/images/vfx/vfx_snap_4.png?v=142',
+        caption: '모든 수호정령과 시민들이 당신의 승리를 축복한다!',
+        showLogo: false,
+      },
+      {
+        bg: cfg.bg2,
+        castHtml: '',
+        vfx: 'assets/images/vfx/vfx_law_4.png?v=142',
+        caption: cfg.c2,
+        showLogo: true,
+      },
+    ],
+  });
+}
+
+function playRomanceOutro(key) {
+  const isYuki = key === 'yuki';
+  playCinematicSequence({
+    logoSub: isYuki ? 'TRUE LOVE CONFESSION · 🇯🇵 유키 루트' : 'TRUE LOVE CONFESSION · 🇺🇸 클로이 루트',
+    logoMain: isYuki ? '💖 유키와 공식 연인이 되었습니다!' : '💖 클로이와 공식 연인이 되었습니다!',
+    logoVer: '호감 상한 200 해방!!',
+    scenes: isYuki ? [
+      {
+        bg: 'assets/images/bg_mapo.jpg?v=142',
+        castHtml: `<img src="assets/images/romance/yuki_ep09_picnic.jpg?v=142" class="intro-cut-img" />`,
+        vfx: '',
+        caption: '함께했던 모든 봄날과 산책이 하나의 마음이 되어...',
+        showLogo: false,
+      },
+      {
+        bg: 'assets/images/bg_seongsu.jpg?v=142',
+        castHtml: `<img src="assets/images/romance/yuki_ep19_hugtears.jpg?v=142" class="intro-cut-img" />`,
+        vfx: 'assets/images/vfx/vfx_snap_3.png?v=142',
+        caption: '"이제 오빠 옆자리, 평생 내 거 맞죠? ♥"',
+        showLogo: false,
+      },
+      {
+        bg: 'assets/images/bg_yeouido.jpg?v=142',
+        castHtml: '',
+        vfx: '',
+        caption: '유키와의 영원한 사랑이 시작되었다! (호감 200 해방!)',
+        showLogo: true,
+      },
+    ] : [
+      {
+        bg: 'assets/images/bg_seongsu.jpg?v=142',
+        castHtml: `<img src="assets/images/romance/chloe_ep04_photobooth.jpg?v=142" class="intro-cut-img" />`,
+        vfx: '',
+        caption: '네컷사진 속 장난스러운 미소부터 심야의 고백까지...',
+        showLogo: false,
+      },
+      {
+        bg: 'assets/images/bg_gangnam.jpg?v=142',
+        castHtml: `<img src="assets/images/romance/chloe_ep19_studio.jpg?v=142" class="intro-cut-img" />`,
+        vfx: 'assets/images/vfx/vfx_snap_3.png?v=142',
+        caption: '"드디어 내 남친 됐네! Now you are mine ♥"',
+        showLogo: false,
+      },
+      {
+        bg: 'assets/images/bg_yeouido.jpg?v=142',
+        castHtml: '',
+        vfx: '',
+        caption: '클로이와의 짜릿한 연애가 시작되었다! (호감 200 해방!)',
+        showLogo: true,
+      },
+    ],
+  });
+}
+
+function playWeddingOutro(route) {
+  const cfg = route === 'triple' ? {
+    sub: 'SECRET GRAND WEDDING FINALE · 👑 트리플 웨딩',
+    main: '👑 전설의 3인 하렘 웨딩 완결!!',
+    ver: 'FOREVER HAPPILY EVER AFTER',
+    img1: 'assets/images/romance/wedding_triple.jpg?v=142',
+    img2: 'assets/images/romance/honeymoon_triple_1.jpg?v=142',
+    c1: '세상 어디에도 없던 가장 눈부시고 완벽한 셋만의 결혼식!',
+    c2: '유키와 클로이, 두 사람과 함께 영원한 행복이 이어진다!!',
+  } : route === 'chloe' ? {
+    sub: 'WEDDING & HONEYMOON FINALE · 🇺🇸 클로이',
+    main: '💍 클로이와 영원한 웨딩 피날레!',
+    ver: 'MALDIVES HONEYMOON COMPLETE',
+    img1: 'assets/images/romance/wedding_chloe.jpg?v=142',
+    img2: 'assets/images/romance/honeymoon_chloe_3.jpg?v=142',
+    c1: '황금빛 노을 아래 맹세한 영원한 사랑과 뜨거운 허니문!',
+    c2: '클로이와 함께하는 부부의 나날은 매일매일이 축제다 ♥',
+  } : {
+    sub: 'WEDDING & HONEYMOON FINALE · 🇯🇵 유키',
+    main: '💍 유키와 영원한 웨딩 피날레!',
+    ver: 'KYOTO & RESORT HONEYMOON COMPLETE',
+    img1: 'assets/images/romance/wedding_yuki.jpg?v=142',
+    img2: 'assets/images/romance/honeymoon_yuki_8.jpg?v=142',
+    c1: '만개한 벚꽃과 붉은 노을 아래 완성된 둘만의 완벽한 약속!',
+    c2: '유키와 손잡고 걸어갈 평생의 미래가 찬란하게 빛난다 ♥',
+  };
+  playCinematicSequence({
+    logoSub: cfg.sub,
+    logoMain: cfg.main,
+    logoVer: cfg.ver,
+    scenes: [
+      {
+        bg: 'assets/images/bg_yeouido.jpg?v=142',
+        castHtml: `<img src="${cfg.img1}" class="intro-cut-img" />`,
+        vfx: 'assets/images/vfx/vfx_snap_3.png?v=142',
+        caption: cfg.c1,
+        showLogo: false,
+      },
+      {
+        bg: 'assets/images/bg_gangnam.jpg?v=142',
+        castHtml: `<img src="${cfg.img2}" class="intro-cut-img" />`,
+        vfx: '',
+        caption: '둘(셋)만의 잊지 못할 뜨겁고 달콤한 허니문의 추억...',
+        showLogo: false,
+      },
+      {
+        bg: 'assets/images/bg_yeouido.jpg?v=142',
+        castHtml: '',
+        vfx: 'assets/images/vfx/vfx_law_4.png?v=142',
+        caption: cfg.c2,
+        showLogo: true,
+      },
+    ],
   });
 }
 
