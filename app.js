@@ -1,5 +1,6 @@
 import { TIME_SLOTS, ITEMS, TRAITS, VILLAINS, BOSSES, HIDDEN_BOSS, WEATHERS, RANDOM_EVENTS, STORY_MESSAGES } from './data/gameData.js?v=111';
 import { SKILLS_100, getSkillById, getUnlockedSkillsForLevel } from './data/skills100.js?v=111';
+import { YUKI_DMS_50, CHLOE_DMS_50 } from './data/heroineDms.js?v=112';
 import { KOREA_ACTS, REGIONAL_GOODS, RUNE_STONES, ACT_VILLAINS, ACT_STORY_EPISODES, ACT_PIN_LABELS, RELAY_QUESTS } from './data/koreaActs.js?v=109';
 import { STORY_CHAPTERS } from './data/storyChapters.js?v=48';
 import { ACTIVITY_CATEGORIES } from './data/activities.js?v=48';
@@ -257,6 +258,9 @@ function createNewGameState() {
     pendingActAftermath: null,
     equippedSkills: { speech: 'sk_speech_1', guts: 'sk_guts_1', law: 'sk_law_1', snap: 'sk_snap_1' },
     unlockedSkills: ['sk_speech_1', 'sk_guts_1', 'sk_law_1', 'sk_snap_1'],
+    usedDmIdx: { yuki: [], chloe: [] },
+    pendingLevelUp: null,
+    lastDateDay: { yuki: 0, chloe: 0 },
   };
 }
 
@@ -843,8 +847,14 @@ function advanceTime() {
       }
     }
   }
-  if (!state.pendingDm && isFeatureUnlocked(state, 'yuki') && Math.random() < 0.16) {
-    state.pendingDm = (isFeatureUnlocked(state, 'chloe') && Math.random() < 0.45) ? 'chloe' : 'yuki';
+  if (!state.pendingDm && isFeatureUnlocked(state, 'yuki') && Math.random() < 0.22) {
+    const elig = ['yuki', 'chloe'].filter((h) => {
+      if (h === 'chloe' && !isFeatureUnlocked(state, 'chloe')) return false;
+      const dated = (state.lastDateDay?.[h] || 0) === state.day;
+      const epDone = (state.lastRomanceEpDay?.[h] || 0) === state.day;
+      return !dated && !epDone;
+    });
+    if (elig.length > 0) state.pendingDm = elig[Math.floor(Math.random() * elig.length)];
   }
   // V40.0: 보부상 시세 변동 & 자경단 지부 파견 수익
   if (typeof rollMarketRates === 'function') rollMarketRates();
@@ -1047,6 +1057,7 @@ function gainHeroExp(amount) {
     ensureSkillsState();
     const newSkills = getUnlockedSkillsForLevel(state.level).filter((s) => !state.unlockedSkills.includes(s.id));
     newSkills.forEach((s) => state.unlockedSkills.push(s.id));
+    state.pendingLevelUp = { newLv: state.level, newSkills: newSkills.map((s) => s.id) };
     sfx.powerup();
     showToast(`🎉 LEVEL UP! Lv.${state.level} [${getHeroRankTitle(state.level)}]${newSkills.length ? ` · ⚡새 기술 ${newSkills.length}종 습득!` : ''}`, 'good');
   }
@@ -3630,6 +3641,12 @@ function render() {
 
     elChoicesPanel.className = 'choices-panel grid-2';
 
+    if (state.pendingLevelUp && elActivityModal?.classList.contains('hidden')) {
+      setTimeout(() => {
+        if (state.phase === 'map' && state.pendingLevelUp) openLevelUpModal();
+      }, 80);
+    }
+
     // V42.0: 타 지역 긴급 SOS 지원 요청 배너
     if (state.phase === 'map' && state.pendingSos) {
       const sosAct = KOREA_ACTS.find((a) => a.id === state.pendingSos.actId);
@@ -5545,22 +5562,40 @@ function render() {
       });
       elChoicesPanel.appendChild(nxtBtn);
     } else {
+      const pickChoice = (ch) => {
+        if (elRomMgOverlay) elRomMgOverlay.classList.add('hidden');
+        applyChoiceReward(ch);
+        if (!isFinalScene) {
+          sfx.powerup();
+          showToast(`💕 ${hName}의 마음이 움직였다!`, 'good');
+          state.activeRomanceStory = { heroine: hKey, epIdx: ars.epIdx, sceneIdx: scIdx + 1, mgDone: true, mgResultText: ch.reply };
+          saveGame();
+          render();
+          return;
+        }
+        finishEpisode(ch.reply);
+      };
+      if (elRomMgOverlay && elRomMgPanel) {
+        elRomMgOverlay.classList.remove('hidden');
+        elRomMgPanel.innerHTML = `
+          <div style="font-size:11.5px;color:#fde047;font-weight:800;margin-bottom:4px;">💗 ${epObj.title}</div>
+          <div style="font-size:13.5px;line-height:1.5;margin-bottom:8px;">${sc.text}</div>
+          <div id="rom-choice-list"></div>
+        `;
+        const cList = elRomMgPanel.querySelector('#rom-choice-list');
+        sc.choices.forEach((ch) => {
+          const ob = document.createElement('button');
+          ob.className = 'rom-choice-overlay-btn';
+          ob.textContent = ch.label;
+          ob.addEventListener('click', () => pickChoice(ch));
+          cList.appendChild(ob);
+        });
+      }
       sc.choices.forEach((ch) => {
         const cb = document.createElement('button');
         cb.className = 'choice-btn';
         cb.innerHTML = `<span class="choice-title">${ch.label}</span><span class="choice-sub">💬 선택 후 반응 확인</span>`;
-        cb.addEventListener('click', () => {
-          applyChoiceReward(ch);
-          if (!isFinalScene) {
-            sfx.powerup();
-            showToast(`💕 호감도 +${ch.love || 0}!`, 'good');
-            state.activeRomanceStory = { heroine: hKey, epIdx: ars.epIdx, sceneIdx: scIdx + 1, mgDone: true, mgResultText: ch.reply };
-            saveGame();
-            render();
-            return;
-          }
-          finishEpisode(ch.reply);
-        });
+        cb.addEventListener('click', () => pickChoice(ch));
         elChoicesPanel.appendChild(cb);
       });
     }
@@ -5855,6 +5890,8 @@ function render() {
   // 4-R2. 데이트 & 고백 미연시 씬
   if (state.phase === 'date_scene') {
     const key = state.romanceTarget === 'chloe' ? 'chloe' : 'yuki';
+    if (!state.lastDateDay) state.lastDateDay = { yuki: 0, chloe: 0 };
+    state.lastDateDay[key] = state.day;
     const otherKey = key === 'yuki' ? 'chloe' : 'yuki';
     const langKey = key === 'yuki' ? 'jp' : 'en';
     const hero = HEROINES[key];
@@ -9827,27 +9864,23 @@ function openHousingModal() {
 }
 
 function openHeroineDmModal() {
-  const hKey = state.pendingDm || 'yuki';
+  const hKey = state.pendingDm === 'chloe' ? 'chloe' : 'yuki';
   const hName = hKey === 'chloe' ? '🇺🇸 클로이' : '🇯🇵 유키';
-  elActivityModalTitle.textContent = `📱 ${hName}의 실시간 카톡`;
+  const pool = hKey === 'chloe' ? CHLOE_DMS_50 : YUKI_DMS_50;
+  if (!state.usedDmIdx) state.usedDmIdx = { yuki: [], chloe: [] };
+  const idx = pickNonRepeatingIdx(pool.length, state.usedDmIdx[hKey]);
+  const dm = pool[idx] || pool[0];
+
+  elActivityModalTitle.textContent = `📱 ${hName}의 실시간 카톡 (#${idx + 1}/50)`;
   if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
   elActivityList.innerHTML = '';
 
-  const prompts = {
-    yuki: '"오빠! 오늘 밤 한강 편의점 앞에서 따뜻한 유자차 한 잔 어때요? 잠깐 얼굴 보고 싶어서..."',
-    chloe: '"Hey 영웅! 오늘 촬영 일찍 끝났는데, 지금 루프탑 카페에서 잠깐 만날래? I miss you!"',
-  };
   const banner = document.createElement('div');
   banner.className = 'oblivion-banner';
-  banner.textContent = prompts[hKey] || prompts.yuki;
+  banner.textContent = `"${dm.prompt}"`;
   elActivityList.appendChild(banner);
 
-  const replies = [
-    { label: '💘 "당장 갈게! 10분 안에 도착!"', love: 8, sp: 15, msg: '설레는 마음으로 달려가 달콤한 깜짝 야간 데이트를 즐겼습니다!' },
-    { label: '😎 "순찰 끝나고 들를게, 기다려!"', love: 5, sp: 10, msg: '듬직한 답장에 상대방이 하트 이모티콘을 보냈습니다!' },
-    { label: '💦 "오늘은 좀 피곤해서 내일 보자"', love: -2, sp: 0, msg: '조금 아쉬워하는 눈치지만 다음을 기약했습니다.' },
-  ];
-  replies.forEach((r) => {
+  dm.replies.forEach((r) => {
     const btn = document.createElement('button');
     btn.className = 'activity-item-btn';
     btn.innerHTML = `<div class="act-title">${r.label}</div><div class="act-desc">💬 답장 보내기</div>`;
@@ -9855,17 +9888,123 @@ function openHeroineDmModal() {
       state.pendingDm = null;
       if (!state.love) state.love = { yuki: 0, chloe: 0 };
       state.love[hKey] = clamp((state.love[hKey] || 0) + r.love, 0, 200);
-      state.sp = clamp(state.sp + r.sp, 0, state.maxSp);
-      if (r.love > 0) sfx.victory(); else sfx.click();
-      showToast(r.love > 0 ? `💕 ${hName}와(과) 설레는 톡! (SP +${r.sp})` : '📱 답장을 보냈습니다.', r.love > 0 ? 'good' : 'warn');
-      state.log = `📱 [${hName} 선톡] ${r.msg}`;
+      state.sp = clamp(state.sp + (r.sp || 0), 0, state.maxSp);
+      if (r.pp) restoreSkillPp(r.pp);
       elActivityModal.classList.add('hidden');
+      if (r.meet) {
+        sfx.victory();
+        if (!state.lastDateDay) state.lastDateDay = { yuki: 0, chloe: 0 };
+        state.lastDateDay[hKey] = state.day;
+        if (!state.romanceStory) state.romanceStory = { yuki: { ep: 0, cleared: false }, chloe: { ep: 0, cleared: false } };
+        const rSt = state.romanceStory[hKey] || { ep: 0, cleared: false };
+        const epDoneToday = (state.lastRomanceEpDay?.[hKey] || 0) === state.day;
+        if (!rSt.cleared && !epDoneToday && rSt.ep < 20) {
+          state.activeRomanceStory = { heroine: hKey, epIdx: rSt.ep, sceneIdx: 0 };
+          state.phase = 'romance_story';
+          showToast(`💘 ${hName} 만나러 출발! 연애 스토리 제${rSt.ep + 1}화 시작!`, 'good');
+        } else {
+          state.romanceTarget = hKey;
+          state.isDriveDate = false;
+          if (!state.dateCount) state.dateCount = { yuki: 0, chloe: 0 };
+          state.dateCount[hKey] = (state.dateCount[hKey] || 0) + 1;
+          if (!state.usedDateIdx) state.usedDateIdx = { yuki: [], chloe: [] };
+          const dLen = DATE_EVENTS[hKey].normal.length;
+          state.currentQuizIdx = pickNonRepeatingIdx(dLen, state.usedDateIdx[hKey]);
+          state.phase = 'date_scene';
+          showToast(`💘 ${hName}와(과) 깜짝 데이트 성사!!`, 'good');
+        }
+        saveGame();
+        render();
+        return;
+      }
+      sfx.powerup();
+      showToast(`💕 ${hName}에게 답장 전송!`, 'good');
+      state.log = `📱 [${hName} 선톡] ${r.msg}`;
       saveGame();
       render();
     });
     elActivityList.appendChild(btn);
   });
 
+  elActivityModal.classList.remove('hidden');
+}
+
+function openLevelUpModal() {
+  const lu = state.pendingLevelUp;
+  if (!lu) return;
+  ensureSkillsState();
+  elActivityModalTitle.textContent = `🎉 LEVEL UP!! Lv.${state.level} 달성!`;
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+
+  const banner = document.createElement('div');
+  banner.className = 'oblivion-banner';
+  banner.innerHTML = `<b>축하합니다!</b> Lv.${lu.newLv} 달성! · 남은 스탯 포인트: <b style="color:#b45309;">${state.skillPoints || 0}P</b><br>아래에서 스탯을 올리고, 새로 습득한 기술을 바로 장착해보세요!`;
+  elActivityList.appendChild(banner);
+
+  const statGrid = document.createElement('div');
+  statGrid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;';
+  [
+    { k: 'speech', lbl: `🗣️ 언변 +1 (현재 ${state.stats.speech})` },
+    { k: 'guts', lbl: `🥊 깡다구 +1 (현재 ${state.stats.guts})` },
+    { k: 'law', lbl: `⚖️ 법지식 +1 (현재 ${state.stats.law})` },
+    { k: 'hp', lbl: `❤️ 최대HP +15 (현재 ${state.maxHp})` },
+  ].forEach((st) => {
+    const b = document.createElement('button');
+    b.className = 'activity-item-btn';
+    b.style.margin = '0';
+    b.disabled = (state.skillPoints || 0) <= 0;
+    b.innerHTML = `<div class="act-title" style="font-size:0.82rem;">${st.lbl}</div><div class="act-desc" style="font-size:0.7rem;">1P 투자</div>`;
+    b.addEventListener('click', () => {
+      if ((state.skillPoints || 0) <= 0) return;
+      state.skillPoints -= 1;
+      if (st.k === 'hp') { state.maxHp += 15; state.hp = clamp(state.hp + 15, 1, state.maxHp); }
+      else state.stats[st.k] += 1;
+      sfx.powerup();
+      saveGame();
+      openLevelUpModal();
+    });
+    statGrid.appendChild(b);
+  });
+  elActivityList.appendChild(statGrid);
+
+  const newIds = lu.newSkills || [];
+  if (newIds.length > 0) {
+    newIds.forEach((skId) => {
+      const sk = getSkillById(skId);
+      if (!sk) return;
+      const isEq = state.equippedSkills?.[sk.slot] === sk.id;
+      const row = document.createElement('div');
+      row.className = 'inv-item';
+      row.innerHTML = `<div class="inv-info"><h4>⚡ 새 기술: ${sk.name} <span style="font-size:0.72rem;color:#0369a1;">(위력×${sk.mult} · PP ${sk.maxPp})</span></h4><p>${sk.desc}</p></div>`;
+      const eqBtn = document.createElement('button');
+      eqBtn.className = 'use-btn';
+      eqBtn.disabled = isEq;
+      eqBtn.textContent = isEq ? '장착됨' : '바로장착';
+      eqBtn.addEventListener('click', () => {
+        state.equippedSkills[sk.slot] = sk.id;
+        if (state.skillPp) state.skillPp[sk.slot] = getMaxSkillPp(sk.slot);
+        sfx.victory();
+        showToast(`⚡ [${sk.name}] 즉시 장착!`, 'good');
+        saveGame();
+        openLevelUpModal();
+      });
+      row.appendChild(eqBtn);
+      elActivityList.appendChild(row);
+    });
+  }
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'activity-item-btn';
+  closeBtn.style.cssText = 'margin-top:8px;background:#fef3c7;border-color:#d97706;text-align:center;';
+  closeBtn.innerHTML = '<div class="act-title">✅ 확인 완료 & 계속하기</div>';
+  closeBtn.addEventListener('click', () => {
+    state.pendingLevelUp = null;
+    elActivityModal.classList.add('hidden');
+    saveGame();
+    render();
+  });
+  elActivityList.appendChild(closeBtn);
   elActivityModal.classList.remove('hidden');
 }
 

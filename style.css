@@ -2472,8 +2472,28 @@ body[data-time="midnight"] .illustration-frame {
   font-size: 32px;
 }
 .rom-mg-panel .romance-heart-track {
-  height: 26px;
-  margin-top: 12px;
+  height: 36px;
+  margin-top: 14px;
+}
+.rom-mg-panel .romance-heart-cursor {
+  height: 44px;
+  width: 10px;
+}
+.rom-choice-overlay-btn {
+  width: 100%;
+  margin-top: 10px;
+  padding: 13px 14px;
+  border-radius: 12px;
+  border: 1.5px solid #fda4af;
+  background: rgba(255, 241, 242, 0.96);
+  color: #881337;
+  font-weight: 800;
+  font-size: 0.92rem;
+  text-align: left;
+  cursor: pointer;
+}
+.rom-choice-overlay-btn:active {
+  transform: scale(0.98);
 }
 .rom-mg-panel .romance-mash-track {
   height: 24px;
