@@ -547,6 +547,7 @@ const elAchList = document.getElementById('ach-list');
 const btnCloseAch = document.getElementById('close-ach');
 const elToastContainer = document.getElementById('toast-container');
 const elCombatBadges = document.getElementById('combat-badges');
+const elEnemyInspectHint = document.getElementById('enemy-inspect-hint');
 
 const MAP_COORDS = {
   patrol: { x: 17, y: 32 },
@@ -678,14 +679,16 @@ function vibrate(pattern) {
 
 function showToast(msg, type = '') {
   if (!elToastContainer) return;
-  while (elToastContainer.children.length >= 2) {
+  const inCombat = state?.phase === 'combat';
+  const maxPills = inCombat ? 1 : 2;
+  while (elToastContainer.children.length >= maxPills) {
     elToastContainer.firstElementChild.remove();
   }
   const pill = document.createElement('div');
   pill.className = `toast-pill${type ? ` ${type}` : ''}`;
   pill.textContent = msg;
   elToastContainer.appendChild(pill);
-  setTimeout(() => pill.remove(), 1500);
+  setTimeout(() => pill.remove(), inCombat ? 1050 : 1500);
 }
 
 function pickNonRepeatingIdx(len, usedArr) {
@@ -1123,7 +1126,132 @@ function getZoneDifficultyInfo(minLv, maxLv, heroLv = 1) {
   return { cls: 'easy', label: '🌿 쉬움' };
 }
 
+function getCombatPassiveBadges() {
+  const passiveBadges = [];
+  if (state.lovers?.includes('yuki') && !state.sulky?.yuki) passiveBadges.push({ cls: 'is-pet', txt: '💚 유키 HP+6' });
+  if (state.lovers?.includes('chloe') && !state.sulky?.chloe) passiveBadges.push({ cls: 'is-combo', txt: '📸 클로이 치명+18%' });
+  if ((state.skillChain?.length || 0) > 0) passiveBadges.push({ cls: 'is-combo', txt: `⚡ 체인 ${state.skillChain.length}/3` });
+  passiveBadges.push({ cls: '', txt: getWeatherObj().label });
+  passiveBadges.push({ cls: 'is-pet', txt: `🏆 ${getHeroRankInfo().grade}` });
+  passiveBadges.push({ cls: '', txt: getDiffObj().name.split(' ')[0] + ' ' + getDiffObj().name.split(' ')[1] });
+  const eqB = getEquippedBonuses();
+  if (eqB.def > 0) passiveBadges.push({ cls: 'is-pet', txt: `🛡️ 방어+${eqB.def}` });
+  if ((state.allies?.length || 0) > 0) passiveBadges.push({ cls: 'is-pet', txt: `🤝 영웅단 ${state.allies.length}명` });
+  if ((state.weakCombo || 0) > 0) passiveBadges.push({ cls: 'is-combo', txt: `⚡ 약점콤보 ${state.weakCombo}/2` });
+  if (state.pet?.adopted) passiveBadges.push({ cls: 'is-pet', txt: `🐶 콩이 Lv.${state.pet.level}` });
+  getGearSetSynergy().labels.forEach((lb) => passiveBadges.push({ cls: 'is-pet', txt: lb }));
+  if (state.timeIndex >= 5) passiveBadges.push({ cls: '', txt: '🌙 야간+25%' });
+  return passiveBadges;
+}
+
+function openEnemyInspectModal() {
+  if (state.phase !== 'combat' || !elActivityModal || !elActivityList) return;
+  const enemy = getEnemyById(state.currentEnemyId);
+  if (!enemy) return;
+  sfx.click();
+  elActivityModalTitle.textContent = `🔍 ${enemy.name} (Lv.${state.currentEnemyLv || 1})`;
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+
+  const pType = getEnemyPersonality(enemy);
+  const weakTxt = state.battleIntelRevealed === false
+    ? '❓ 미해독 (📸 채증 스킬로 약점 파악!)'
+    : `${state.shiftedWeakness ? '🔄 변경 약점: ' : '🔑 약점: '}${SKILL_ATTR_LABELS[getEffectiveWeakness(enemy)] || '없음'}`;
+  const modObj = state.enemyModifier ? ENEMY_MODIFIERS.find((m) => m.id === state.enemyModifier) : null;
+  const eEva = Math.round(getEnemyEvasion(enemy) * 100);
+  const hEva = Math.round(getHeroEvasion() * 100);
+  const stunTxt = state.enemyStunImmune
+    ? '🧱 기절 면역 (궁극기로만 관통)'
+    : (state.enemyStunResistTurns || 0) > 0
+      ? `🛡️ 기절 내성 (${state.enemyStunResistTurns}턴 남음)`
+      : '💫 기절 가능';
+
+  const coreCard = document.createElement('div');
+  coreCard.className = 'enemy-scan-card';
+  coreCard.innerHTML = `
+    <div class="enemy-scan-title">🎯 약점 · 성향 · 기믹</div>
+    <div>• <b>${weakTxt}</b></div>
+    <div>• 성향: ${pType.label} (${pType.hint})</div>
+    ${modObj ? `<div>• 기질: <b>${modObj.label}</b></div>` : ''}
+    <div>• 회피율: 적 <b>${eEva}%</b> / 나 <b>${hEva}%</b> · ${stunTxt}</div>
+    ${state.lastSkillType ? `<div>• 직전 사용: ${SKILL_ATTR_LABELS[state.lastSkillType] || ''}${(state.repeatSkillCount || 0) >= 1 ? ' (연속 사용 위력↓)' : ''}</div>` : ''}
+  `;
+  elActivityList.appendChild(coreCard);
+
+  const statusTags = [];
+  if (state.enemyBroken) statusTags.push({ cls: 'is-break', txt: '💥 멘붕 1.5배!' });
+  if (state.enemyStunned) statusTags.push({ cls: 'is-stun', txt: '💫 기절 중' });
+  if ((state.enemyApologyTurns || 0) > 0) statusTags.push({ cls: 'is-stun', txt: `📝 반성문 (${state.enemyApologyTurns}턴)` });
+  if (state.snapExposed) statusTags.push({ cls: 'is-break', txt: '📸 약점노출 1.4배!' });
+  if (state.nextGuaranteedCrit) statusTags.push({ cls: 'is-break', txt: '📺 다음 타 확정치명!' });
+  if (state.intelAmbushReady) statusTags.push({ cls: 'is-break', txt: '🕵️ 첫턴 1.8배 기습!' });
+  if (state.bossGimmick === 'shield' && (state.bossShield || 0) > 0) statusTags.push({ cls: 'is-break', txt: `🛡️ 보스실드 ${state.bossShield}겹` });
+  if (state.bossGimmick === 'countdown') statusTags.push({ cls: 'is-break', txt: `⏰ 광폭까지 ${state.bossCountdown || 3}턴` });
+  const fcBadge = FIELD_CONDITIONS[state.fieldCond || 'none']?.badge;
+  if (fcBadge) statusTags.push({ cls: 'is-combo', txt: fcBadge });
+  const duoB = getSpiritDuoSynergy();
+  if (duoB) statusTags.push({ cls: 'is-break', txt: duoB.label });
+
+  if (statusTags.length > 0 || state.streamMission) {
+    const stCard = document.createElement('div');
+    stCard.className = 'enemy-scan-card';
+    stCard.innerHTML = `<div class="enemy-scan-title">⚡ 현재 상태 · 미션</div>`;
+    if (state.streamMission) {
+      const mLine = document.createElement('div');
+      mLine.style.marginBottom = '6px';
+      mLine.innerHTML = `<b>${state.goldenMission ? '🌟 [황금 +150P·강화석+2] ' : ''}${state.streamMission.label}</b>`;
+      stCard.appendChild(mLine);
+    }
+    if (statusTags.length > 0) {
+      const tagWrap = document.createElement('div');
+      tagWrap.className = 'enemy-scan-tags';
+      statusTags.forEach((t) => {
+        const sp = document.createElement('span');
+        sp.className = `combat-badge ${t.cls}`;
+        sp.textContent = t.txt;
+        tagWrap.appendChild(sp);
+      });
+      stCard.appendChild(tagWrap);
+    }
+    elActivityList.appendChild(stCard);
+  }
+
+  const passives = getCombatPassiveBadges();
+  if (passives.length > 0) {
+    const pCard = document.createElement('div');
+    pCard.className = 'enemy-scan-card';
+    pCard.innerHTML = `<div class="enemy-scan-title">✨ 적용 중인 패시브 (${passives.length}개)</div>`;
+    const pWrap = document.createElement('div');
+    pWrap.className = 'enemy-scan-tags';
+    passives.forEach((b) => {
+      const sp = document.createElement('span');
+      sp.className = `combat-badge ${b.cls}`;
+      sp.textContent = b.txt;
+      pWrap.appendChild(sp);
+    });
+    pCard.appendChild(pWrap);
+    elActivityList.appendChild(pCard);
+  }
+
+  const closeB = document.createElement('button');
+  closeB.className = 'choice-btn row-btn';
+  closeB.innerHTML = '<span>닫기</span><span class="choice-sub">전투로 복귀</span>';
+  closeB.addEventListener('click', () => elActivityModal.classList.add('hidden'));
+  elActivityList.appendChild(closeB);
+  elActivityModal.classList.remove('hidden');
+}
+
+[elSceneImage, elWantedPoster, elEnemyLvBadge, elEnemyInspectHint].forEach((el) => {
+  if (!el) return;
+  el.addEventListener('click', () => {
+    if (state.phase === 'combat') openEnemyInspectModal();
+  });
+});
+
 function renderCombatLevelOverlays(show) {
+  if (elEnemyInspectHint) {
+    elEnemyInspectHint.classList.toggle('hidden', !show);
+  }
   if (elHeroLvBadge) {
     elHeroLvBadge.classList.toggle('hidden', !show);
     if (show) elHeroLvBadge.textContent = `🛡️ 나 Lv.${state.level || 1}`;
@@ -1264,7 +1392,6 @@ function addFever(amount) {
   const boostMult = getSpiritBonuses().perkId === 'fever_boost' ? 1.5 : 1;
   state.feverGauge = Math.min(100, prev + Math.round(amount * boostMult));
   if (prev < 100 && state.feverGauge >= 100) {
-    showToast('⚡ 피버 100% 충전! [노란 완장 풀개방!!] 버튼을 눌러 각성하세요!', 'break');
     return true;
   }
   return false;
@@ -7685,61 +7812,22 @@ function render() {
     if (elCombatBadges) {
       elCombatBadges.innerHTML = '';
       const activeBadges = [];
-      const passiveBadges = [];
+      const passiveCount = getCombatPassiveBadges().length;
       const gShield = state.enemyGuardShield ?? 3;
-      activeBadges.push({ cls: 'is-combo', txt: `🛡️ 가드 ${'◆'.repeat(gShield)}${'◇'.repeat(Math.max(0, 3 - gShield))}` });
-      if (state.battleIntelRevealed === false) {
-        activeBadges.push({ cls: 'is-warn', txt: '❓ 약점: ??? (📸채증 해독)' });
+      if (state.enemyBroken) {
+        activeBadges.push({ cls: 'is-break', txt: '💥 멘붕 1.5배!' });
       } else {
-        activeBadges.push({ cls: 'is-break', txt: `${state.shiftedWeakness ? '🔄 약점' : '🔑 약점'}:${SKILL_ATTR_LABELS[getEffectiveWeakness(enemy)] || ''}` });
+        activeBadges.push({ cls: 'is-combo', txt: `🛡️ 가드 ${'◆'.repeat(gShield)}${'◇'.repeat(Math.max(0, 3 - gShield))}` });
       }
-      const fcBadge = FIELD_CONDITIONS[state.fieldCond || 'none']?.badge;
-      if (fcBadge) activeBadges.push({ cls: 'is-combo', txt: fcBadge });
-      const duoB = getSpiritDuoSynergy();
-      if (duoB) activeBadges.push({ cls: 'is-break', txt: duoB.label });
-      activeBadges.push({ cls: 'is-combo', txt: `💨회피 ${Math.round(getHeroEvasion() * 100)}%` });
-      const eEva = Math.round(getEnemyEvasion(enemy) * 100);
-      if (eEva > 0) activeBadges.push({ cls: 'is-warn', txt: `🎯적회피 ${eEva}%` });
-      if (state.enemyStunImmune) activeBadges.push({ cls: 'is-warn', txt: '🧱기절면역(궁극관통)' });
-      else if ((state.enemyStunResistTurns || 0) > 0) activeBadges.push({ cls: 'is-warn', txt: `🛡️기절내성(${state.enemyStunResistTurns}턴)` });
-      if (state.intelAmbushReady) activeBadges.push({ cls: 'is-break', txt: '🕵️ 첫턴 1.8배 기습!' });
-      if (state.lastSkillType) activeBadges.push({ cls: 'is-combo', txt: `직전:${SKILL_ATTR_LABELS[state.lastSkillType] || ''}${(state.repeatSkillCount || 0) >= 1 ? '(연속↓)' : ''}` });
-      if (state.nextGuaranteedCrit) activeBadges.push({ cls: 'is-break', txt: '📺 다음 타 확정치명!' });
-      if (state.snapExposed) activeBadges.push({ cls: 'is-break', txt: '📸 약점노출 1.4배!' });
-      if (state.bossGimmick === 'shield' && (state.bossShield || 0) > 0) activeBadges.push({ cls: 'is-break', txt: `🛡️ 보스실드 ${state.bossShield}겹` });
-      if (state.bossGimmick === 'countdown') activeBadges.push({ cls: 'is-break', txt: `⏰ 광폭까지 ${state.bossCountdown || 3}턴` });
-      if (state.enemyBroken) activeBadges.push({ cls: 'is-break', txt: '💥 멘붕 1.5배!' });
-      if (state.enemyStunned) activeBadges.push({ cls: 'is-stun', txt: '💫 기절' });
-      if ((state.enemyApologyTurns || 0) > 0) activeBadges.push({ cls: 'is-stun', txt: `📝 반성문(${state.enemyApologyTurns}턴)` });
       if ((state.feverTurns || 0) > 0) {
         activeBadges.push({ cls: 'is-break', txt: `🔥 FEVER(${state.feverTurns}턴·반값!)` });
       } else {
         activeBadges.push({ cls: 'is-combo', txt: `⚡ 피버 ${state.feverGauge || 0}%` });
       }
-      if (state.enemyModifier) {
-        const modObj = ENEMY_MODIFIERS.find((m) => m.id === state.enemyModifier);
-        if (modObj) activeBadges.push({ cls: 'is-break', txt: `기질:${modObj.label}` });
-      }
-      if (state.streamMission) {
-        activeBadges.push({
-          cls: 'is-combo',
-          txt: state.goldenMission ? `🌟 [황금 +150P·강화석+2] ${state.streamMission.label}` : state.streamMission.label,
-        });
-      }
-
-      if (state.lovers?.includes('yuki') && !state.sulky?.yuki) passiveBadges.push({ cls: 'is-pet', txt: '💚 유키 HP+6' });
-      if (state.lovers?.includes('chloe') && !state.sulky?.chloe) passiveBadges.push({ cls: 'is-combo', txt: '📸 클로이 치명+18%' });
-      if ((state.skillChain?.length || 0) > 0) passiveBadges.push({ cls: 'is-combo', txt: `⚡ 체인 ${state.skillChain.length}/3` });
-      passiveBadges.push({ cls: '', txt: getWeatherObj().label });
-      passiveBadges.push({ cls: 'is-pet', txt: `🏆 ${getHeroRankInfo().grade}` });
-      passiveBadges.push({ cls: '', txt: getDiffObj().name.split(' ')[0] + ' ' + getDiffObj().name.split(' ')[1] });
-      const eqB = getEquippedBonuses();
-      if (eqB.def > 0) passiveBadges.push({ cls: 'is-pet', txt: `🛡️ 방어+${eqB.def}` });
-      if ((state.allies?.length || 0) > 0) passiveBadges.push({ cls: 'is-pet', txt: `🤝 영웅단 ${state.allies.length}명` });
-      if ((state.weakCombo || 0) > 0) passiveBadges.push({ cls: 'is-combo', txt: `⚡ 약점콤보 ${state.weakCombo}/2` });
-      if (state.pet?.adopted) passiveBadges.push({ cls: 'is-pet', txt: `🐶 콩이 Lv.${state.pet.level}` });
-      getGearSetSynergy().labels.forEach((lb) => passiveBadges.push({ cls: 'is-pet', txt: lb }));
-      if (state.timeIndex >= 5) passiveBadges.push({ cls: '', txt: '🌙 야간+25%' });
+      if (state.enemyStunned) activeBadges.push({ cls: 'is-stun', txt: '💫 기절' });
+      if ((state.enemyApologyTurns || 0) > 0) activeBadges.push({ cls: 'is-stun', txt: `📝 반성문(${state.enemyApologyTurns}턴)` });
+      if (state.bossGimmick === 'shield' && (state.bossShield || 0) > 0) activeBadges.push({ cls: 'is-break', txt: `🛡️ 보스실드 ${state.bossShield}겹` });
+      if (state.bossGimmick === 'countdown') activeBadges.push({ cls: 'is-break', txt: `⏰ 광폭 ${state.bossCountdown || 3}턴` });
 
       activeBadges.forEach((b) => {
         const sp = document.createElement('span');
@@ -7747,24 +7835,14 @@ function render() {
         sp.textContent = b.txt;
         elCombatBadges.appendChild(sp);
       });
-      if (passiveBadges.length > 0) {
-        const tog = document.createElement('span');
-        tog.className = 'combat-badge is-toggle';
-        tog.textContent = state.showPassiveBadges ? `✨ 패시브 접기 ▴` : `✨ 패시브 ${passiveBadges.length}개 ▾`;
-        tog.addEventListener('click', () => {
-          state.showPassiveBadges = !state.showPassiveBadges;
-          render();
-        });
-        elCombatBadges.appendChild(tog);
-        if (state.showPassiveBadges) {
-          passiveBadges.forEach((b) => {
-            const sp = document.createElement('span');
-            sp.className = `combat-badge ${b.cls}`;
-            sp.textContent = b.txt;
-            elCombatBadges.appendChild(sp);
-          });
-        }
-      }
+
+      const scanBtn = document.createElement('span');
+      scanBtn.className = 'combat-badge is-toggle';
+      scanBtn.textContent = `🔍 적·패시브(${passiveCount})`;
+      scanBtn.title = '터치해 적 약점·상태·미션·패시브 확인';
+      scanBtn.addEventListener('click', openEnemyInspectModal);
+      elCombatBadges.appendChild(scanBtn);
+
       const spdTog = document.createElement('span');
       spdTog.className = 'combat-badge is-toggle';
       spdTog.textContent = state.fastBattle ? '⚡ 고속' : '🎬 연출';
@@ -7916,7 +7994,7 @@ function render() {
 
     if ((state.feverGauge || 0) >= 100 && !(state.feverTurns > 0)) {
       const feverBtn = document.createElement('button');
-      feverBtn.className = 'choice-btn row-btn story-main-btn';
+      feverBtn.className = 'choice-btn row-btn story-main-btn fever-ready-pulse';
       feverBtn.style.gridColumn = 'span 2';
       feverBtn.innerHTML = '<span>⚡ [노란 완장 풀개방!!] 각성 변신 발동!</span><span class="choice-sub">턴 소모 없음 · 2턴 약점/치명 확정 + 필살기 반값 + SP+20!</span>';
       feverBtn.addEventListener('click', () => {

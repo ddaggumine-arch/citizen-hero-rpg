@@ -5,7 +5,10 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V59.0 (GitHub Pages 배포됨)
+## 현재 최신 버전: V60.0 (GitHub Pages 배포됨)
+- **V60.0 (`?v=152`)**:
+  - **전투 화면 슬림화 & 적 이미지 터치 스캐너 (`openEnemyInspectModal`, `#enemy-inspect-hint`)**: 상단 전투 배지(`#combat-badges`)를 가드·피버·핵심 상태 1줄로 압축하고, 약점·성향·기질·회피율·기절면역·별풍선 미션·패시브 목록은 적 이미지/전단지/레벨배지 또는 `🔍 적 정보` 터치 시 팝업으로 확인하도록 개편!
+  - **전투 중 토스트 가림 최소화 (`showToast`, `fever-ready-pulse`)**: 전투 중 토스트는 최대 1개·`1050ms`로 제한하고, 피버 100% 충전 시 상단 2줄 배너 대신 `[노란 완장 풀개방!!]` 버튼 황금 펄스 강조로 대체!
 - **V59.0 (`?v=151`)**:
   - **폭렬결전 스타일 풀스크린 정령 소환 가챠 연출 (`playSpiritGachaSequence`, `runSpiritGacha`)**: 기 개방 → 등급별 섬광 → 1마리씩 카드 리빌(`NEW!`/`★각성`) → 5×2 전체 결과 그리드 + SKIP 지원!
   - **수호정령 메뉴 내 가챠 정식 배치 (`openSpiritModal`)**: 연애 메뉴가 아니라 **수호정령 메뉴** 안에 `🎰 럭키 1회 (500P)` & `🌟 폭렬 10연차 (4,200P)` 직접 배치!
