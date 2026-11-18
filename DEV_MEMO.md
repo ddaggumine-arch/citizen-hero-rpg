@@ -5,7 +5,10 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V63.0 (GitHub Pages 배포됨)
+## 현재 최신 버전: V64.0 (GitHub Pages 배포됨)
+- **V64.0 (`?v=157`)**:
+  - **실시간 전투 적 템포 & 기절 내성 개편**: 적 행동 게이지 속도 약 2배 상향(일반 `~2.2s` / 헬 `~1.8s`), 반성문은 공-40%만 적용하고 정지 제거, 실시간 기절 `1.8s` + 해제 후 `7s` 기절 면역(궁극·합동 필살만 관통), 피격 시 24% 확률 적 돌발 견제(게이지+35% / 스킬 쿨 +2.2s 지연 / 가드 복구).
+  - **헬 난이도 최소 타격 상향 + 메뉴 연동 강화**: 헬 모드 최소 보장 피해 상향(`minThreatAtk` & `minDmg`), 하우스 티어 전투 보호막(`houseShield`) & 청심환 등 회복 효율 보너스(`+8%/티어`), 지도 상단 `💡 [오늘 추천]` 1줄 배너 추가!
 - **V63.0 (`?v=156`)**:
   - **일상·알바·수련·편의점·펫·야시장 8종 전용 컷신 일러스트 적용 (`fun_*.jpg`)**: 배달 알바(`fun_delivery.jpg`), 헬스장 3대 500(`fun_gym_500.jpg`), 매운 컵라면 야식 버프(`fun_spicy_food.jpg`), 콩이 목욕·산책(`fun_kongi_bath.jpg`), 즉석복권(`fun_lotto_boom.jpg`), 길고양이 츄르(`fun_cat_treat.jpg`), 야시장/게릴라 상점(`fun_night_market.jpg`), 한강 야경 치맥(`fun_hangang_chimaek.jpg`).
   - **메뉴 활성화 시너지**: 편의점 `🔥 매운 컵라면 야식 버프`(3전투 공격+20%), 휴식 `🍗 한강 야경 치맥 힐링`(HP/SP 100% + PP+5), `🐈 길고양이 츄르 주기` 추가 + **`🌟 오늘의 3단 시민영웅 루틴`**(`markDailyRoutine`: 알바 + 수련/상점 + 휴식/행운/펫 달성 시 `+80P · 강화석 +2 · PP +3`) 도입!

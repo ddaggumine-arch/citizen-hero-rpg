@@ -1260,6 +1260,8 @@ const rtState = {
   guardUntil: 0,
   guardCdUntil: 0,
   stunUntil: 0,
+  stunImmuneUntil: 0,
+  lastTrickAt: 0,
 };
 
 function isRealtimeCombat() {
@@ -1273,6 +1275,8 @@ function resetRtCombat() {
   rtState.guardUntil = 0;
   rtState.guardCdUntil = 0;
   rtState.stunUntil = 0;
+  rtState.stunImmuneUntil = 0;
+  rtState.lastTrickAt = 0;
 }
 
 function isRtPaused() {
@@ -1330,25 +1334,26 @@ function updateRtUiTick() {
   const enemy = getEnemyById(state.currentEnemyId);
   if (!enemy || state.enemyHp <= 0) return;
 
-  if (state.enemyStunned || (state.enemyApologyTurns || 0) > 0) {
-    if (rtState.stunUntil <= now) rtState.stunUntil = now + 3500;
+  if (state.enemyStunned) {
+    if (rtState.stunUntil <= now) rtState.stunUntil = now + 1800;
     const rem = Math.max(0.1, (rtState.stunUntil - now) / 1000).toFixed(1);
     if (elRtGaugeBar) {
       elRtGaugeBar.style.width = `${Math.min(100, rtState.enemyGauge)}%`;
       elRtGaugeBar.classList.remove('is-danger');
       elRtGaugeBar.classList.add('is-stun');
     }
-    if (elRtGaugeText) elRtGaugeText.textContent = `💫 행동 정지 (${rem}s)`;
+    if (elRtGaugeText) elRtGaugeText.textContent = `💫 기절 정지 (${rem}s)`;
     if (now >= rtState.stunUntil) {
       state.enemyStunned = false;
-      if ((state.enemyApologyTurns || 0) > 0) state.enemyApologyTurns -= 1;
       rtState.stunUntil = 0;
+      rtState.stunImmuneUntil = now + 7000;
     }
     return;
   }
 
   const intentObj = ENEMY_INTENTS.find((i) => i.id === state.enemyIntent) || ENEMY_INTENTS[0];
-  const step = intentObj.isDanger ? 2.2 : 2.6;
+  const isHellRt = (state.difficulty || 'normal') === 'hell';
+  const step = isHellRt ? (intentObj.isDanger ? 4.8 : 5.6) : (intentObj.isDanger ? 4.0 : 4.6);
   rtState.enemyGauge = Math.min(100, rtState.enemyGauge + step);
   const pct = Math.round(rtState.enemyGauge);
   if (elRtGaugeBar) {
@@ -2571,7 +2576,7 @@ function startBattle(enemyId, isRandomEncounter = false) {
 
   const rawFormulaHp = Math.round((Number(baseEnemy.maxHp || baseEnemy.hp) || 100) * lvScale * bossHpBoost * modHpMult);
   const baseScaledHp = Math.max(rawFormulaHp, coScaledHp);
-  const minThreatAtk = Math.round((state.maxHp || 140) * (isBossEnemy ? 0.13 : (enemyLv >= 7 ? 0.11 : 0.09)));
+  const minThreatAtk = Math.round((state.maxHp || 140) * (diff.id === 'hell' ? (isBossEnemy ? 0.18 : 0.14) : (isBossEnemy ? 0.13 : (enemyLv >= 7 ? 0.11 : 0.09))));
   const baseScaledAtk = Math.max(Math.round((Number(baseEnemy.atk) || 14) * atkScale * bossAtkBoost * modAtkMult), minThreatAtk);
   const rawMaxHp = nmFloor > 0
     ? baseScaledHp + nmFloor * 52
@@ -2669,6 +2674,10 @@ function startBattle(enemyId, isRandomEncounter = false) {
   if (state.bossGimmick === 'countdown') extraLog += `\n⏰ [보스 기믹] 3턴 광폭 카운트다운 시작! (기절로 초기화!)`;
   if ((state.startSpBonus || 0) > 0) {
     state.sp = clamp(state.sp + state.startSpBonus, 0, state.maxSp);
+  }
+  state.houseShield = (state.houseTier || 0) >= 1 ? Math.round((state.maxHp || 140) * Math.min(0.25, state.houseTier * 0.05)) : 0;
+  if (state.houseShield > 0) {
+    extraLog += `\n🏠 [하우스 티어 ${state.houseTier} 가호!] 전투 보호막 +${state.houseShield} 전개!`;
   }
   if (state.intelAmbushReady) {
     state.enemyGuardShield = 2;
@@ -2904,7 +2913,7 @@ function enemyCounterTurn(enemy, isGuarding = false) {
   const totalDef = (eqBonus.def || 0) + (state.flatDef || 0) + Math.floor(((state.level || 1) - 1) / 3);
   const effectiveDef = (isHell && !isGuarding) ? Math.round(totalDef * 0.7) : totalDef;
   if (effectiveDef > 0) {
-    const minDmg = isGuarding ? 2 : Math.max(isHell ? 8 : 5, Math.round(scaledAtk * (isHell ? 0.32 : 0.25)));
+    const minDmg = isGuarding ? 2 : Math.max(isHell ? 12 : 5, Math.round(scaledAtk * (isHell ? 0.36 : 0.25)));
     const maxFlatBlock = isGuarding ? effectiveDef : Math.min(effectiveDef, Math.round(dmg * (isHell ? 0.45 : 0.55)));
     const nextDmg = Math.max(minDmg, dmg - maxFlatBlock);
     const blocked = Math.max(0, dmg - nextDmg);
@@ -2934,6 +2943,12 @@ function enemyCounterTurn(enemy, isGuarding = false) {
     state.log += `\n🪞 [피해 반사!] 빌런에게 ${refDmg} 반사 데미지!`;
   }
 
+  if ((state.houseShield || 0) > 0 && dmg > 0) {
+    const abs = Math.min(state.houseShield, dmg);
+    state.houseShield -= abs;
+    dmg -= abs;
+    state.log += `\n🏠 [하우스 보호막 -${abs} 흡수!] (남은 보호막: ${state.houseShield})`;
+  }
   state.hp = clamp(state.hp - dmg, 0, state.maxHp);
   if (getGearSetSynergy().reflectStun && dmg > 1 && Math.random() < 0.20) {
     state.enemyStunned = true;
@@ -3748,6 +3763,26 @@ function performAttack(type, ultPerfect = false) {
 
   if (isRealtimeCombat()) {
     const now = Date.now();
+    if (state.enemyStunned && rtState.stunImmuneUntil > now && type !== 'special' && type !== 'tag') {
+      state.enemyStunned = false;
+      state.log += `\n🧱 [실시간 기절 내성!] 적이 기절을 버텨냈습니다!`;
+    }
+    if (state.enemyHp > 0 && !state.enemyStunned && now - (rtState.lastTrickAt || 0) > 4000 && Math.random() < 0.24) {
+      rtState.lastTrickAt = now;
+      const trickRoll = Math.random();
+      if (trickRoll < 0.4) {
+        rtState.enemyGauge = Math.min(95, rtState.enemyGauge + 35);
+        state.log += `\n🔥 [적 돌발 기세!] 적 행동 게이지 +35% 급발진!!`;
+      } else if (trickRoll < 0.72) {
+        const jamKeys = ['speech', 'guts', 'law', 'snap'];
+        const jk = jamKeys[Math.floor(Math.random() * jamKeys.length)];
+        rtState.cdEnd[jk] = Math.max(rtState.cdEnd[jk] || now, now) + 2200;
+        state.log += `\n💢 [적 스킬 견제!] [${SKILL_ATTR_LABELS[jk] || jk}] 쿨타임 +2.2초 지연!`;
+      } else {
+        state.enemyGuardShield = Math.min(3, (state.enemyGuardShield ?? 3) + 1);
+        state.log += `\n🛡️ [적 긴급 방어!] 빌런이 가드 실드 1칸을 복구했습니다!`;
+      }
+    }
     const feverGcd = (state.feverTurns || 0) > 0 ? 450 : 850;
     rtState.gcdUntil = now + feverGcd;
     rtState.cdEnd[type] = now + getRtSkillCdMs(type);
@@ -3787,7 +3822,8 @@ function useItem(itemId, invIndex) {
     if (state.phase === 'combat') triggerEquipCutin(itemId);
     const heatMult = (itemId === 'cold_soda' && (state.weather || 'sunny') === 'heat') ? 1.5 : 1;
     if (item.useEffect.hpPct) {
-      const healAmt = Math.max(item.useEffect.hpMin || 40, Math.round(state.maxHp * item.useEffect.hpPct));
+      const houseHealMult = (state.houseTier || 0) >= 1 ? (1 + Math.min(0.30, state.houseTier * 0.08)) : 1;
+      const healAmt = Math.max(item.useEffect.hpMin || 40, Math.round(state.maxHp * item.useEffect.hpPct * houseHealMult));
       state.hp = clamp(state.hp + healAmt, 0, state.maxHp);
     } else if (item.useEffect.hp) {
       state.hp = clamp(state.hp + Math.round(item.useEffect.hp * heatMult), 0, state.maxHp);
@@ -4765,6 +4801,39 @@ function render() {
       setTimeout(() => {
         if (state.phase === 'map' && state.pendingLevelUp) openLevelUpModal();
       }, 80);
+    }
+
+    // V64.0: 안 쓰는 메뉴 활용을 돕는 스마트 1줄 추천 배너
+    if (state.phase === 'map') {
+      const dr = (state.dailyRoutineDone && state.dailyRoutineDone.day === state.day)
+        ? state.dailyRoutineDone
+        : { work: false, trainOrShop: false, careOrLuck: false, rewarded: false };
+      let recTitle = '';
+      let recSub = '';
+      let recFn = null;
+      if (!dr.rewarded) {
+        recTitle = `💡 [오늘 추천] 3단 루틴 ([알바${dr.work ? '✔' : '○'}] [수련/상점${dr.trainOrShop ? '✔' : '○'}] [휴식/행운/펫${dr.careOrLuck ? '✔' : '○'}])`;
+        recSub = '완성 시 +80P · 강화석 +2 · PP +3 즉시 지급! (일상·성장으로 ▶)';
+        recFn = () => { state.phase = 'life'; render(); };
+      } else if ((state.spicyBuffBattles || 0) <= 0 && (state.points || 0) >= 40) {
+        recTitle = '💡 [전투 준비 추천] 편의점 🔥 매운 컵라면 버프!';
+        recSub = '40P로 다음 3전투 공격력 +20% 버프 챙기기 ▶';
+        recFn = () => openActivityModal(ACTIVITY_CATEGORIES.find((c) => c.id === 'shop'));
+      } else if ((state.ownedRunes?.length || 0) > 0 && !(state.equippedRunes?.length)) {
+        recTitle = '💡 [전력 강화 추천] 미장착 정령석(룬)이 있습니다!';
+        recSub = '수호정령 칸에서 룬 장착하고 스탯 올리기 ▶';
+        recFn = () => openSpiritModal();
+      }
+      if (recFn) {
+        const recBtn = document.createElement('button');
+        recBtn.className = 'choice-btn row-btn';
+        recBtn.style.gridColumn = 'span 2';
+        recBtn.style.background = 'linear-gradient(180deg, #fefce8 0%, #fef3c7 100%)';
+        recBtn.style.borderColor = '#d97706';
+        recBtn.innerHTML = `<span>${recTitle}</span><span class="choice-sub" style="color:#92400e;">${recSub}</span>`;
+        recBtn.addEventListener('click', () => { sfx.click(); recFn(); });
+        elChoicesPanel.appendChild(recBtn);
+      }
     }
 
     // V48.0: 시간대 한정 게릴라 푸드트럭 / 떠돌이 골동품상 배너
