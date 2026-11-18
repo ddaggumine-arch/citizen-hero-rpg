@@ -217,20 +217,63 @@ export const ENEMY_INTENTS = [
 ];
 
 export function createFeedForVictory(enemyName, repMode) {
-  const likesPool = ['❤️ 8.4천', '❤️ 2.1만', '❤️ 5.7만', '❤️ 14만'];
+  const likesPool = ['❤️ 8.4천', '❤️ 2.1만', '❤️ 5.7만', '❤️ 14만', '❤️ 32만', '❤️ 4.9만', '❤️ 9.8천', '❤️ 27만'];
   const likes = likesPool[Math.floor(Math.random() * likesPool.length)];
-  if (repMode === 'chaotic') {
-    return {
-      badge: '🔥 유튜브 실시간 1위',
-      likes,
-      title: `[충격] "${enemyName}" 맑은 눈의 광인한테 멘탈 박살난 현장.mp4`,
-      comment: '💬 베댓: "저 눈빛 보면 나라도 도망간다 진짜 ㅋㅋㅋ 사이다 미쳤음"',
-    };
-  }
-  return {
-    badge: '📺 서울 예절 속보',
-    likes,
-    title: `[사이다] 시민영웅, "${enemyName}" 완벽한 법적·논리 참교육 성공!`,
-    comment: '💬 베댓: "이런 분이 우리 동네에 계시다니 든든합니다 ㅠㅠ 추천 박고 감"',
-  };
+  const chaoticFeeds = [
+    { badge: '🔥 유튜브 실시간 1위', title: `[충격] "${enemyName}" 맑은 눈의 광인한테 멘탈 박살난 현장.mp4`, comment: '💬 베댓: "저 눈빛 보면 나라도 도망간다 진짜 ㅋㅋㅋ 사이다 미쳤음"' },
+    { badge: '⚡ 쇼츠 300만 뷰', title: `빌런 "${enemyName}", 노란 완장 한 마디에 그 자리서 오열.avi`, comment: '💬 베댓: "자업자득이란 게 뭔지 실시간으로 보여줌 ㄹㅇ"' },
+    { badge: '😈 디시 실베 1위', title: `"${enemyName}" 거울치료 당하고 개과천선 선언 속보 ㅋㅋ`, comment: '💬 베댓: "눈에는 눈 이에는 이, 완장에는 미친 정의구현 ㅋㅋㅋ"' },
+    { badge: '🎥 틱톡 화제 영상', title: `광기 vs 광기! "${enemyName}" 완벽 참교육 10초 컷`, comment: '💬 베댓: "빌런이 오히려 피해자 표정 짓는 거 개웃기네 ㅋㅋㅋㅋ"' },
+    { badge: '🚨 긴급 제보 영상', title: `동네 깡패 "${enemyName}", 시민영웅 카리스마에 무릎 꿇어`, comment: '💬 베댓: "역시 이 구역 최강자는 노란 완장이었다..."' },
+    { badge: '🔥 커뮤니티 실검', title: `역대급 참교육! "${enemyName}" 멘탈 붕괴 직캠 풀버전`, comment: '💬 베댓: "팝콘 들고 10번 돌려봤다 ㄹㅇ 고구마 100개 소화됨"' },
+    { badge: '💥 스트리밍 클립', title: `도네 터졌다!! "${enemyName}" 원턴 킬에 채팅창 폭발`, comment: '💬 베댓: "오늘도 시청료 값 제대로 하네 ㅋㅋ 별풍선 쏜다!!"' },
+    { badge: '📢 동네 단톡방 난리', title: `"${enemyName}" 이제 다신 얼씬도 못 할 듯 ㅋㅋㅋ`, comment: '💬 베댓: "속이 다 시원하네 영웅님 치킨 한 마리 보내드리고 싶다"' },
+    { badge: '🎬 릴스 급상승', title: `노란 완장의 역습 — "${enemyName}" 논리·깡다구 완패`, comment: '💬 베댓: "표정 싹 굳는 거 보소 ㅋㅋㅋ 완벽한 참교육 인정"' },
+    { badge: '🔥 에펨 핫글', title: `"${enemyName}" 헛소리하다가 역관광 맞고 도망간 썰.jpg`, comment: '💬 베댓: "우리 동네에도 노란 완장 1명만 보급해주세요 제발"' },
+    { badge: '⚡ 트위터 실트 1위', title: `#시민영웅 "${enemyName}" 1분 만에 멘붕시킨 명대사 모음`, comment: '💬 베댓: "대사 하나하나가 뼈를 때리다 못해 가루로 만드네 ㄷㄷ"' },
+    { badge: '📸 현장 직찍 화제', title: `"${enemyName}" 무릎 꿇고 반성문 쓰는 희귀 사진 공개`, comment: '💬 베댓: "글씨 삐뚤빼뚤 떨린 거 봐 ㅋㅋㅋ 진심이 느껴진다"' },
+    { badge: '🌟 오늘의 사이다', title: `뻔뻔함 끝판왕 "${enemyName}", 영웅 앞에서는 순한 양!`, comment: '💬 베댓: "강약약강 빌런한테 딱 맞는 약을 먹여줬네 최고다!"' },
+    { badge: '🔥 뽐뿌 인기글', title: `"${enemyName}" 상대할 땐 무조건 노란 완장 호출해야 하는 이유`, comment: '💬 베댓: "경찰보다 빠른 건 아닌데 임팩트는 진짜 전국구임 ㅋㅋ"' },
+    { badge: '🎥 숏폼 레전드', title: `"잠깐만요!" "${enemyName}" 변명 1초 만에 컷 당한 영상`, comment: '💬 베댓: "말 자르고 팩트 꽂는 타이밍 예술이다 진심"' },
+    { badge: '😈 빌런 참교육 채널', title: `구독자 10만 돌파 기념! "${enemyName}" 공개 참교육 현장`, comment: '💬 베댓: "이 채널 때문에 요즘 스트레스 다 풀림 ㅠㅠ 구독 눌렀다"' },
+    { badge: '🚨 현장 목격담', title: `"${enemyName}" 제압 순간 주변 시민들 박수갈채 터져`, comment: '💬 베댓: "나 저 현장 있었는데 진짜 영화 한 편 보는 줄 알았음!"' },
+    { badge: '💥 번개 속보', title: `무적이라던 "${enemyName}", 맑은 눈의 광인 만나 1라운드 KO`, comment: '💬 베댓: "역시 미친 빌런은 더 정의롭게 미친 영웅이 잡아야 해"' },
+    { badge: '🔥 인스타 스토리 폭주', title: `"${enemyName}" 참교육 짤방 지금 전국에 밈으로 도는 중`, comment: '💬 베댓: "단톡방 프사로 바로 해놨다 ㅋㅋㅋ 표정 레전드"' },
+    { badge: '📣 거리 호외', title: `"${enemyName}" 자진 반납 및 90도 폴더 인사 현장 포착!`, comment: '💬 베댓: "저렇게 예의 바른 사람인 줄 몰랐네요(물리)"' },
+    { badge: '⚡ 블라인드 화제', title: `회사/동네에 있던 "${enemyName}"류 인간 완벽 대처법.txt`, comment: '💬 베댓: "교과서에 실어야 함. 한 마디 한 마디가 명언이네"' },
+    { badge: '🎥 라이브 하이라이트', title: `조회수 50만! "${enemyName}" 멘탈 게이지 0 되는 순간`, comment: '💬 베댓: "게이지 깎이는 소리 여기까지 들린다 쾌감 지림!!"' },
+    { badge: '🔥 더쿠 핫게', title: `노란 완장 오늘도 미모랑 카리스마 열일 중 ("${enemyName}" 편)`, comment: '💬 베댓: "얼굴도 훈훈한데 깡까지 미쳤음 반할 것 같아 ㅠㅠ"' },
+    { badge: '💫 팬덤 총집결', title: `"${enemyName}" 물리친 시민영웅, 팬카페 회원수 1만 돌파!`, comment: '💬 베댓: "응원봉이라도 만들어서 같이 순찰 돌고 싶다 진짜"' },
+    { badge: '🏆 금주의 MVP', title: `악질 중의 악질 "${enemyName}" 완벽 소탕 완료!!`, comment: '💬 베댓: "오늘 밤은 두 발 뻗고 자겠네 감사합니다 영웅님!"' },
+  ];
+  const lawfulFeeds = [
+    { badge: '📺 서울 예절 속보', title: `[사이다] 시민영웅, "${enemyName}" 완벽한 법적·논리 참교육 성공!`, comment: '💬 베댓: "이런 분이 우리 동네에 계시다니 든든합니다 ㅠㅠ 추천 박고 감"' },
+    { badge: '⚖️ 112 시민 표창', title: `법전 한 권으로 "${enemyName}" 제압! 모범 시민영웅 화제`, comment: '💬 베댓: "폭력 없이 조목조목 팩트로 밟아주는 거 진짜 멋있다!"' },
+    { badge: '📰 지역 신문 1면', title: `"${enemyName}" 소동, 노란 완장 영웅의 침착한 대처로 5분 만에 종결`, comment: '💬 베댓: "우리 구 안전지킴이 대상은 무조건 이분 드려야 함"' },
+    { badge: '📱 안전신문고 베스트', title: `완벽 채증 완료! "${enemyName}" 과태료·반성문 풀코스 확정`, comment: '💬 베댓: "증거 들이미니까 말문 턱 막히는 거 속 시원하다 ㅋㅋ"' },
+    { badge: '🌟 맘카페 칭찬글', title: `아이들 앞에서 행패 부리던 "${enemyName}", 영웅님이 지켜주셨어요!`, comment: '💬 베댓: "진심 눈물 날 뻔 ㅠㅠ 항상 감사드려요 영웅님!"' },
+    { badge: '🚔 지구대 감사 인사', title: `경찰 출동 전 이미 "${enemyName}" 상황 정리 끝낸 노란 완장`, comment: '💬 베댓: "김순경님이 맨날 커피 사주실 만하다 진짜 1등 공신"' },
+    { badge: '📣 우리동네 미담', title: `"${enemyName}" 에게 피해 보던 상인들, 눈물의 감사 박수`, comment: '💬 베댓: "이 골목 매출 다시 살아나겠네요 영웅님 복 받으세요!"' },
+    { badge: '📺 공익 뉴스 픽', title: `2026 가장 닮고 싶은 청년 1위 — "${enemyName}" 해결한 시민영웅`, comment: '💬 베댓: "예절이 뭔지 몸소 증명하는 진짜 히어로다..."' },
+    { badge: '💬 네이버 뉴스 최다댓글', title: `"${enemyName}" 항복 선언! "시민영웅의 설득에 부끄러움을 느꼈다"`, comment: '💬 베댓: "빌런까지 감화시키는 말빨 대체 뭐냐고 ㄷㄷ"' },
+    { badge: '✨ 모범 시민 리포트', title: `질서 회복! "${enemyName}" 사건 이후 거리 치안 지수 급상승`, comment: '💬 베댓: "노란 완장 보이면 괜히 기분이 좋아짐 ㅋㅋㅋ"' },
+    { badge: '📸 사진 한 장의 힘', title: `채증 셔터 한 번에 꼬리 내린 "${enemyName}" 비하인드`, comment: '💬 베댓: "찰칵 소리 나자마자 태세 전환하는 거 소름 돋았음"' },
+    { badge: '🏅 명예 구민 추천', title: `"${enemyName}" 사건 완벽 해결에 주민 500명 서명 운동 시작`, comment: '💬 베댓: "나도 바로 서명하고 옴! 영웅님 꽃길만 걸으세요"' },
+    { badge: '📚 오늘의 명언', title: `"공공질서는 모두의 약속" — "${enemyName}" 제압 현장 어록 화제`, comment: '💬 베댓: "말이 너무 멋있어서 다이어리에 적어놨다 진심"' },
+    { badge: '🌈 힐링 뉴스', title: `"${enemyName}" 피해 복구까지 직접 도운 노란 완장 영웅`, comment: '💬 베댓: "싸움만 잘하는 게 아니라 마음까지 따뜻하네 ㅠㅠ"' },
+    { badge: '⚖️ 법대생 커뮤니티', title: `생활 법률 적용력 100점! "${enemyName}" 상대 논리 전개 분석.txt`, comment: '💬 베댓: "로펌 스카우트 제의 와도 안 이상할 실력임 ㄹㅇ"' },
+    { badge: '🔔 112 실시간 알림', title: `[처리 완료] "${enemyName}" 민원 100% 종결 — 시민 만족도 최상!`, comment: '💬 베댓: "이보다 깔끔한 마무리는 본 적이 없다 최고!"' },
+    { badge: '💐 꽃다발 릴레이', title: `"${enemyName}" 물리친 영웅 자취방 문 앞에 놓인 익명의 비타음료`, comment: '💬 베댓: "동네 어르신들이 챙겨주시는 듯 훈훈하다 ㅠㅠ"' },
+    { badge: '📺 교양 프로 섭외 1순위', title: `방송국 PD들이 찾는 주인공 — "${enemyName}" 해결사 단독 인터뷰 요청`, comment: '💬 베댓: "방송 나와도 겸손하게 딱 할 말만 할 상임 ㅋㅋ"' },
+    { badge: '🛡️ 안전 지수 UP', title: `"${enemyName}" 검거 이후 밤길 안심 귀가 후기 폭주 중!`, comment: '💬 베댓: "요즘 밤에 산책할 맛 납니다 다 영웅님 덕분!"' },
+    { badge: '💡 생활의 지혜', title: `"${enemyName}" 같은 진상 만났을 때 따라 하기 좋은 화법 TOP 3`, comment: '💬 베댓: "근데 영웅님 포스가 안 따라가서 내가 하면 안 통할 듯 ㅋㅋ"' },
+    { badge: '🔥 트위터 RT 5만', title: `"${enemyName}" 사건 풀스토리 타래 (ft. 유키·클로이 응원)`, comment: '💬 베댓: "주변 동료들 케미까지 완벽해서 드라마 보는 것 같음!"' },
+    { badge: '🎉 주말 특집 호외', title: `이번 주 최고의 시민 영웅 활약상: "${enemyName}" 제압!`, comment: '💬 베댓: "매주 레전드 갱신 중 ㅋㅋ 다음 활약도 기대합니다!"' },
+    { badge: '🐾 멍멍이도 응원', title: `"${enemyName}" 쫓아내는 데 한몫한 댕댕이와 시민영웅 투샷!`, comment: '💬 베댓: "강아지까지 정의감 넘치는 거 너무 귀엽잖아 ㅠㅠ"' },
+    { badge: '🌟 칭찬 릴레이', title: `혼자서 묵묵히 "${enemyName}" 정리하고 사라진 노란 완장`, comment: '💬 베댓: "진짜 히어로는 대가를 바라지 않는다더니... 멋지다!"' },
+    { badge: '🏆 오늘의 예절왕', title: `"${enemyName}" 마저 고개 숙이게 만든 진정한 시민의식!`, comment: '💬 베댓: "대한민국 미래가 밝다 영웅님 항상 파이팅!!"' },
+  ];
+  const pool = repMode === 'chaotic' ? chaoticFeeds : lawfulFeeds;
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  return { badge: pick.badge, likes, title: pick.title, comment: pick.comment };
 }

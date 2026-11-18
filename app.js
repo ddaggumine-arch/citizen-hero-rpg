@@ -4,7 +4,7 @@ import { YUKI_DMS_50, CHLOE_DMS_50 } from './data/heroineDms.js?v=112';
 import { KOREA_ACTS, REGIONAL_GOODS, RUNE_STONES, ACT_VILLAINS, ACT_STORY_EPISODES, ACT_PIN_LABELS, RELAY_QUESTS } from './data/koreaActs.js?v=120';
 import { STORY_CHAPTERS } from './data/storyChapters.js?v=48';
 import { ACTIVITY_CATEGORIES } from './data/activities.js?v=125';
-import { MINI_EVENTS, ENEMY_INTENTS, createFeedForVictory } from './data/liveEvents.js';
+import { MINI_EVENTS, ENEMY_INTENTS, createFeedForVictory } from './data/liveEvents.js?v=145';
 import { ENDINGS, evaluateEnding, buildFullEndingText } from './data/endings.js?v=82';
 import { HEROINES, LANG_QUIZZES, DATE_EVENTS } from './data/romance.js?v=63';
 import { CARS, GEAR_UPGRADES, ACHIEVEMENTS } from './data/lifestyle.js';
@@ -1028,6 +1028,7 @@ function triggerEnemyHit(dmg, isCrit = false, vfxOpts = null) {
 }
 
 function triggerPlayerDamage(dmg) {
+  state.battleDamageTaken = (state.battleDamageTaken || 0) + (Number(dmg) || 0);
   elBookPage.classList.remove('shake');
   void elBookPage.offsetWidth;
   elBookPage.classList.add('shake');
@@ -1606,6 +1607,26 @@ function startUrgentParryQte(enemy, onResult) {
       onResult(true);
     };
   }
+}
+
+function getSpiritDuoSynergy() {
+  const mainId = state.equippedSpirit;
+  const subId = state.subSpirit;
+  if (!mainId || !subId || mainId === subId) return null;
+  const sp1 = SPIRITS_50.find((x) => x.id === mainId);
+  const sp2 = SPIRITS_50.find((x) => x.id === subId);
+  if (!sp1 || !sp2) return null;
+  const pair = [sp1.element, sp2.element].sort().join('+');
+  const map = {
+    'cider+guts':   { label: '🔥탄산폭발(피해+15%)', dmgMult: 1.15, defMult: 1,    critAdd: 0,    spTurn: 0 },
+    'law+speech':   { label: '⚖️철벽논리(피격-12%)', dmgMult: 1.0,  defMult: 0.88, critAdd: 0,    spTurn: 0 },
+    'cider+snap':   { label: '✨프리즘크리(치명+10%)', dmgMult: 1.0, defMult: 1,    critAdd: 0.10, spTurn: 0 },
+    'guts+speech':  { label: '💥열혈사자후(매턴SP+5)', dmgMult: 1.05, defMult: 1,   critAdd: 0,    spTurn: 5 },
+  };
+  if (sp1.element === sp2.element) {
+    return { label: '🌟동속성공명(피해+14%)', dmgMult: 1.14, defMult: 1, critAdd: 0.04, spTurn: 0 };
+  }
+  return map[pair] || { label: '🤝듀오공명(공+8%·치명+4%)', dmgMult: 1.08, defMult: 1, critAdd: 0.04, spTurn: 0 };
 }
 
 function getHeroineLoveCap(key) {
@@ -2202,6 +2223,8 @@ function pickLevelAppropriateVillain(pool, heroLv = state.level || 1) {
 
 function startBattle(enemyId, isRandomEncounter = false) {
   state.combatInputLock = false;
+  state.battleDamageTaken = 0;
+  state.battleChainClears = 0;
   state.lastVictoryExp = null;
   const baseEnemy = getEnemyById(enemyId);
   if (!state.villainEncounters) state.villainEncounters = {};
@@ -2570,6 +2593,9 @@ function enemyCounterTurn(enemy, isGuarding = false) {
     dmg = nextDmg;
     if (blocked > 0) state.log += `\n🛡️ [방어력 경감 -${blocked}]`;
   }
+  const duoSynDef = getSpiritDuoSynergy();
+  if (duoSynDef && duoSynDef.defMult < 1 && dmg > 1) dmg = Math.max(1, Math.round(dmg * duoSynDef.defMult));
+  if (duoSynDef && duoSynDef.spTurn > 0) state.sp = clamp(state.sp + duoSynDef.spTurn, 0, state.maxSp);
   if (state.reformedAllies?.includes('noise_villain') && dmg > 1) {
     dmg = Math.max(1, Math.round(dmg * 0.90));
   }
@@ -2736,6 +2762,28 @@ function handleEnemyDefeated(enemy) {
   if (!isBossId(enemy.id) && !enemy.storyOnly && !enemy.isActBoss) {
     grantIntel(1, '부하 심문');
   }
+  // V57.0: 전투 챌린지 훈장 3종 정산!
+  const chalRewards = [];
+  if ((state.battleDamageTaken || 0) === 0) {
+    state.points += 40;
+    state.scrap = (state.scrap || 0) + 1;
+    chalRewards.push('🛡️노데미지(+40P·고철+1)');
+  }
+  if ((state.battleTurn || 0) <= 3) {
+    state.points += 35;
+    if (state.equippedSpirit) gainSpiritExp(state.equippedSpirit, 25);
+    chalRewards.push('⚡3턴컷(+35P·정령EXP+25)');
+  }
+  if ((state.battleChainClears || 0) >= 1) {
+    state.points += 45;
+    state.sp = clamp(state.sp + 20, 0, state.maxSp);
+    chalRewards.push('🌀3체인마스터(+45P·SP+20)');
+  }
+  if (chalRewards.length > 0) {
+    showToast(`🏆 전투 챌린지 달성! ${chalRewards.join(' · ')}`, 'break');
+    state.log = (state.log ? state.log + '\n' : '') + `🏆 [전투 챌린지 보너스!] ${chalRewards.join(' · ')}`;
+  }
+
   if (!state.villainWins) state.villainWins = {};
   state.villainWins[enemy.id] = (state.villainWins[enemy.id] || 0) + 1;
   checkReformedAllyUnlock(enemy.id);
@@ -3188,6 +3236,7 @@ function performAttack(type, ultPerfect = false) {
     state.sp = clamp(state.sp + 25, 0, state.maxSp);
     addFever(20);
     state.enemyGuardShield = Math.max(0, (state.enemyGuardShield ?? 3) - 1);
+    state.battleChainClears = (state.battleChainClears || 0) + 1;
     state.skillChain = [];
     state.log += `\n⚡ [삼위일체 참교육 대폭발!!] 서로 다른 3연타! 피해 1.4배 + 사이다 +25 + 피버 +20% + 가드 1칸 파쇄!`;
     showToast('⚡ 삼위일체 3속성 체인 대폭발!! (피해 1.4배 · 사이다+25)', 'break');
@@ -3237,6 +3286,8 @@ function performAttack(type, ultPerfect = false) {
   if ((state.bossDmgMult || 0) > 0 && (isBossId(enemy.id) || enemy.storyOnly || enemy.id === HIDDEN_BOSS.id)) {
     dmg = Math.round(dmg * (1 + state.bossDmgMult));
   }
+  const duoSyn = getSpiritDuoSynergy();
+  if (duoSyn && duoSyn.dmgMult > 1) dmg = Math.round(dmg * duoSyn.dmgMult);
   if (wasFirstTurn && spBonAtk.perkId === 'first_strike') {
     dmg = Math.round(dmg * 1.35);
     state.log += `\n⚡ [${spBonAtk.spirit.name}] 선제 강타! 피해 +35%!`;
@@ -7535,6 +7586,8 @@ function render() {
       }
       const fcBadge = FIELD_CONDITIONS[state.fieldCond || 'none']?.badge;
       if (fcBadge) activeBadges.push({ cls: 'is-combo', txt: fcBadge });
+      const duoB = getSpiritDuoSynergy();
+      if (duoB) activeBadges.push({ cls: 'is-break', txt: duoB.label });
       if (state.intelAmbushReady) activeBadges.push({ cls: 'is-break', txt: '🕵️ 첫턴 1.8배 기습!' });
       if (state.lastSkillType) activeBadges.push({ cls: 'is-combo', txt: `직전:${SKILL_ATTR_LABELS[state.lastSkillType] || ''}${(state.repeatSkillCount || 0) >= 1 ? '(연속↓)' : ''}` });
       if (state.nextGuaranteedCrit) activeBadges.push({ cls: 'is-break', txt: '📺 다음 타 확정치명!' });
@@ -9055,7 +9108,7 @@ if (btnToggleBgm) {
 function updateBgmForPhase() {
   if (!settings.bgm && settings.bgm !== undefined) return;
   if (state.phase === 'combat') sfx.setBgm('combat');
-  else if (['romance', 'lang_quiz', 'date_scene'].includes(state.phase)) sfx.setBgm('romance');
+  else if (['romance', 'lang_quiz', 'date_scene', 'romance_story', 'wedding_honeymoon', 'couple_date', 'love_triangle_chaos'].includes(state.phase)) sfx.setBgm('romance');
   else if (state.phase === 'victory') sfx.setBgm('victory');
   else if (state.phase === 'title' || state.phase === 'gameover') sfx.setBgm('none');
   else sfx.setBgm('map');
