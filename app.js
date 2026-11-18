@@ -430,6 +430,10 @@ const elStatLaw = document.getElementById('stat-law');
 const elStatPoints = document.getElementById('stat-points');
 const elMiniStatsBtn = document.getElementById('mini-stats-btn');
 const elMiniSpDot = document.getElementById('mini-sp-dot');
+const elHudExpRow = document.getElementById('hud-exp-row');
+const elHudExpLv = document.getElementById('hud-exp-lv');
+const elHudExpText = document.getElementById('hud-exp-text');
+const elHudExpBar = document.getElementById('hud-exp-bar');
 const elHeroLvBadge = document.getElementById('hero-lv-badge');
 const elEnemyLvBadge = document.getElementById('enemy-lv-badge');
 const elInvCount = document.getElementById('inv-count');
@@ -1844,6 +1848,7 @@ function pickLevelAppropriateVillain(pool, heroLv = state.level || 1) {
 }
 
 function startBattle(enemyId, isRandomEncounter = false) {
+  state.lastVictoryExp = null;
   const baseEnemy = getEnemyById(enemyId);
   if (!state.villainEncounters) state.villainEncounters = {};
   state.villainEncounters[baseEnemy.id] = (state.villainEncounters[baseEnemy.id] || 0) + 1;
@@ -2225,10 +2230,30 @@ function handleEnemyDefeated(enemy) {
   state.points += baseReward + nightBonus + dustBonus + goldSpBonus + luckyGold;
   const expSpMult = getSpiritBonuses().perkId === 'exp_up' ? 1.35 : 1;
   const expGain = Math.round((24 + (enemy.reward || 30) * 0.65) * ((isBossId(enemy.id) || enemy.storyOnly) ? 1.6 : 1) * (1 + (eqBon.expMult || 0)) * expSpMult);
+  const prevLvSnap = state.level || 1;
+  const prevExpSnap = state.exp || 0;
+  const prevNeedSnap = getExpToNextLevel(prevLvSnap);
   gainHeroExp(expGain);
+  let spiritExpGain = 0;
   if (state.equippedSpirit) {
-    gainSpiritExp(state.equippedSpirit, Math.max(15, Math.round(expGain * 0.85)));
+    spiritExpGain = Math.max(15, Math.round(expGain * 0.85));
+    gainSpiritExp(state.equippedSpirit, spiritExpGain);
   }
+  const eqSpSnap = getSpiritBonuses().spirit;
+  state.lastVictoryExp = {
+    enemyName: enemy.name,
+    expGain,
+    pointsGain: baseReward + nightBonus + dustBonus + goldSpBonus + luckyGold,
+    prevLv: prevLvSnap,
+    prevExp: prevExpSnap,
+    prevNeed: prevNeedSnap,
+    afterLv: state.level || 1,
+    afterExp: state.exp || 0,
+    afterNeed: getExpToNextLevel(state.level || 1),
+    spiritName: eqSpSnap ? eqSpSnap.name : '',
+    spiritExpGain,
+    animPlayed: false,
+  };
   const winPp = isBossId(enemy.id) || enemy.isActBoss ? 2 : 1;
   restoreSkillPp(winPp);
   if (getSpiritBonuses().perkId === 'pp_refund') {
@@ -2886,6 +2911,21 @@ function render() {
     const spPts = state.skillPoints || 0;
     elMiniSpDot.textContent = `✨+${spPts}`;
     elMiniSpDot.classList.toggle('hidden', spPts <= 0);
+  }
+  if (elHudExpRow) {
+    const showHudExp = state.phase !== 'title';
+    elHudExpRow.classList.toggle('hidden', !showHudExp);
+    if (showHudExp) {
+      const hLv = state.level || 1;
+      const hExp = state.exp || 0;
+      const hNeed = getExpToNextLevel(hLv);
+      const isMaxLv = hLv >= 50;
+      const hPct = isMaxLv ? 100 : Math.min(100, Math.round((hExp / Math.max(1, hNeed)) * 100));
+      const hRemain = isMaxLv ? 0 : Math.max(0, hNeed - hExp);
+      if (elHudExpLv) elHudExpLv.textContent = `🛡️ Lv.${hLv} · ${getHeroRankTitle(hLv)}`;
+      if (elHudExpText) elHudExpText.textContent = isMaxLv ? '👑 MAX LEVEL 달성!' : `EXP ${hExp}/${hNeed} (${hPct}%) · 다음 Lv까지 ${hRemain}`;
+      if (elHudExpBar) elHudExpBar.style.width = `${hPct}%`;
+    }
   }
   elInvCount.textContent = state.inventory.length;
   elTraitCount.textContent = state.traits.length;
@@ -7200,6 +7240,64 @@ function render() {
     return;
   }
 
+function appendVictoryExpCard(container) {
+  const v = state.lastVictoryExp;
+  if (!v || !container) return;
+  const isMaxLv = v.afterLv >= 50;
+  const leveledUp = v.afterLv > v.prevLv;
+  const prevPct = Math.min(100, Math.round((v.prevExp / Math.max(1, v.prevNeed)) * 100));
+  const afterPct = isMaxLv ? 100 : Math.min(100, Math.round((v.afterExp / Math.max(1, v.afterNeed)) * 100));
+  const remainExp = isMaxLv ? 0 : Math.max(0, v.afterNeed - v.afterExp);
+  const estWins = isMaxLv ? 0 : Math.max(1, Math.ceil(remainExp / Math.max(1, v.expGain)));
+
+  const card = document.createElement('div');
+  card.className = `victory-exp-card${leveledUp ? ' is-levelup' : ''}`;
+  const startPct = v.animPlayed ? afterPct : prevPct;
+  card.innerHTML = `
+    <div class="vexp-top">
+      <span class="vexp-title">⚔️ ${v.enemyName} 제압 정산</span>
+      <div class="vexp-badges">
+        <span class="vexp-pts-badge">💰 +${v.pointsGain} P</span>
+        <span class="vexp-gain-badge">⭐ +${v.expGain} EXP</span>
+      </div>
+    </div>
+    ${leveledUp ? `<div class="vexp-lvup-banner">🎉 LEVEL UP!! Lv.${v.prevLv} → Lv.${v.afterLv} (${getHeroRankTitle(v.afterLv)})</div>` : ''}
+    <div class="vexp-bar-header">
+      <span><strong>Lv.${v.afterLv}</strong> 경험치 게이지</span>
+      <span>${isMaxLv ? 'MAX (Lv.50)' : `${v.afterExp} / ${v.afterNeed} EXP (${afterPct}%)`}</span>
+    </div>
+    <div class="vexp-bar-track">
+      <div class="vexp-bar-fill" style="width:${startPct}%"></div>
+      <div class="vexp-bar-pct">${isMaxLv ? '👑 MAX LEVEL' : `${afterPct}%`}</div>
+    </div>
+    <div class="vexp-remain-box">
+      <span>${isMaxLv ? '👑 최고 레벨 Lv.50 달성 완료!' : `🎯 다음 Lv.${v.afterLv + 1}까지 남은 EXP: <b>${remainExp}</b>`}</span>
+      ${isMaxLv ? '' : `<span class="vexp-remain-est">⚔️ 비슷한 적 약 ${estWins}판 더 싸우면 레벨업!</span>`}
+    </div>
+    ${v.spiritName ? `<div class="vexp-spirit-line">🧚 동행 정령 [${v.spiritName}] 경험치 +${v.spiritExpGain} EXP</div>` : ''}
+  `;
+  container.appendChild(card);
+
+  if (!v.animPlayed) {
+    v.animPlayed = true;
+    const fill = card.querySelector('.vexp-bar-fill');
+    if (fill) {
+      if (leveledUp) {
+        setTimeout(() => { fill.style.width = '100%'; }, 60);
+        setTimeout(() => {
+          fill.style.transition = 'none';
+          fill.style.width = '0%';
+          void fill.offsetWidth;
+          fill.style.transition = '';
+          fill.style.width = `${afterPct}%`;
+        }, 720);
+      } else {
+        setTimeout(() => { fill.style.width = `${afterPct}%`; }, 60);
+      }
+    }
+  }
+}
+
   // 6-9. V26.2 빌런의 찌질한 변명 + 최후의 일갈
   if (state.phase === 'villain_excuse') {
     const vName = state.excuseEnemyName || '민폐 빌런';
@@ -7219,6 +7317,7 @@ function render() {
     );
     setLogText(state.log, true);
     elChoicesPanel.className = 'choices-panel';
+    appendVictoryExpCard(elChoicesPanel);
     [
       {
         text: '⚖️ "사정은 경찰서에서 말씀하세요! 법대로 처리합니다."',
@@ -7330,6 +7429,7 @@ function render() {
     );
     elBattleLog.textContent = state.log;
     elChoicesPanel.className = 'choices-panel';
+    appendVictoryExpCard(elChoicesPanel);
 
     const nextNm = document.createElement('button');
     nextNm.className = 'choice-btn row-btn story-main-btn';
@@ -7378,6 +7478,7 @@ function render() {
     );
     elBattleLog.textContent = state.log;
     elChoicesPanel.className = 'choices-panel';
+    appendVictoryExpCard(elChoicesPanel);
 
     const nextBtn = document.createElement('button');
     nextBtn.className = 'choice-btn row-btn story-main-btn';
@@ -7527,6 +7628,7 @@ function render() {
     if (elKongiSprite) elKongiSprite.classList.toggle('hidden', !hasPet);
     elBattleLog.textContent = state.log;
     elChoicesPanel.className = 'choices-panel';
+    appendVictoryExpCard(elChoicesPanel);
 
     const getDraftMeta = (opt) => {
       if (opt.kind === 'trait_new') return { tier: 's', rank: 4, label: '🟨 S급 · 신규 특성', cls: 'draft-card-s' };
@@ -7555,6 +7657,7 @@ function render() {
         sfx.powerup();
         vibrate([25, 25, 50]);
         const msg = applyDraftReward(opt);
+        state.lastVictoryExp = null;
         state.phase = (state.pendingStoryAftermath !== null && state.pendingStoryAftermath !== undefined)
           ? 'story_aftermath'
           : (state.pendingActAftermath ? 'act_aftermath' : 'map');
