@@ -3974,7 +3974,8 @@ function render() {
   document.body.dataset.time = state.phase === 'title' ? 'morning' : (timeThemes[state.timeIndex] || 'morning');
   const elDiffPill = document.getElementById('diff-pill');
   if (elDiffPill) {
-    if (state.phase === 'title') {
+    if (state.phase === 'life') state.phase = 'map';
+  if (state.phase === 'title') {
       elDiffPill.classList.add('hidden');
     } else {
       const dId = state.difficulty || 'normal';
@@ -3985,7 +3986,8 @@ function render() {
   }
 
   if (elDdayPill) {
-    if (state.phase === 'title') {
+    if (state.phase === 'life') state.phase = 'map';
+  if (state.phase === 'title') {
       elDdayPill.classList.add('hidden');
     } else if (state.storyCleared || state.freePlayMode) {
       elDdayPill.classList.remove('hidden', 'warn', 'danger');
@@ -4339,6 +4341,7 @@ function render() {
   }
 
   // 1. 타이틀 화면
+  if (state.phase === 'life') state.phase = 'map';
   if (state.phase === 'title') {
     const saved = loadSavedGame();
     elLocation.textContent = 'SEOUL 2026 · TEXT GTA';
@@ -4814,7 +4817,7 @@ function render() {
       if (!dr.rewarded) {
         recTitle = `💡 [오늘 추천] 3단 루틴 ([알바${dr.work ? '✔' : '○'}] [수련/상점${dr.trainOrShop ? '✔' : '○'}] [휴식/행운/펫${dr.careOrLuck ? '✔' : '○'}])`;
         recSub = '완성 시 +80P · 강화석 +2 · PP +3 즉시 지급! (일상·성장으로 ▶)';
-        recFn = () => { state.phase = 'life'; render(); };
+        recFn = () => openDailyHubModal();
       } else if ((state.spicyBuffBattles || 0) <= 0 && (state.points || 0) >= 40) {
         recTitle = '💡 [전투 준비 추천] 편의점 🔥 매운 컵라면 버프!';
         recSub = '40P로 다음 3전투 공격력 +20% 버프 챙기기 ▶';
