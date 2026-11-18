@@ -5362,13 +5362,37 @@ function render() {
         elChoicesPanel.appendChild(wBtn);
       });
     }
+    const yukiLoveNow = state.love?.yuki || 0;
+    const yukiSpMilestones = [
+      { req: 110, file: 'yuki_sp_bikini.jpg', title: '👙 유키 노을 해변 비키니', msg: '"바다에서 찍은 건데... 너한테만 보여줄게, 부끄럽지만 많이 예뻐해 줘 ♥"' },
+      { req: 130, file: 'yuki_sp_denim.jpg', title: '🪞 유키 크롭티 & 데님 핫팬츠', msg: '"여름 옷 갈아입다가 거울 앞에서 찍어봤어... 이런 스타일도 잘 어울려?"' },
+      { req: 150, file: 'yuki_sp_pool.jpg', title: '🌙 유키 밤수영 젖은 셔츠', msg: '"물에서 나왔더니 셔츠가 다 젖어버렸네... 빨리 와서 닦아줄래?"' },
+      { req: 170, file: 'yuki_sp_yoga.jpg', title: '🧘‍♀️ 유키 모닝 필라테스 스트레칭', msg: '"아침에 일어나자마자 스트레칭 중이야! 옆에 와서 같이 해볼래? ♥"' },
+    ];
+    yukiSpMilestones.forEach((m) => {
+      if (yukiLoveNow >= m.req) {
+        if (!Array.isArray(state.weddingAlbum)) state.weddingAlbum = [];
+        if (!state.weddingAlbum.includes(m.file)) {
+          state.weddingAlbum.push(m.file);
+          if (!state.dateMessages) state.dateMessages = [];
+          state.dateMessages.unshift({
+            sender: '🇯🇵 유키',
+            title: `📸 시크릿 포토 해금! (${m.title})`,
+            body: m.msg,
+          });
+          state.unreadMessages = (state.unreadMessages || 0) + 1;
+          showToast(`📸 유키 시크릿 화보 해금! [${m.title}]`, 'good');
+        }
+      }
+    });
+
     if ((state.weddingAlbum?.length || 0) > 0) {
       const albBtn = document.createElement('button');
       albBtn.className = 'choice-btn row-btn';
       albBtn.style.gridColumn = 'span 2';
       albBtn.style.background = 'linear-gradient(180deg, #fff0f6 0%, #ffe4e6 100%)';
       albBtn.style.borderColor = '#e11d48';
-      albBtn.innerHTML = `<span>📸 결혼 · 신혼여행 스페셜 앨범 (${state.weddingAlbum.length}/9)</span><span class="choice-sub" style="color:#9f1239;">해금된 웨딩 & 허니문 일러스트 다시 보기</span>`;
+      albBtn.innerHTML = `<span>📸 유키 시크릿 & 웨딩 스페셜 앨범 (${state.weddingAlbum.length}/13)</span><span class="choice-sub" style="color:#9f1239;">해금된 시크릿 화보 · 웨딩 · 허니문 일러스트 크게 보기</span>`;
       albBtn.addEventListener('click', () => { sfx.click(); openWeddingAlbumModal(); });
       elChoicesPanel.appendChild(albBtn);
     }
@@ -12056,11 +12080,15 @@ const WEDDING_ROUTES = {
 
 function openWeddingAlbumModal() {
   const album = state.weddingAlbum || [];
-  elActivityModalTitle.textContent = `📸 결혼 · 신혼여행 스페셜 앨범 (${album.length}/9)`;
+  elActivityModalTitle.textContent = `📸 유키 시크릿 & 웨딩 스페셜 앨범 (${album.length}/13)`;
   if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
   elActivityList.innerHTML = '';
 
   const allImgs = [
+    { file: 'yuki_sp_bikini.jpg', title: '👙 유키 노을 해변 비키니', reqText: '유키 호감 110+ 달성 시 해금' },
+    { file: 'yuki_sp_denim.jpg', title: '🪞 유키 크롭티 & 데님 핫팬츠', reqText: '유키 호감 130+ 달성 시 해금' },
+    { file: 'yuki_sp_pool.jpg', title: '🌙 유키 밤수영 젖은 셔츠', reqText: '유키 호감 150+ 달성 시 해금' },
+    { file: 'yuki_sp_yoga.jpg', title: '🧘‍♀️ 유키 모닝 필라테스 스트레칭', reqText: '유키 호감 170+ 달성 시 해금' },
     { file: 'wedding_yuki.jpg', title: '🌸 유키 웨딩 마치' },
     { file: 'honeymoon_yuki_1.jpg', title: '♨️ 유키 교토 노천온천' },
     { file: 'honeymoon_yuki_2.jpg', title: '🕯️ 유키 촛불 유카타' },
@@ -12078,13 +12106,13 @@ function openWeddingAlbumModal() {
     card.className = 'inv-item';
     card.style.opacity = unlocked ? '1' : '0.45';
     card.innerHTML = unlocked
-      ? `<img src="assets/images/romance/${it.file}?v=122" style="width:68px;height:68px;object-fit:cover;border-radius:8px;border:1.5px solid #e11d48;" /><div class="inv-info"><h4>${it.title}</h4><p>✨ 해금 완료 (터치해서 크게 보기)</p></div>`
-      : `<div class="inv-info"><h4>🔒 ${it.title}</h4><p>호감 180+ 결혼 & 신혼여행 진행 시 해금</p></div>`;
+      ? `<img src="assets/images/romance/${it.file}?v=133" style="width:68px;height:68px;object-fit:cover;border-radius:8px;border:1.5px solid #e11d48;" /><div class="inv-info"><h4>${it.title}</h4><p>✨ 해금 완료 (터치해서 크게 보기)</p></div>`
+      : `<div class="inv-info"><h4>🔒 ${it.title}</h4><p>${it.reqText || '호감 180+ 결혼 & 신혼여행 진행 시 해금'}</p></div>`;
     if (unlocked) {
       card.style.cursor = 'pointer';
       card.addEventListener('click', () => {
         if (elActivityModalImg) {
-          elActivityModalImg.src = `assets/images/romance/${it.file}?v=122`;
+          elActivityModalImg.src = `assets/images/romance/${it.file}?v=133`;
           elActivityModalImg.classList.remove('hidden');
         }
       });
