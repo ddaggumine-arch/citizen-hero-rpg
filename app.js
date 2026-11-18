@@ -448,6 +448,7 @@ const elEnemyHpLabel = document.getElementById('enemy-hp-label');
 const elEnemyHpText = document.getElementById('enemy-hp-text');
 const elEnemyHpBar = document.getElementById('enemy-hp-bar');
 const elFrame = document.getElementById('illustration-frame');
+const elCombatVfxLayer = document.getElementById('combat-vfx-layer');
 const elRomMgOverlay = document.getElementById('rom-mg-overlay');
 const elRomMgPanel = document.getElementById('rom-mg-panel');
 const elWildSpiritSprite = document.getElementById('wild-spirit-sprite');
@@ -952,16 +953,73 @@ function showFloatingText(text, type = 'hit') {
   setTimeout(() => el.remove(), 900);
 }
 
-function triggerEnemyHit(dmg, isCrit = false) {
+function getSkillVfxInfo(type) {
+  if (type === 'special') {
+    return { vfxImg: 'assets/images/vfx/vfx_snap_4.png?v=127', tier: 4, skillName: '⚡ 필살·사이다 슈퍼노바!!' };
+  }
+  if (type === 'guard') {
+    return { vfxImg: 'assets/images/vfx/vfx_guts_2.png?v=127', tier: 2, skillName: '🛡️ 저스트 패링·거울 반격!' };
+  }
+  if (type === 'tag') {
+    return { vfxImg: 'assets/images/vfx/vfx_law_4.png?v=127', tier: 4, skillName: '🌟 합동 궁극기!!' };
+  }
+  const slot = ['speech', 'guts', 'law', 'snap'].includes(type) ? type : 'speech';
+  const eqId = state.equippedSkills?.[slot];
+  const sk = eqId ? getSkillById(eqId) : null;
+  const m = String(eqId || '').match(/_(\d+)$/);
+  const num = m ? parseInt(m[1], 10) : 1;
+  const tier = num >= 21 ? 4 : (num >= 14 ? 3 : (num >= 7 ? 2 : 1));
+  return {
+    vfxImg: `assets/images/vfx/vfx_${slot}_${tier}.png?v=127`,
+    tier,
+    skillName: sk ? sk.name : '',
+  };
+}
+
+function spawnCombatVfx(vfxOpts, isCrit = false) {
+  if (!elCombatVfxLayer || !vfxOpts) return;
+  if (vfxOpts.vfxImg) {
+    const img = document.createElement('img');
+    const isBig = isCrit || vfxOpts.isBreak || vfxOpts.isFever || (vfxOpts.tier || 1) >= 4;
+    img.src = vfxOpts.vfxImg;
+    img.className = `vfx-impact-sprite${isBig ? ' is-big' : ''}`;
+    img.alt = '';
+    elCombatVfxLayer.appendChild(img);
+    setTimeout(() => img.remove(), 660);
+
+    const ring = document.createElement('div');
+    ring.className = 'vfx-hit-ring';
+    elCombatVfxLayer.appendChild(ring);
+    setTimeout(() => ring.remove(), 500);
+  }
+  if (vfxOpts.skillName && (isCrit || vfxOpts.isBreak || vfxOpts.isFever || (vfxOpts.tier || 1) >= 3)) {
+    const prevBanner = elCombatVfxLayer.querySelector('.vfx-cutin-banner');
+    if (prevBanner) prevBanner.remove();
+    const banner = document.createElement('div');
+    banner.className = 'vfx-cutin-banner';
+    banner.textContent = vfxOpts.isBreak ? `💥 BREAK! ${vfxOpts.skillName}` : vfxOpts.skillName;
+    elCombatVfxLayer.appendChild(banner);
+    setTimeout(() => banner.remove(), 980);
+  }
+}
+
+function triggerEnemyHit(dmg, isCrit = false, vfxOpts = null) {
   elFrame.classList.remove('hit-flash');
   void elFrame.offsetWidth;
   elFrame.classList.add('hit-flash');
-  if (isCrit && elBookPage) {
+  if (elSceneImage) {
+    elSceneImage.classList.remove('enemy-hit-shake');
+    void elSceneImage.offsetWidth;
+    elSceneImage.classList.add('enemy-hit-shake');
+  }
+  if ((isCrit || vfxOpts?.isBreak || vfxOpts?.isFever) && elBookPage) {
     elBookPage.classList.remove('hit-flash', 'shake');
     void elBookPage.offsetWidth;
     elBookPage.classList.add('hit-flash', 'shake');
   }
-  showFloatingText(isCrit ? `💥 치명 -${dmg}!!` : `-${dmg}`, isCrit ? 'crit' : 'hit');
+  if (vfxOpts) spawnCombatVfx(vfxOpts, isCrit);
+  const weakTag = vfxOpts?.isWeak ? ' ⚡약점!' : '';
+  showFloatingText(isCrit ? `💥 치명 -${dmg}!!${weakTag}` : `-${dmg}${weakTag}`, isCrit ? 'crit' : 'hit');
   sfx.hit(isCrit);
   vibrate(isCrit ? [45, 30, 85] : 35);
 }
@@ -2486,7 +2544,7 @@ function performGuard() {
     state.log += `\n💥 [MENTAL BREAK!!] 실드 격파! 빌런 기절 + 공짜 보너스 1턴!!`;
     showToast('💥 MENTAL BREAK! 공짜 보너스 1턴 획득!!', 'break');
   }
-  triggerEnemyHit(counterDmg, true);
+  triggerEnemyHit(counterDmg, true, getSkillVfxInfo('guard'));
   if (state.enemyHp <= 0) {
     handleEnemyDefeated(enemy);
     return;
@@ -2818,7 +2876,8 @@ function performAttack(type, ultPerfect = false) {
     addFever(hitWeakness ? 25 : 14);
   }
   checkStreamMission(type);
-  triggerEnemyHit(dmg, isCrit);
+  const vfxInfo = getSkillVfxInfo(type);
+  triggerEnemyHit(dmg, isCrit, { ...vfxInfo, isWeak: hitWeakness, isBreak: gotBreakBonusTurn, isFever });
   if (state.enemyHp <= 0) {
     handleEnemyDefeated(enemy);
     return;
@@ -2884,7 +2943,7 @@ function useItem(itemId, invIndex) {
   elInvModal.classList.add('hidden');
   const gearTitle = gearObj ? `${gearObj.name} (Lv.${gearLv})` : item.name;
   state.log = `[${gearTitle}] 발동!! 빌런에게 치명타! (멘탈 -${dmg}${item.stun ? ' · 기절!' : ''})`;
-  triggerEnemyHit(dmg, true);
+  triggerEnemyHit(dmg, true, { vfxImg: 'assets/images/vfx/vfx_guts_1.png?v=127', tier: 3, skillName: `⚔️ ${gearTitle}` });
 
   if (state.enemyHp <= 0) {
     handleEnemyDefeated(enemy);
@@ -9370,7 +9429,7 @@ function performTagSkill() {
   if (meta.hasChloe) triggerPartnerCallout('chloe', 'Combo Finisher!! ⚡', true);
   if (meta.hasPet) triggerPartnerCallout('kongi', '왕! 필살 발목 물기! 🐾', true);
   playHeroAnim('attack');
-  triggerEnemyHit(dmg, true);
+  triggerEnemyHit(dmg, true, { ...getSkillVfxInfo('tag'), isBreak: true, isFever: true });
   if (state.enemyHp <= 0) handleEnemyDefeated(enemy);
   else {
     saveGame();
@@ -9963,7 +10022,7 @@ function useCustomSpellInCombat(enemy) {
     extra = ' · 피버 +25%';
   }
   state.log = `✨ [${sp.name}!!] 나만의 필살기 작렬! (멘탈 -${dmg}${extra})`;
-  triggerEnemyHit(dmg, true);
+  triggerEnemyHit(dmg, true, { vfxImg: 'assets/images/vfx/vfx_snap_3.png?v=127', tier: 4, skillName: `✨ ${sp.name}!!`, isFever: true });
   if (state.enemyHp <= 0) handleEnemyDefeated(enemy);
   else enemyCounterTurn(enemy, false);
 }
@@ -10013,7 +10072,7 @@ function openDiplomacyModal(enemy) {
       sfx.victory();
       showToast(`🗣️ 설득 성공! 적 멘탈 -${dmg} & 가드 1칸 파쇄!`, 'good');
       state.log = `🗣️ 정곡을 찌르는 논리에 [${enemy.name}]의 멘탈이 크게 흔들렸습니다! (멘탈 -${dmg} · 가드-1 · 명성+1)`;
-      triggerEnemyHit(dmg, true);
+      triggerEnemyHit(dmg, true, { vfxImg: 'assets/images/vfx/vfx_speech_2.png?v=127', tier: 2 });
       saveGame();
       render();
     } else {
@@ -10040,7 +10099,7 @@ function openDiplomacyModal(enemy) {
       sfx.powerup();
       showToast(`😈 협박 성공! 적 멘탈 -${dmg} & 1턴 기절!`, 'warn');
       state.log = `😈 서늘한 눈빛에 [${enemy.name}]이(가) 얼어붙었습니다! (멘탈 -${dmg} · 1턴 기절 · 악명+1)`;
-      triggerEnemyHit(dmg, true);
+      triggerEnemyHit(dmg, true, { vfxImg: 'assets/images/vfx/vfx_guts_3.png?v=127', tier: 2 });
       saveGame();
       render();
     } else {
