@@ -26,7 +26,7 @@ export const ACTIVITY_CATEGORIES = [
     animClass: 'cutscene-work',
     items: [
       { id: 'work_cvs', name: '🏪 편의점 타임 알바', desc: 'HP -10 · +35 P · 언변 +1', minHp: 12, effect: { hp: -10, points: 35, speech: 1 }, msg: '🏪 진상 손님 응대로 말빨과 지갑이 두둑해졌습니다! (+35 P, 언변 +1)' },
-      { id: 'work_delivery', name: '🛵 도보 배달 알바', desc: 'HP -14 · +48 P · 최대HP +2', minHp: 16, effect: { hp: -14, points: 48, maxHp: 2 }, msg: '🛵 골목길 5km 주파! (+48 P, 최대HP +2)' },
+      { id: 'work_delivery', name: '🛵 도보 배달 알바', desc: 'HP -14 · +48 P · 최대HP +2', minHp: 16, image: 'assets/images/fun_delivery.jpg?v=156', effect: { hp: -14, points: 48, maxHp: 2 }, msg: '🛵 골목길 5km 주파! (+48 P, 최대HP +2)' },
       { id: 'work_cafe', name: '☕ 카페 피크타임 알바', desc: 'HP -12 · +38 P · 사이다 +12', minHp: 14, effect: { hp: -12, points: 38, sp: 12 }, msg: '☕ 아이스 아메리카노 100잔 제조! (+38 P, 사이다 +12)' },
       { id: 'work_tutor', name: '📚 시민 법규 과외', desc: 'HP -8 · +32 P · 법률 +1', minHp: 10, effect: { hp: -8, points: 32, law: 1 }, msg: '📚 생활 법률 강의 성공! (+32 P, 법률 +1)' },
       { id: 'work_traffic', name: '🦺 등굣길 교통봉사', desc: 'HP -10 · 모범 +6 · +18 P · 민폐도 -3%', minHp: 12, effect: { hp: -10, lawful: 6, points: 18, chaos: -3 }, msg: '🦺 땡볕 아래 아이들이 안전하게 건넜습니다! (+18 P, 민폐도 -3%)' },
@@ -39,7 +39,7 @@ export const ACTIVITY_CATEGORIES = [
     image: 'assets/images/act_train.jpg',
     animClass: 'cutscene-train',
     items: [
-      { id: 'train_pullup', name: '🏋️ 공원 철봉 턱걸이 50개', desc: 'HP -8 · 배짱 +1 · 최대HP +6', minHp: 10, effect: { hp: -8, guts: 1, maxHp: 6 }, msg: '💪 불타는 철봉 훈련! (배짱 +1, 최대HP +6)' },
+      { id: 'train_pullup', name: '🏋️ 헬스장 3대 500 도전', desc: 'HP -8 · 배짱 +1 · 최대HP +6', minHp: 10, image: 'assets/images/fun_gym_500.jpg?v=156', effect: { hp: -8, guts: 1, maxHp: 6 }, msg: '💪 불타는 3대 500 데드리프트! (배짱 +1, 최대HP +6)' },
       { id: 'train_debate', name: '🗣️ 100분 딕션 스피치', desc: '언변 +1 · 기본피해 +2 · 모범 +4', effect: { speech: 1, dmg: 2, lawful: 4 }, msg: '🗣️ 또박또박 날카로운 팩트폭력 발성 완성! (언변 +1, 공격력 +2)' },
       { id: 'train_law', name: '📖 경범죄·민법 독파', desc: '법률 +1 · 주사위 보정 +1', effect: { law: 1, dice: 1, lawful: 5 }, msg: '📖 판례를 통째로 외웠습니다! (법률 +1, 주사위 +1)' },
       { id: 'train_mirror', name: '👁️ 거울 보고 맑은 눈 연습', desc: '광인 +10 · 배짱 +1 · 사이다 +15', effect: { chaotic: 10, guts: 1, sp: 15 }, msg: '👁️ 누구든 쫄게 만드는 맑은 눈 완성! (배짱 +1, 사이다 +15)' },
@@ -54,6 +54,7 @@ export const ACTIVITY_CATEGORIES = [
     animClass: 'cutscene-heal',
     items: [
       { id: 'heal_sleep', name: '🛏️ 집에서 푹 자기 (저장)', desc: 'HP 100% + 사이다+20 + 다음 날 아침', sleep: true, msg: '🌅 푹 자고 상쾌한 아침을 맞이했습니다! (체력 100% · 자동 저장)' },
+      { id: 'heal_hangang', name: '🍗 한강 야경 치맥 힐링', desc: '35P · HP·사이다 100% + 전 기술 PP+5!', cost: 35, image: 'assets/images/fun_hangang_chimaek.jpg?v=156', effect: { fullHpSp: true, ppRestore: 5 }, msg: '🍗 남산타워 야경 아래 바삭한 치킨과 사이다 한 잔! (HP·사이다 100%, PP+5)' },
       { id: 'heal_ramen', name: '🍜 야밤의 계란 라면', desc: '15P · HP +45 · 사이다 +15', cost: 15, effect: { hp: 45, sp: 15 }, msg: '🍜 따끈한 국물에 스트레스가 싹 풀립니다! (HP +45, 사이다 +15)' },
       { id: 'heal_sauna', name: '♨️ 동네 찜질방 & 식혜', desc: '25P · HP +65 · 사이다 +25', cost: 25, effect: { hp: 65, sp: 25 }, msg: '♨️ 맥반석 계란과 식혜로 완벽 재충전! (HP +65, 사이다 +25)' },
       { id: 'heal_music', name: '🎧 노이즈캔슬링 명상', desc: 'HP +25 · 사이다 +15 · 모범 +3', effect: { hp: 25, sp: 15, lawful: 3 }, msg: '🎧 도시 소음을 차단하고 평정을 되찾았습니다. (HP +25, 사이다 +15)' },
@@ -68,6 +69,7 @@ export const ACTIVITY_CATEGORIES = [
     animClass: 'cutscene-shop',
     items: [
       { id: 'shop_cheong', name: '💊 우황청심환 구매', desc: '30P · 가방에 [청심환] 1개 추가', cost: 30, addItem: 'cheongsimhwan', msg: '💊 우황청심환을 가방에 챙겼습니다!' },
+      { id: 'shop_spicy', name: '🔥 매운 컵라면 야식 버프', desc: '40P · 다음 3전투 공격력+20% · 치명+10%!', cost: 40, image: 'assets/images/fun_spicy_food.jpg?v=156', effect: { spicyBuff: 3, sp: 20 }, msg: '🔥 입에서 불이 날 만큼 맵다!! (3전투 공격력 +20% · 치명 +10%)' },
       { id: 'shop_soda', name: '🫧 칠성사이다 캔 구매', desc: '25P · 가방에 [사이다 캔] 1개 추가', cost: 25, addItem: 'cold_soda', msg: '🫧 톡 쏘는 칠성사이다를 챙겼습니다!' },
       { id: 'shop_water', name: '🔫 고압 물총 (영구 장비)', desc: '80P · 전투 기절 +25 피해', cost: 80, uniqueItem: 'water_gun', msg: '🔫 고압 물총 장착! 담배 불을 날려버립시다!' },
       { id: 'shop_mega', name: '📢 메가폰 (영구 장비)', desc: '80P · 전투 35 피해 + 사이다+25', cost: 80, uniqueItem: 'megaphone', msg: '📢 고출력 메가폰 장착! 사자후 준비 완료!' },
@@ -81,7 +83,8 @@ export const ACTIVITY_CATEGORIES = [
     image: 'assets/images/act_luck.jpg',
     animClass: 'cutscene-luck',
     items: [
-      { id: 'luck_lotto', name: '🎟️ 편의점 즉석복권 긁기', desc: '20P · 대박(+80P) 또는 꽝!', cost: 20, gamble: 'lotto', msg: '🎟️ 동전으로 즉석복권을 벅벅 긁어봅니다...' },
+      { id: 'luck_lotto', name: '🎟️ 편의점 즉석복권 긁기', desc: '20P · 대박(+80P) 또는 꽝!', cost: 20, image: 'assets/images/fun_lotto_boom.jpg?v=156', gamble: 'lotto', msg: '🎟️ 동전으로 즉석복권을 벅벅 긁어봅니다...' },
+      { id: 'luck_cat_treat', name: '🐈 골목 길고양이 츄르 주기', desc: '15P · 모범+10 · 고양이 보은 선물!', cost: 15, image: 'assets/images/fun_cat_treat.jpg?v=156', gamble: 'cat_treat', msg: '🐈 한옥 골목 고양이 세 마리에게 츄르를 주었습니다!' },
       { id: 'luck_claw', name: '🧸 인형뽑기 한 판 승부', desc: '15P · 성공 시 [청심환] 획득!', cost: 15, gamble: 'claw', msg: '🧸 조이스틱을 잡고 집게를 내립니다...' },
       { id: 'luck_minji', name: '🪙 알바생과 가위바위보', desc: '25P · 승리 시 +50 P!', cost: 25, gamble: 'minji', msg: '🪙 "이거 이기면 두 배 주시는 겁니다?"' },
       { id: 'luck_vlog', name: '🎬 참교육 쇼츠 업로드', desc: '떡상(+60P·팔로워↑) vs 악플(HP-8)', gamble: 'vlog', msg: '🎬 오늘 겪은 기상천외한 썰을 쇼츠로 올렸습니다!' },

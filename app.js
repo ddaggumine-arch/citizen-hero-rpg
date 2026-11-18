@@ -3,7 +3,7 @@ import { SKILLS_100, getSkillById, getUnlockedSkillsForLevel } from './data/skil
 import { YUKI_DMS_50, CHLOE_DMS_50 } from './data/heroineDms.js?v=112';
 import { KOREA_ACTS, REGIONAL_GOODS, RUNE_STONES, ACT_VILLAINS, ACT_STORY_EPISODES, ACT_PIN_LABELS, RELAY_QUESTS } from './data/koreaActs.js?v=146';
 import { STORY_CHAPTERS } from './data/storyChapters.js?v=48';
-import { ACTIVITY_CATEGORIES } from './data/activities.js?v=125';
+import { ACTIVITY_CATEGORIES } from './data/activities.js?v=156';
 import { MINI_EVENTS, ENEMY_INTENTS, createFeedForVictory } from './data/liveEvents.js?v=145';
 import { ENDINGS, evaluateEnding, buildFullEndingText } from './data/endings.js?v=82';
 import { HEROINES, LANG_QUIZZES, DATE_EVENTS } from './data/romance.js?v=63';
@@ -2989,6 +2989,7 @@ function enemyCounterTurn(enemy, isGuarding = false) {
 }
 
 function handleEnemyDefeated(enemy) {
+  if ((state.spicyBuffBattles || 0) > 0) state.spicyBuffBattles -= 1;
   state.quote = enemy.defeatQuote;
   const diff = getDiffObj();
   const eqBon = getEquippedBonuses();
@@ -3531,7 +3532,8 @@ function performAttack(type, ultPerfect = false) {
   const spElemMult = spElemMatch ? (1 + (spBonAtk.elemBoost || 0)) : 1;
   const isBossNow = isBossId(enemy.id) || !!enemy.storyOnly || enemy.id === HIDDEN_BOSS.id;
   const spBossMult = (isBossNow && spBonAtk.perkId === 'boss_slayer') ? 1.20 : 1;
-  if (setAtkMult > 1 || spElemMult > 1 || spBossMult > 1) dmg = Math.round(dmg * setAtkMult * spElemMult * spBossMult);
+  const spicyMult = (state.spicyBuffBattles || 0) > 0 ? 1.2 : 1.0;
+  if (setAtkMult > 1 || spElemMult > 1 || spBossMult > 1 || spicyMult > 1) dmg = Math.round(dmg * setAtkMult * spElemMult * spBossMult * spicyMult);
   if (state.bossGimmick === 'shield' && (state.bossShield || 0) > 0) {
     const breakHits = (hitWeakness || type === 'law' || type === 'special') ? (type === 'special' ? 2 : 1) : 0;
     if (breakHits > 0) {
@@ -5273,7 +5275,12 @@ function render() {
         ` 🐶 반려견: ${state.pet.adopted ? `${state.pet.name} Lv.${state.pet.level}` : '미입양 (60P)'}\n` +
         ` 🚗 보유 차량: ${curCar ? curCar.name : '없음 (뚜벅이)'}\n` +
         ` 🔧 장비 레벨: 물총Lv.${state.gearLevels.water_gun} · 확성기Lv.${state.gearLevels.megaphone} · 거울Lv.${state.gearLevels.mirror}`,
-        '콩이와 산책/훈련하고, 차를 뽑아 드라이브 데이트를 즐기세요!'
+        (() => {
+          const dr = (state.dailyRoutineDone && state.dailyRoutineDone.day === state.day)
+            ? state.dailyRoutineDone
+            : { work: false, trainOrShop: false, careOrLuck: false, rewarded: false };
+          return `🌟 오늘 3단 루틴: [알바${dr.work ? '✔' : '○'}] [수련/상점${dr.trainOrShop ? '✔' : '○'}] [휴식/행운/펫${dr.careOrLuck ? '✔' : '○'}]${dr.rewarded ? ' (완성!)' : ' → +80P·강화석+2'}`;
+        })()
       );
     }
 
@@ -5607,6 +5614,8 @@ function render() {
           return;
         }
         advanceTime();
+        state.lastCutscene = { image: 'assets/images/fun_kongi_bath.jpg?v=156', animClass: 'cutscene-heal' };
+        markDailyRoutine('careOrLuck');
         state.log = `🐕 콩이와 한강 산책 완료! (콩이 Lv.${state.pet.level} · HP+8 · 사이다+12)`;
         saveGame();
         render();
@@ -7622,6 +7631,12 @@ function render() {
         if (ef.chaotic) state.chaotic += ef.chaotic;
         if (ef.report) state.pendingReports += ef.report;
         if (ef.chaos) state.chaosLevel = clamp((state.chaosLevel ?? 25) + ef.chaos, 0, 100);
+    if (ef.fullHpSp) { state.hp = state.maxHp; state.sp = state.maxSp; }
+    if (ef.ppRestore) restoreSkillPp(ef.ppRestore);
+    if (ef.spicyBuff) {
+      state.spicyBuffBattles = (state.spicyBuffBattles || 0) + ef.spicyBuff;
+      showToast(`🔥 매운 야식 버프 ON! (${state.spicyBuffBattles}전투 공격+20% · 치명+10%)`, 'break');
+    }
         if (ch.feed) {
           state.followers = (state.followers || 120) + 180;
           state.liveFeed = { ...ch.feed, likes: '❤️ 3.4만' };
@@ -10794,6 +10809,25 @@ function openActivityModal(cat) {
   elActivityModal.classList.remove('hidden');
 }
 
+
+function markDailyRoutine(slot) {
+  if (!state.dailyRoutineDone || state.dailyRoutineDone.day !== state.day) {
+    state.dailyRoutineDone = { day: state.day, work: false, trainOrShop: false, careOrLuck: false, rewarded: false };
+  }
+  state.dailyRoutineDone[slot] = true;
+  const dr = state.dailyRoutineDone;
+  if (dr.work && dr.trainOrShop && dr.careOrLuck && !dr.rewarded) {
+    dr.rewarded = true;
+    state.points += 80;
+    state.scrap = (state.scrap || 0) + 2;
+    state.hp = clamp(state.hp + 30, 1, state.maxHp);
+    state.sp = clamp(state.sp + 30, 0, state.maxSp);
+    restoreSkillPp(3);
+    sfx.victory();
+    showToast('🌟 [오늘의 3단 루틴 완성!!] +80P · 강화석 +2 · PP +3!', 'break');
+  }
+}
+
 function executeActivity(act, cat) {
   if (!state.flags) state.flags = [];
   if (act.cost) {
@@ -10822,9 +10856,12 @@ function executeActivity(act, cat) {
     }
   }
   if (cat && cat.id) state.mapLoc = cat.id;
-  if (cat && cat.image) {
-    state.lastCutscene = { image: cat.image, animClass: cat.animClass || '' };
+  if (act.image || (cat && cat.image)) {
+    state.lastCutscene = { image: act.image || cat.image, animClass: cat?.animClass || '' };
   }
+  if (cat?.id === 'work') markDailyRoutine('work');
+  if (cat?.id === 'train' || cat?.id === 'shop') markDailyRoutine('trainOrShop');
+  if (cat?.id === 'heal' || cat?.id === 'luck') markDailyRoutine('careOrLuck');
 
   if (act.battleDistrict) {
     state.lastCutscene = null;
@@ -10941,6 +10978,17 @@ function executeActivity(act, cat) {
         state.hp = clamp(state.hp - 8, 1, state.maxHp);
         sfx.damage();
         extraMsg = '💬 악플 세례를 받았습니다... (HP -8)';
+      }
+    } else if (act.gamble === 'cat_treat') {
+      state.lawful += 10;
+      if (Math.random() < 0.5) {
+        state.scrap = (state.scrap || 0) + 2;
+        sfx.victory();
+        extraMsg = '🐈 고양이들이 보은으로 반짝이는 [강화석 +2]를 물고 왔습니다! (모범 +10)';
+      } else {
+        state.inventory.push('cheongsimhwan');
+        sfx.powerup();
+        extraMsg = '🐈 고양이들이 보은으로 [우황청심환] 1개를 선물했습니다! (모범 +10)';
       }
     } else if (act.gamble === 'radio') {
       if (Math.random() < 0.5) {
@@ -12797,7 +12845,10 @@ function openGuerrillaVendorModal() {
   if (!gv) return;
   const isTruck = gv.type === 'truck';
   elActivityModalTitle.textContent = isTruck ? '🍜 전설의 게릴라 푸드트럭' : '🏺 떠돌이 심야 골동품상';
-  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  if (elActivityModalImg) {
+    elActivityModalImg.src = 'assets/images/fun_night_market.jpg?v=156';
+    elActivityModalImg.classList.remove('hidden');
+  }
   elActivityList.innerHTML = '';
 
   const banner = document.createElement('div');

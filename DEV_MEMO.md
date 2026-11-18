@@ -5,7 +5,10 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V62.0 (GitHub Pages 배포됨)
+## 현재 최신 버전: V63.0 (GitHub Pages 배포됨)
+- **V63.0 (`?v=156`)**:
+  - **일상·알바·수련·편의점·펫·야시장 8종 전용 컷신 일러스트 적용 (`fun_*.jpg`)**: 배달 알바(`fun_delivery.jpg`), 헬스장 3대 500(`fun_gym_500.jpg`), 매운 컵라면 야식 버프(`fun_spicy_food.jpg`), 콩이 목욕·산책(`fun_kongi_bath.jpg`), 즉석복권(`fun_lotto_boom.jpg`), 길고양이 츄르(`fun_cat_treat.jpg`), 야시장/게릴라 상점(`fun_night_market.jpg`), 한강 야경 치맥(`fun_hangang_chimaek.jpg`).
+  - **메뉴 활성화 시너지**: 편의점 `🔥 매운 컵라면 야식 버프`(3전투 공격+20%), 휴식 `🍗 한강 야경 치맥 힐링`(HP/SP 100% + PP+5), `🐈 길고양이 츄르 주기` 추가 + **`🌟 오늘의 3단 시민영웅 루틴`**(`markDailyRoutine`: 알바 + 수련/상점 + 휴식/행운/펫 달성 시 `+80P · 강화석 +2 · PP +3`) 도입!
 - **V62.0 (`?v=155`)**:
   - **기본 실시간 전투 + 게임 오버 시 턴제 전환 시스템 (`settings.combatMode = 'realtime'`, `updateRtUiTick`)**:
     - 스킬 버튼 터치 즉시 발동 + 공용 쿨타임(`0.85s`) 및 스킬별 쿨타임(피버 시 절반) + 적 행동 게이지 바(`0~100%`, `70%+` 빨간 경고 시 `🛡️ 실시간 가드/패링` 타이밍 대응).
