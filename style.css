@@ -579,13 +579,7 @@ body {
 }
 
 .choices-panel.grid-2 {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  overflow-x: hidden;
-}
-.choices-panel.grid-2 .choice-btn {
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
+  grid-template-columns: 1fr 1fr;
 }
 
 .choice-btn {
@@ -2088,12 +2082,23 @@ body[data-time="midnight"] .illustration-frame {
   overflow-y: auto;
 }
 .choices-panel.is-combat-grid {
-  padding: 6px 8px !important;
-  gap: 5px !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  padding: 5px 8px 10px !important;
+  gap: 4px !important;
+  max-height: 48dvh;
+  overflow-x: hidden;
 }
 .choices-panel.is-combat-grid .choice-btn {
-  padding: 6px 8px !important;
+  min-width: 0;
+  padding: 5px 7px !important;
   min-height: 0 !important;
+}
+.choices-panel.is-combat-grid .choice-sub {
+  font-size: 0.65rem;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .choices-panel.is-combat-grid .choice-btn > span:first-child {
   font-size: 0.77rem;

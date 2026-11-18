@@ -7290,25 +7290,25 @@ function render() {
 
     const skills = [
       {
-        title: `${uiImg('skill_fact')}${getEquippedSkill('speech').name}${getStratTag('speech')}`,
+        title: `${uiImg('skill_fact')}${getEquippedSkill('speech').name}`,
         ppKey: 'speech',
-        sub: muSpeech.tag ? `${muSpeech.tag} · ${getEquippedSkill('speech').mechTag}` : `${getEquippedSkill('speech').mechTag}`,
+        sub: `${getStratTag('speech')}${muSpeech.tag ? `${muSpeech.tag} · ${getEquippedSkill('speech').mechTag}` : `${getEquippedSkill('speech').mechTag}`}`,
         subClass: muSpeech.cls,
         disabled: (ppMap.speech ?? 1) <= 0,
         action: () => performAttack('speech'),
       },
       {
-        title: `${uiImg('skill_mirror')}${getEquippedSkill('guts').name}${getStratTag('guts')}`,
+        title: `${uiImg('skill_mirror')}${getEquippedSkill('guts').name}`,
         ppKey: 'guts',
-        sub: muGuts.tag ? `${muGuts.tag} · ${getEquippedSkill('guts').mechTag}` : `${getEquippedSkill('guts').mechTag} · 사이다↑`,
+        sub: `${getStratTag('guts')}${muGuts.tag ? `${muGuts.tag} · ${getEquippedSkill('guts').mechTag}` : `${getEquippedSkill('guts').mechTag} · 사이다↑`}`,
         subClass: muGuts.cls,
         disabled: (ppMap.guts ?? 1) <= 0,
         action: () => performAttack('guts'),
       },
       {
-        title: `${uiImg('skill_law')}${getEquippedSkill('law').name}${getStratTag('law')}`,
+        title: `${uiImg('skill_law')}${getEquippedSkill('law').name}`,
         ppKey: 'law',
-        sub: muLaw.tag ? `${muLaw.tag} · ${getEquippedSkill('law').mechTag}` : `${getEquippedSkill('law').mechTag} · 🎲12+ 기절`,
+        sub: `${getStratTag('law')}${muLaw.tag ? `${muLaw.tag} · ${getEquippedSkill('law').mechTag}` : `${getEquippedSkill('law').mechTag} · 🎲12+ 기절`}`,
         subClass: muLaw.cls,
         disabled: (ppMap.law ?? 1) <= 0,
         action: () => performAttack('law'),
@@ -7343,7 +7343,7 @@ function render() {
     const snapPp = ppMap.snap ?? getMaxSkillPp('snap');
     snapBtn.disabled = snapPp <= 0;
     const skSnap = getEquippedSkill('snap');
-    snapBtn.innerHTML = `<span class="skill-top-row"><span>${uiImg('skill_snap')}${skSnap.name}${getStratTag('snap')}</span>${mkPpHtml('snap')}</span><span class="choice-sub ${muSnap.cls}">${snapPp <= 0 ? '횟수 소진 (휴식/아이템 복구)' : (muSnap.tag ? `${muSnap.tag} · ${skSnap.mechTag}` : `${skSnap.mechTag} · 즉시 발동 + 채증+1`)}</span>`;
+    snapBtn.innerHTML = `<span class="skill-top-row"><span>${uiImg('skill_snap')}${skSnap.name}</span>${mkPpHtml('snap')}</span><span class="choice-sub ${muSnap.cls}">${snapPp <= 0 ? '횟수 소진 (휴식/아이템 복구)' : `${getStratTag('snap')}${muSnap.tag ? `${muSnap.tag} · ${skSnap.mechTag}` : `${skSnap.mechTag} · 즉시 발동 + 채증+1`}`}</span>`;
     snapBtn.addEventListener('click', () => performAttack('snap'));
     if (false) {
     snapBtn.addEventListener('click', () => {
