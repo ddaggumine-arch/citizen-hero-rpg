@@ -266,6 +266,10 @@ function createNewGameState() {
     tournamentWins: 0,
     lastTournamentWeek: -1,
     pendingWeatherEvent: null,
+    squad: [],
+    guerrillaVendor: null,
+    bossPhase2Triggered: false,
+    bossPhase2Pending: false,
   };
 }
 
@@ -892,6 +896,12 @@ function advanceTime() {
   }
   if (!state.pendingWeatherEvent && Math.random() < 0.16) {
     state.pendingWeatherEvent = state.weather || 'sunny';
+  }
+  // V48.0: 시간대 한정 게릴라 푸드트럭 / 떠돌이 골동품상
+  if ((state.timeIndex === 2 || state.timeIndex >= 5) && Math.random() < 0.42) {
+    state.guerrillaVendor = { type: state.timeIndex === 2 ? 'truck' : 'antique', actId: state.currentAct || 'seoul' };
+  } else if (state.timeIndex !== 2 && state.timeIndex < 5) {
+    state.guerrillaVendor = null;
   }
   state.chaosLevel = clamp((state.chaosLevel ?? 25) + 4, 0, 100);
   if (state.chaosLevel <= 30) {
@@ -1529,6 +1539,9 @@ function getEquippedBonuses() {
     res.atk += colPass;
     res.spRegen += colPass;
   }
+  const tCount = getEarnedTrophies().filter((t) => t.earned).length;
+  if (tCount >= 3) res.atk += 5;
+  if (tCount >= 6) res.spRegen += 2;
   res.atk += spBon.atk;
   res.spRegen += spBon.spRegen;
   res.crit += spBon.crit;
@@ -1913,6 +1926,8 @@ function startBattle(enemyId, isRandomEncounter = false) {
   }
   state.activeActStory = null;
   state.diplomacyUsed = false;
+  state.bossPhase2Triggered = false;
+  state.bossPhase2Pending = false;
   if (getSpiritBonuses().growthLv >= 10) {
     state.sp = clamp((state.sp || 0) + 15, 0, state.maxSp);
     extraLog += '\n👻 [정령 Lv.10+ 각성] 전투 시작 사이다 +15 충전!';
@@ -2039,6 +2054,23 @@ function enemyCounterTurn(enemy, isGuarding = false) {
   }
 
   const spBonTurn = getSpiritBonuses();
+  if ((state.squad?.length || 0) > 0 && Math.random() < 0.25) {
+    const sqLvSum = state.squad.reduce((acc, m) => acc + (m.lv || 1), 0);
+    const sqDmg = 8 + sqLvSum * 4;
+    state.enemyHp = clamp(state.enemyHp - sqDmg, 0, state.enemyMaxHp);
+    state.log += `\n🫡 [자경단 지원 사격!] 대원들이 측면에서 일제히 엄호했습니다! (멘탈 -${sqDmg})`;
+    triggerEnemyHit(sqDmg, false);
+    if (state.enemyHp <= 0) {
+      handleEnemyDefeated(enemy);
+      return;
+    }
+  }
+  if ((isBossId(enemy.id) || enemy.isActBoss || enemy.storyOnly) && !state.bossPhase2Triggered && state.enemyHp > 0 && state.enemyHp <= Math.round(state.enemyMaxHp * 0.5)) {
+    state.bossPhase2Triggered = true;
+    state.bossPhase2Pending = true;
+    state.log += `\n🔥 [보스 2페이즈 각성!!] ${enemy.name}의 눈빛이 붉게 변했습니다! 긴급 대응을 선택하세요!`;
+    showToast('🔥 보스 2페이즈 각성!! 긴급 분기 발동!', 'break');
+  }
   const spChance = spBonTurn.perkId === 'overdrive' ? 1.0 : ((spBonTurn.growthLv || 1) >= 5 ? 0.55 : 0.45);
   if (spBonTurn.spirit && Math.random() < spChance) {
     const lv20Mult = (spBonTurn.growthLv || 1) >= 20 ? 1.5 : 1.0;
@@ -3734,6 +3766,24 @@ function render() {
       }, 80);
     }
 
+    // V48.0: 시간대 한정 게릴라 푸드트럭 / 떠돌이 골동품상 배너
+    if (state.phase === 'map' && state.guerrillaVendor) {
+      const isTruck = state.guerrillaVendor.type === 'truck';
+      const vBtn = document.createElement('button');
+      vBtn.className = 'choice-btn row-btn';
+      vBtn.style.gridColumn = 'span 2';
+      vBtn.style.background = isTruck ? 'linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%)' : 'linear-gradient(180deg, #f5f3ff 0%, #ede9fe 100%)';
+      vBtn.style.borderColor = isTruck ? '#ea580c' : '#7c3aed';
+      vBtn.innerHTML = isTruck
+        ? '<span>🍜 [점심 한정!] 전설의 게릴라 푸드트럭 출몰!</span><span class="choice-sub" style="color:#c2410c;">한정 버프 야식 & 풀회복 판매 중 ▶</span>'
+        : '<span>🏺 [심야 한정!] 떠돌이 골동품상 출몰!</span><span class="choice-sub" style="color:#6d28d9;">미스터리 정령석 & 특제 정령 사탕 판매 중 ▶</span>';
+      vBtn.addEventListener('click', () => {
+        sfx.click();
+        openGuerrillaVendorModal();
+      });
+      elChoicesPanel.appendChild(vBtn);
+    }
+
     // V47.0: 기상특보 돌발 이벤트 배너
     if (state.phase === 'map' && state.pendingWeatherEvent) {
       const wObj = WEATHERS.find((w) => w.id === state.pendingWeatherEvent) || WEATHERS[0];
@@ -3941,6 +3991,15 @@ function render() {
       });
       elActivityList.appendChild(tourBtn);
 
+      const sqBtn = document.createElement('button');
+      sqBtn.className = 'activity-item-btn';
+      sqBtn.innerHTML = `<div class="act-title">🫡 노란 완장 자경단 본부 (${(state.squad || []).length}/5명)</div><div class="act-desc">대원 영입 & 훈련 시 전투마다 자동 지원 사격!</div>`;
+      sqBtn.addEventListener('click', () => {
+        sfx.click();
+        openSquadModal();
+      });
+      elActivityList.appendChild(sqBtn);
+
       const towerUnlocked = isFeatureUnlocked(state, 'foundation');
       const tBtn = document.createElement('button');
       tBtn.className = 'activity-item-btn';
@@ -4020,6 +4079,16 @@ function render() {
         openHeroProfileModal();
       });
       elActivityList.appendChild(profBtn);
+
+      const trBtn = document.createElement('button');
+      trBtn.className = 'activity-item-btn';
+      const trCnt = getEarnedTrophies().filter((t) => t.earned).length;
+      trBtn.innerHTML = `<div class="act-title">🏅 내 집 명예의 전당 · 트로피 (${trCnt}/6)</div><div class="act-desc">트로피 3개(공격+5) · 6개(사이다재생+2) 영구 세트 버프!</div>`;
+      trBtn.addEventListener('click', () => {
+        sfx.click();
+        openTrophyHallModal();
+      });
+      elActivityList.appendChild(trBtn);
 
       const lifeItem = document.createElement('button');
       lifeItem.className = 'activity-item-btn';
@@ -6720,6 +6789,34 @@ function render() {
     elBattleLog.textContent = (state.quote ? `💬 ${state.quote}\n` : '') + (state.log || '');
     elChoicesPanel.className = 'choices-panel grid-2 is-combat-grid';
     ensureSandboxState();
+
+    // V48.0: 보스 2페이즈 각성 긴급 분기
+    if (state.bossPhase2Pending) {
+      const p2Banner = document.createElement('div');
+      p2Banner.className = 'oblivion-banner';
+      p2Banner.style.gridColumn = 'span 2';
+      p2Banner.innerHTML = '🔥 <b>[보스 2페이즈 각성!]</b> 적의 필살기가 다가옵니다! 긴급 대응을 선택하세요!';
+      elChoicesPanel.appendChild(p2Banner);
+      [
+        { t: '⚔️ 정면 맞불 극딜!', d: '적 멘탈 추가 -15% · 사이다 +15 (턴 소모 없음)', fn: () => { const d = Math.max(20, Math.round(state.enemyMaxHp * 0.15)); state.enemyHp = Math.max(1, state.enemyHp - d); state.sp = clamp(state.sp + 15, 0, state.maxSp); triggerEnemyHit(d, true); state.log = `⚔️ [2페이즈 맞불!] 정면 돌파로 멘탈 -${d} 추가 타격!`; } },
+        { t: '🛡️ 긴급 회피 & 가드 파쇄', d: '가드 2칸 파쇄 · 인내심 +35 회복', fn: () => { state.enemyGuardShield = Math.max(0, (state.enemyGuardShield ?? 3) - 2); state.hp = clamp(state.hp + 35, 1, state.maxHp); state.log = '🛡️ [2페이즈 회피!] 빈틈을 노려 가드 2칸 파쇄 & 인내심 +35!'; } },
+        { t: '🤝 자경단 · 정령 합동 차단', d: '적 1턴 기절 + 전 기술 PP +1 회복', fn: () => { state.enemyStunned = true; restoreSkillPp(1); state.log = '🤝 [2페이즈 합동 차단!] 적을 1턴 기절시키고 전 기술 PP +1 회복!'; } },
+      ].forEach((opt) => {
+        const b = document.createElement('button');
+        b.className = 'choice-btn row-btn story-main-btn';
+        b.style.gridColumn = 'span 2';
+        b.innerHTML = `<span>${opt.t}</span><span class="choice-sub">${opt.d}</span>`;
+        b.addEventListener('click', () => {
+          state.bossPhase2Pending = false;
+          sfx.victory();
+          opt.fn();
+          saveGame();
+          render();
+        });
+        elChoicesPanel.appendChild(b);
+      });
+      return;
+    }
 
     // V37.0: 오블리비언식 무혈 외교 (첫 턴 & 최종 보스 제외)
     if (state.isFirstTurn && !state.diplomacyUsed && !enemy.isFinal && !state.towerFloor && !state.nightmareFloor) {
@@ -11030,6 +11127,147 @@ function openHeroProfileModal() {
     <div><b>🗺️ 5대 액트 제패:</b> ${state.clearedActs.length}/5 &nbsp;|&nbsp; <b>⚡ 스킬:</b> ${state.unlockedSkills.length}/100 &nbsp;|&nbsp; <b>🏟️ 토너먼트 우승:</b> ${state.tournamentWins || 0}회</div>
   `;
   elActivityList.appendChild(card);
+  elActivityModal.classList.remove('hidden');
+}
+
+// ============================================================
+// V48.0: 자경단 본부(영입/훈련) · 게릴라 상인 · 내 집 명예의 전당(트로피)
+// ============================================================
+const SQUAD_ROSTER = [
+  { id: 'sq_jeonju', name: '🍲 전주 떡갈비 주먹', cost: 80, desc: '한옥마을 출신 열혈 자경대원' },
+  { id: 'sq_pyeongtaek', name: '⚓ 평택항 불침번', cost: 110, desc: '강철 체력의 야간 순찰 전문가' },
+  { id: 'sq_dongtan', name: '🚄 동탄 칼퇴 해결사', cost: 140, desc: '정확한 시간 엄수 및 기습 지원' },
+  { id: 'sq_incheon', name: '🕵️ 부평 지하상가 탐정', cost: 170, desc: '미로 속에서도 적의 빈틈을 포착' },
+  { id: 'sq_seoul', name: '🎸 홍대 버스킹 서포터', cost: 200, desc: '화려한 응원으로 사기 & 화력 상승' },
+];
+
+function getEarnedTrophies() {
+  return [
+    { id: 'tr_act1', name: '🍲 전주 제패 뱃지', earned: (state.clearedActs || []).includes('jeonju'), desc: 'Act 1 전주 보스 격파' },
+    { id: 'tr_act4', name: '😈 마계 인천 정복 트로피', earned: (state.clearedActs || []).includes('incheon'), desc: 'Act 4 마계 인천 보스 격파' },
+    { id: 'tr_tour', name: '🏟️ 토너먼트 챔피언 컵', earned: (state.tournamentWins || 0) >= 1, desc: '주간 전국 토너먼트 우승 1회+' },
+    { id: 'tr_house', name: '🏙️ 한강뷰 집주인 열쇠', earned: (state.houseTier || 0) >= 3, desc: '한강뷰 펜트하우스 입성' },
+    { id: 'tr_spirit', name: '👻 정령 마스터 훈장', earned: Object.keys(state.spirits || {}).filter((k) => (state.spirits[k] || 0) > 0).length >= 10, desc: '수호정령 10종 이상 수집' },
+    { id: 'tr_skill', name: '⚡ 백전노장 스킬북', earned: (state.unlockedSkills || []).length >= 30, desc: '100종 스킬 중 30종 이상 습득' },
+  ];
+}
+
+function openSquadModal() {
+  if (!Array.isArray(state.squad)) state.squad = [];
+  const lvSum = state.squad.reduce((a, m) => a + (m.lv || 1), 0);
+  elActivityModalTitle.textContent = `🫡 노란 완장 자경단 본부 (${state.squad.length}/5명)`;
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+
+  const banner = document.createElement('div');
+  banner.className = 'oblivion-banner';
+  banner.innerHTML = `<b>보유 포인트:</b> ${state.points}P | <b>전투 지원 화력:</b> 턴당 25% 확률로 멘탈 -${state.squad.length > 0 ? 8 + lvSum * 4 : 0} 지원 사격!`;
+  elActivityList.appendChild(banner);
+
+  SQUAD_ROSTER.forEach((m) => {
+    const joined = state.squad.find((x) => x.id === m.id);
+    const row = document.createElement('div');
+    row.className = 'inv-item';
+    row.innerHTML = `<div class="inv-info"><h4>${m.name} ${joined ? `<span style="color:#0369a1;">Lv.${joined.lv}</span>` : ''}</h4><p>${m.desc}</p></div>`;
+    const btn = document.createElement('button');
+    btn.className = 'use-btn';
+    if (!joined) {
+      btn.textContent = `영입 ${m.cost}P`;
+      btn.disabled = state.points < m.cost;
+      btn.addEventListener('click', () => {
+        state.points -= m.cost;
+        state.squad.push({ id: m.id, name: m.name, lv: 1 });
+        sfx.victory();
+        showToast(`🫡 [${m.name}] 자경단 합류!`, 'good');
+        saveGame();
+        openSquadModal();
+      });
+    } else {
+      const trCost = 60 + (joined.lv - 1) * 20;
+      btn.textContent = `훈련 ${trCost}P`;
+      btn.disabled = state.points < trCost || joined.lv >= 10;
+      if (joined.lv >= 10) btn.textContent = 'MAX';
+      btn.addEventListener('click', () => {
+        state.points -= trCost;
+        joined.lv += 1;
+        sfx.powerup();
+        showToast(`💪 [${m.name}] Lv.${joined.lv} 달성!`, 'good');
+        saveGame();
+        openSquadModal();
+      });
+    }
+    row.appendChild(btn);
+    elActivityList.appendChild(row);
+  });
+  elActivityModal.classList.remove('hidden');
+}
+
+function openGuerrillaVendorModal() {
+  const gv = state.guerrillaVendor;
+  if (!gv) return;
+  const isTruck = gv.type === 'truck';
+  elActivityModalTitle.textContent = isTruck ? '🍜 전설의 게릴라 푸드트럭' : '🏺 떠돌이 심야 골동품상';
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+
+  const banner = document.createElement('div');
+  banner.className = 'oblivion-banner';
+  banner.textContent = `보유 포인트: ${state.points}P | 지금 시간대가 지나면 상인이 다른 도시로 떠납니다!`;
+  elActivityList.appendChild(banner);
+
+  const goods = isTruck
+    ? [
+        { t: '🔥 불꽃 떡볶이 (45P)', d: '인내심 +40 · 다음 전투 추가 공격력 +25!', cost: 45, fn: () => { state.hp = clamp(state.hp + 40, 1, state.maxHp); state.sodaBuffDmg = (state.sodaBuffDmg || 0) + 25; } },
+        { t: '🍵 산삼 쌍화차 (90P)', d: 'HP · 사이다 · 전 기술 PP 100% 풀회복!', cost: 90, fn: () => { state.hp = state.maxHp; state.sp = state.maxSp; restoreSkillPp('full'); } },
+      ]
+    : [
+        { t: '💎 미스터리 지역 정령석 (140P)', d: '랜덤 정령석(룬) 1개 즉시 획득!', cost: 140, fn: () => { const rPick = RUNE_STONES[Math.floor(Math.random() * RUNE_STONES.length)]; if (!Array.isArray(state.ownedRunes)) state.ownedRunes = []; state.ownedRunes.push(rPick.id); showToast(`💎 [${rPick.name}] 획득!`, 'break'); } },
+        { t: '🍬 정령 특제 대용량 사탕 (80P)', d: '장착 중인 정령 EXP +180!', cost: 80, fn: () => { if (state.equippedSpirit) gainSpiritExp(state.equippedSpirit, 180); else state.points += 40; } },
+      ];
+
+  goods.forEach((g) => {
+    const btn = document.createElement('button');
+    btn.className = 'activity-item-btn';
+    btn.disabled = state.points < g.cost;
+    btn.innerHTML = `<div class="act-title">${g.t}</div><div class="act-desc">${g.d}</div>`;
+    btn.addEventListener('click', () => {
+      state.points -= g.cost;
+      g.fn();
+      state.guerrillaVendor = null;
+      sfx.victory();
+      elActivityModal.classList.add('hidden');
+      showToast('✨ 한정 상품 구매 완료!', 'good');
+      saveGame();
+      render();
+    });
+    elActivityList.appendChild(btn);
+  });
+  elActivityModal.classList.remove('hidden');
+}
+
+function openTrophyHallModal() {
+  const list = getEarnedTrophies();
+  const earnedCnt = list.filter((t) => t.earned).length;
+  const curHouse = HOUSING_TIERS[state.houseTier || 0] || HOUSING_TIERS[0];
+  elActivityModalTitle.textContent = `🏅 내 집 명예의 전당 (${earnedCnt}/${list.length})`;
+  if (elActivityModalImg && curHouse.img) {
+    elActivityModalImg.src = curHouse.img;
+    elActivityModalImg.classList.remove('hidden');
+  }
+  elActivityList.innerHTML = '';
+
+  const banner = document.createElement('div');
+  banner.className = 'oblivion-banner';
+  banner.innerHTML = `<b>세트 보너스:</b> 3개 이상 [공격력 +5] ${earnedCnt >= 3 ? '✅적용중' : '🔒'} · 6개 [매턴 사이다 +2] ${earnedCnt >= 6 ? '✅적용중' : '🔒'}`;
+  elActivityList.appendChild(banner);
+
+  list.forEach((tr) => {
+    const row = document.createElement('div');
+    row.className = 'inv-item';
+    row.style.opacity = tr.earned ? '1' : '0.55';
+    row.innerHTML = `<div class="inv-info"><h4>${tr.earned ? '🏆' : '🔒'} ${tr.name}</h4><p>${tr.desc}</p></div>`;
+    elActivityList.appendChild(row);
+  });
   elActivityModal.classList.remove('hidden');
 }
 
