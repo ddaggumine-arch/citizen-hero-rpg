@@ -1,7 +1,7 @@
 import { TIME_SLOTS, ITEMS, TRAITS, VILLAINS, BOSSES, HIDDEN_BOSS, WEATHERS, RANDOM_EVENTS, STORY_MESSAGES } from './data/gameData.js?v=111';
 import { SKILLS_100, getSkillById, getUnlockedSkillsForLevel } from './data/skills100.js?v=111';
 import { YUKI_DMS_50, CHLOE_DMS_50 } from './data/heroineDms.js?v=112';
-import { KOREA_ACTS, REGIONAL_GOODS, RUNE_STONES, ACT_VILLAINS, ACT_STORY_EPISODES, ACT_PIN_LABELS, RELAY_QUESTS } from './data/koreaActs.js?v=109';
+import { KOREA_ACTS, REGIONAL_GOODS, RUNE_STONES, ACT_VILLAINS, ACT_STORY_EPISODES, ACT_PIN_LABELS, RELAY_QUESTS } from './data/koreaActs.js?v=118';
 import { STORY_CHAPTERS } from './data/storyChapters.js?v=48';
 import { ACTIVITY_CATEGORIES } from './data/activities.js?v=48';
 import { MINI_EVENTS, ENEMY_INTENTS, createFeedForVictory } from './data/liveEvents.js';
@@ -7474,8 +7474,18 @@ function render() {
     }
     if (sc.showSprite && ep.sprite) {
       elSceneImage.src = ep.sprite;
-      elSceneImage.className = 'enemy-sprite';
+      elSceneImage.className = ep.isBoss ? 'enemy-sprite boss-scale' : 'enemy-sprite';
       elSceneImage.classList.remove('hidden');
+      if (sc.fx === 'shake' && elBookPage) {
+        elBookPage.classList.remove('shake');
+        void elBookPage.offsetWidth;
+        elBookPage.classList.add('shake');
+        vibrate(45);
+      } else if (sc.fx === 'flash' && elFrame) {
+        elFrame.classList.remove('hit-flash');
+        void elFrame.offsetWidth;
+        elFrame.classList.add('hit-flash');
+      }
     } else {
       elSceneImage.classList.add('hidden');
     }
