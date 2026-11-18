@@ -5,7 +5,11 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V58.2 (GitHub Pages 배포됨)
+## 현재 최신 버전: V59.0 (GitHub Pages 배포됨)
+- **V59.0 (`?v=151`)**:
+  - **폭렬결전 스타일 풀스크린 정령 소환 가챠 연출 (`playSpiritGachaSequence`, `runSpiritGacha`)**: 기 개방 → 등급별 섬광 → 1마리씩 카드 리빌(`NEW!`/`★각성`) → 5×2 전체 결과 그리드 + SKIP 지원!
+  - **수호정령 메뉴 내 가챠 정식 배치 (`openSpiritModal`)**: 연애 메뉴가 아니라 **수호정령 메뉴** 안에 `🎰 럭키 1회 (500P)` & `🌟 폭렬 10연차 (4,200P)` 직접 배치!
+  - **명품 선물 전용 [히로인 감동 리액션 팝업] (`showLuxuryGiftReactionModal`)**: 선물 즉시 유키(`yuki_blush.jpg`)/클로이(`chloe_wink.jpg`) 큰 일러스트 + 하트 말풍선으로 100가지 고유 멘트를 선명하게 감상!
 - **V58.2 (`?v=150`)**:
   - **랜덤/이동/순찰 인카운터에서 스토리 적 출현 완전 차단 (`app.js`)**: 지역 이동 돌발 기습에서 `ACT_VILLAINS` (`act_jeonju_1` 등) 가 나오던 코드 제거 + 구역 순찰/치안 출동 풀에서 `isStoryExclusiveEnemy` 전면 제외 + `state.isRandomBattle` 2중 가드로 랜덤 전투 시 스토리 후일담 강제 진입 방지!
 - **V58.1 (`?v=149`)**:

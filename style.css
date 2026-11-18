@@ -3059,3 +3059,82 @@ body[data-time="midnight"] .hud-exp-text {
   0%, 100% { opacity: 0.55; transform: scale(0.98); }
   50%      { opacity: 1;    transform: scale(1.04); box-shadow: 0 0 18px rgba(253, 224, 71, 0.65); }
 }
+
+/* ===== V59.0 폭렬결전 스타일 풀스크린 가챠 연출 & 명품 선물 감동 모달 ===== */
+.gacha-card-reveal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.88);
+  border: 2.5px solid #38bdf8;
+  box-shadow: 0 0 32px rgba(56, 189, 248, 0.55);
+  animation: gachaRevealPop 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  min-width: 240px;
+}
+.gacha-card-reveal.is-rare { border-color: #22c55e; box-shadow: 0 0 32px rgba(34, 197, 94, 0.6); }
+.gacha-card-reveal.is-epic { border-color: #a855f7; box-shadow: 0 0 38px rgba(168, 85, 247, 0.78); }
+.gacha-card-reveal.is-unique { border-color: #facc15; box-shadow: 0 0 46px rgba(250, 204, 21, 0.95); background: linear-gradient(145deg, rgba(69, 26, 3, 0.92), rgba(88, 28, 135, 0.92)); }
+@keyframes gachaRevealPop {
+  from { opacity: 0; transform: scale(0.55) rotateY(40deg); }
+  to   { opacity: 1; transform: scale(1) rotateY(0); }
+}
+.gacha-grid-10 {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  width: min(92vw, 420px);
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(10, 15, 30, 0.88);
+  border: 1.5px solid #f59e0b;
+}
+.gacha-mini-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  font-size: 0.58rem;
+  color: #f8fafc;
+  text-align: center;
+}
+.gacha-mini-cell.is-epic { border-color: #c084fc; background: rgba(168, 85, 247, 0.22); }
+.gacha-mini-cell.is-unique { border-color: #fde047; background: rgba(250, 204, 21, 0.28); }
+.gacha-mini-cell img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+.gift-react-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 8px 4px;
+}
+.gift-react-img {
+  width: 210px;
+  height: 210px;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 2.5px solid #e11d48;
+  box-shadow: 0 8px 24px rgba(225, 29, 72, 0.28);
+}
+.gift-react-bubble {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fff1f2;
+  border: 1.5px solid #fb7185;
+  color: #881337;
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.55;
+}

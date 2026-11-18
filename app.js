@@ -5687,7 +5687,7 @@ function render() {
     vipRomBtn.style.gridColumn = 'span 2';
     vipRomBtn.style.borderColor = '#d97706';
     vipRomBtn.style.background = 'linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%)';
-    vipRomBtn.innerHTML = `<span>💎 VIP 명품 부티크 (100종 고유 선물 & 리액션!)</span><span class="choice-sub" style="color:#b45309;">컬렉션 ${(state.givenLuxuryGifts || []).length}/100 · 도덕P로 명품 선물 & 정령 가챠 ▶</span>`;
+    vipRomBtn.innerHTML = `<span>💎 VIP 명품 부티크 (100종 고유 선물 & 리액션!)</span><span class="choice-sub" style="color:#b45309;">컬렉션 ${(state.givenLuxuryGifts || []).length}/100 · 유키·클로이 전용 100종 명품 선물 & 감동 리액션 ▶</span>`;
     vipRomBtn.addEventListener('click', () => { sfx.click(); openVipShopModal(); });
     elChoicesPanel.appendChild(vipRomBtn);
 
@@ -9980,6 +9980,24 @@ function openSpiritModal(filterEl = 'all') {
   });
   elEndingsList.appendChild(summonBtn);
 
+  const gachaRow = document.createElement('div');
+  gachaRow.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;';
+  const g1Btn = document.createElement('button');
+  g1Btn.className = 'gear-quick-btn';
+  g1Btn.style.cssText = 'padding:8px 6px;background:linear-gradient(90deg,#7c3aed,#db2777);';
+  g1Btn.textContent = '🎰 럭키 1회 (500P)';
+  g1Btn.disabled = state.points < 500;
+  g1Btn.addEventListener('click', () => runSpiritGacha(1));
+  const g10Btn = document.createElement('button');
+  g10Btn.className = 'gear-quick-btn';
+  g10Btn.style.cssText = 'padding:8px 6px;background:linear-gradient(90deg,#d97706,#ea580c);font-weight:900;';
+  g10Btn.textContent = '🌟 폭렬 10연차! (4,200P)';
+  g10Btn.disabled = state.points < 4200;
+  g10Btn.addEventListener('click', () => runSpiritGacha(10));
+  gachaRow.appendChild(g1Btn);
+  gachaRow.appendChild(g10Btn);
+  elEndingsList.appendChild(gachaRow);
+
   const tabsWrap = document.createElement('div');
   tabsWrap.className = 'gear-tabs';
   [
@@ -12811,6 +12829,184 @@ function openHeroRecordsModal() {
   elActivityModal.classList.remove('hidden');
 }
 
+function playSpiritGachaSequence(pulls, bonusNote = '') {
+  const overlay = document.getElementById('intro-splash-overlay');
+  if (!overlay) return;
+  const bgEl = document.getElementById('intro-bg-layer');
+  const castEl = document.getElementById('intro-hero-cast');
+  const vfxEl = document.getElementById('intro-vfx-burst');
+  const logoEl = document.getElementById('intro-logo-wrap');
+  const capEl = document.getElementById('intro-caption-box');
+  const touchEl = document.getElementById('intro-touch-prompt');
+  const skipBtn = document.getElementById('intro-skip-btn');
+
+  overlay.classList.remove('hidden', 'is-leaving');
+  if (logoEl) logoEl.classList.add('hidden');
+
+  const maxRarityRank = { common: 1, rare: 2, epic: 3, unique: 4 };
+  const bestRank = Math.max(...pulls.map((p) => maxRarityRank[p.sp.rarity] || 1));
+  const chargeVfx = bestRank >= 4
+    ? 'assets/images/vfx/vfx_snap_4.png?v=151'
+    : bestRank >= 3
+      ? 'assets/images/vfx/vfx_law_4.png?v=151'
+      : 'assets/images/vfx/vfx_speech_4.png?v=151';
+  const chargeTitle = bestRank >= 4
+    ? '🌟 황금 무지개 초각성!! 전설 유니크 강림 예감!!'
+    : bestRank >= 3
+      ? '⚡ 보라빛 번개 작렬!! 고등급 에픽 이상 확정!!'
+      : '✨ 소환 마법진 가동!! 노란 완장 기 개방!!';
+
+  let step = -1; // -1: charge, 0..N-1: individual reveal, N: summary grid
+  let closed = false;
+
+  const renderGachaStep = () => {
+    if (bgEl) bgEl.style.backgroundImage = "url('assets/images/bg_yeouido.jpg?v=151')";
+    if (step === -1) {
+      if (castEl) castEl.innerHTML = `<img src="assets/images/hero_attack.png?v=151" class="intro-cut-sprite" alt="소환" />`;
+      if (vfxEl) vfxEl.innerHTML = `<img src="${chargeVfx}" class="intro-vfx-img" alt="" />`;
+      if (capEl) capEl.textContent = chargeTitle;
+      if (touchEl) touchEl.textContent = '🔥 화면을 터치해 소환 에너지를 해방하세요!! 🔥';
+      return;
+    }
+    if (step < pulls.length) {
+      const p = pulls[step];
+      const rarLabel = { common: '일반', rare: '레어', epic: '에픽', unique: '🌟유니크' }[p.sp.rarity] || p.sp.rarity;
+      const rarCls = `is-${p.sp.rarity}`;
+      const badge = p.res?.isNew ? '✨ NEW! 도감 등록!' : `★${p.res?.awakeLv || 1} 각성 UP!`;
+      const rarVfx = p.sp.rarity === 'unique'
+        ? 'assets/images/vfx/vfx_snap_4.png?v=151'
+        : p.sp.rarity === 'epic'
+          ? 'assets/images/vfx/vfx_law_4.png?v=151'
+          : 'assets/images/vfx/vfx_speech_1.png?v=151';
+      if (vfxEl) vfxEl.innerHTML = `<img src="${rarVfx}" class="intro-vfx-img" alt="" />`;
+      if (castEl) {
+        castEl.innerHTML = `
+          <div class="gacha-card-reveal ${rarCls}">
+            <div style="font-size:0.75rem;color:#fde047;font-weight:900;">${step + 1} / ${pulls.length} · [${rarLabel}]</div>
+            <img src="${p.sp.img}?v=151" style="width:128px;height:128px;object-fit:contain;filter:drop-shadow(0 0 14px rgba(255,255,255,0.8));" alt="${p.sp.name}" />
+            <div style="font-size:1.05rem;font-weight:900;color:#ffffff;">${p.sp.name}</div>
+            <div style="font-size:0.8rem;font-weight:900;color:#38bdf8;">${badge}</div>
+          </div>
+        `;
+      }
+      if (capEl) capEl.textContent = p.sp.greet || p.sp.desc;
+      if (touchEl) touchEl.textContent = step < pulls.length - 1 ? '✨ 터치하면 다음 정령 공개! (SKIP: 결과 전체보기) ✨' : '✨ 터치하면 전체 결과 확인! ✨';
+      return;
+    }
+    // Final summary grid
+    if (vfxEl) vfxEl.innerHTML = '';
+    if (castEl) {
+      const cells = pulls.map((p) => {
+        const cls = p.sp.rarity === 'unique' ? 'is-unique' : (p.sp.rarity === 'epic' ? 'is-epic' : '');
+        return `<div class="gacha-mini-cell ${cls}"><img src="${p.sp.img}?v=151" alt="" /><b>${p.sp.name.replace(/^[^\s]+\s*/, '').slice(0, 6)}</b><span>${p.res?.isNew ? 'NEW' : `★${p.res?.awakeLv || 1}`}</span></div>`;
+      }).join('');
+      castEl.innerHTML = `<div class="gacha-grid-10">${cells}</div>`;
+    }
+    if (capEl) capEl.textContent = `🎉 소환 완료!! (${pulls.length}마리 획득${bonusNote ? ` · ${bonusNote}` : ''})`;
+    if (touchEl) touchEl.textContent = '✨ 화면을 터치해 돌아가기 ✨';
+  };
+
+  const closeGacha = () => {
+    if (closed) return;
+    closed = true;
+    overlay.onclick = null;
+    if (skipBtn) skipBtn.onclick = null;
+    try { sfx.powerup(); } catch {}
+    overlay.classList.add('is-leaving');
+    setTimeout(() => {
+      overlay.classList.add('hidden');
+      render();
+    }, 450);
+  };
+
+  renderGachaStep();
+  try { sfx.powerup(); } catch {}
+
+  if (skipBtn) {
+    skipBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (step < pulls.length) {
+        step = pulls.length;
+        try { sfx.victory(); } catch {}
+        renderGachaStep();
+      } else {
+        closeGacha();
+      }
+    };
+  }
+  overlay.onclick = () => {
+    if (step < pulls.length) {
+      step += 1;
+      if (step < pulls.length) {
+        const p = pulls[step];
+        try { if (p.sp.rarity === 'unique' || p.sp.rarity === 'epic') sfx.victory(); else sfx.powerup(); } catch {}
+      } else {
+        try { sfx.victory(); } catch {}
+      }
+      renderGachaStep();
+    } else {
+      closeGacha();
+    }
+  };
+}
+
+function runSpiritGacha(count = 1) {
+  const cost = count >= 10 ? 4200 : 500;
+  if (state.points < cost) {
+    showToast(`💸 도덕P가 부족합니다 (${cost.toLocaleString()}P 필요)`, 'warn');
+    return;
+  }
+  state.points -= cost;
+  let bonusNote = '';
+  if (count >= 10) {
+    state.scrap = (state.scrap || 0) + 3;
+    bonusNote = '영웅 고철 +3 보너스!';
+  }
+  const pulls = [];
+  for (let i = 0; i < count; i++) {
+    const unowned = SPIRITS_50.filter((s) => !(state.spirits?.[s.id] > 0));
+    const pick = unowned.length > 0 && Math.random() < 0.75
+      ? unowned[Math.floor(Math.random() * unowned.length)]
+      : SPIRITS_50[Math.floor(Math.random() * SPIRITS_50.length)];
+    const res = grantSpirit(pick.id, true);
+    pulls.push({ sp: pick, res });
+  }
+  if (typeof elEndingsModal !== 'undefined' && elEndingsModal) elEndingsModal.classList.add('hidden');
+  if (typeof elActivityModal !== 'undefined' && elActivityModal) elActivityModal.classList.add('hidden');
+  saveGame();
+  playSpiritGachaSequence(pulls, bonusNote);
+}
+
+function showLuxuryGiftReactionModal(hKey, pick) {
+  const isYuki = hKey === 'yuki';
+  const hName = isYuki ? '🇯🇵 유키' : '🇺🇸 클로이';
+  const imgPath = isYuki ? 'assets/images/yuki_blush.jpg?v=151' : 'assets/images/chloe_wink.jpg?v=151';
+  elActivityModalTitle.textContent = `💖 ${hName} — 명품 선물 대감동!!`;
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = '';
+
+  const box = document.createElement('div');
+  box.className = 'gift-react-box';
+  box.innerHTML = `
+    <img src="${imgPath}" class="gift-react-img" alt="${hName}" />
+    <div style="font-weight:900;color:#be123c;font-size:0.92rem;">🎁 [${pick.name}] 선물 완료! (호감도 +${pick.loveGain} 💕)</div>
+    <div class="gift-react-bubble">"${pick.reaction}"</div>
+  `;
+  elActivityList.appendChild(box);
+
+  const okBtn = document.createElement('button');
+  okBtn.className = 'choice-btn row-btn story-main-btn';
+  okBtn.style.marginTop = '8px';
+  okBtn.innerHTML = '<span>💕 기뻐하는 모습을 마음에 담았다! (확인)</span><span class="choice-sub">톡 알림함에도 저장됨</span>';
+  okBtn.addEventListener('click', () => {
+    sfx.click();
+    elActivityModal.classList.add('hidden');
+    render();
+  });
+  elActivityList.appendChild(okBtn);
+  elActivityModal.classList.remove('hidden');
+}
+
 function openVipShopModal() {
   if (!Array.isArray(state.givenLuxuryGifts)) state.givenLuxuryGifts = [];
   elActivityModalTitle.textContent = `💎 VIP 럭셔리 부티크 & 가챠 (${state.points.toLocaleString()} P)`;
@@ -12829,16 +13025,7 @@ function openVipShopModal() {
   const g1 = document.createElement('button');
   g1.className = 'activity-item-btn';
   g1.innerHTML = '<div class="act-title">🎰 수호정령 럭키 가챠 1회 (500 P)</div><div class="act-desc">75% 확률로 미보유 정령 우선 출현!</div>';
-  g1.addEventListener('click', () => {
-    if (state.points < 500) { showToast('💸 도덕P가 부족합니다 (500P 필요)', 'warn'); return; }
-    state.points -= 500;
-    const got = pullSpiritOnce();
-    sfx.victory();
-    showToast(`🎰 정령 가챠 결과: ${got}!`, 'break');
-    saveGame();
-    openVipShopModal();
-    render();
-  });
+  g1.addEventListener('click', () => runSpiritGacha(1));
   elActivityList.appendChild(g1);
 
   const g10 = document.createElement('button');
@@ -12914,8 +13101,7 @@ ${gots.join(' · ')} (+영웅 고철 +3!)`;
       showToast(`🎁 ${hName}에게 [${pick.name}] 선물 완료! (호감 +${pick.loveGain})`, 'break');
       state.log = `🎁 ${hName}: "${pick.reaction}" (호감 +${pick.loveGain})`;
       saveGame();
-      openVipShopModal();
-      render();
+      showLuxuryGiftReactionModal(hKey, pick);
     });
     elActivityList.appendChild(btn);
   });
