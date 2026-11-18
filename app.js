@@ -1473,6 +1473,12 @@ const FIELD_CONDITIONS = {
 };
 
 function getActiveIntelTarget() {
+  if (state.trackedIntelTarget && state.trackedIntelTarget.key) {
+    const tr = state.trackedIntelTarget;
+    if ((state.intelMap?.[tr.key] || 0) < (tr.maxLv || 2)) {
+      return tr;
+    }
+  }
   const curActId = state.currentAct || 'seoul';
   if (curActId !== 'seoul') {
     const eps = ACT_STORY_EPISODES[curActId] || [];
@@ -1489,6 +1495,15 @@ function getActiveIntelTarget() {
       }
     }
   }
+  const ch = STORY_CHAPTERS[state.chapterIndex];
+  if (ch && ch.bossId) {
+    return {
+      key: `ch_${ch.chapterNum}`,
+      enemyId: ch.bossId,
+      maxLv: (ch.chapterNum % 5 === 0 || ch.chapterNum >= 28) ? 3 : 2,
+      title: `[제${ch.chapterNum}화] ${ch.title}`,
+    };
+  }
   const guideAct = KOREA_ACTS.find((a) => !state.clearedActs?.includes(a.id) && a.id !== 'seoul');
   if (guideAct) {
     const gEps = ACT_STORY_EPISODES[guideAct.id] || [];
@@ -1504,15 +1519,6 @@ function getActiveIntelTarget() {
         };
       }
     }
-  }
-  const ch = STORY_CHAPTERS[state.chapterIndex];
-  if (ch && ch.bossId) {
-    return {
-      key: `ch_${ch.chapterNum}`,
-      enemyId: ch.bossId,
-      maxLv: (ch.chapterNum % 5 === 0 || ch.chapterNum >= 28) ? 3 : 2,
-      title: `[제${ch.chapterNum}화] ${ch.title}`,
-    };
   }
   return null;
 }
@@ -1630,16 +1636,15 @@ function grantIntel(amount = 1, sourceLabel = '') {
   if (prev >= target.maxLv) return false;
   const next = Math.min(target.maxLv, prev + amount);
   state.intelMap[target.key] = next;
+  saveGame();
   const enemy = getEnemyById(target.enemyId);
   const weakLbl = SKILL_ATTR_LABELS[enemy?.weakness || 'speech'] || '언변';
   if (next === 1) {
-    showToast(`🕵️ [첩보 1/${target.maxLv}] ${enemy.name} 약점 해독 → ${weakLbl}!`, 'good');
-  } else if (next === 2 && target.maxLv === 2) {
-    showToast(`🕵️ [첩보 2/2 완성!] ${enemy.name} 가드 -1칸 + 첫 턴 1.8배 기습 확보!`, 'break');
-  } else if (next === 2) {
-    showToast(`🕵️ [첩보 2/${target.maxLv}] ${enemy.name} 패턴·태세 완벽 파악!`, 'good');
+    showToast(`🕵️ [${target.title} 첩보 1/${target.maxLv}] ${enemy.name} 약점 → ${weakLbl}!`, 'good');
+  } else if (next >= target.maxLv) {
+    showToast(`🕵️ [${target.title} 첩보 ${next}/${target.maxLv} 완성!] 가드 -1칸 + 첫 턴 1.8배 기습!`, 'break');
   } else {
-    showToast(`🕵️ [첩보 3/3 완성!] ${enemy.name} 가드 -1칸 + 첫 턴 1.8배 기습 확보!`, 'break');
+    showToast(`🕵️ [${target.title} 첩보 ${next}/${target.maxLv}] 패턴·태세 완벽 파악!`, 'good');
   }
   return true;
 }
@@ -1680,9 +1685,12 @@ function openIntelBriefingModal(target, onProceed) {
     goIntelBtn.className = 'activity-item-btn';
     goIntelBtn.style.borderColor = '#4f46e5';
     goIntelBtn.style.background = '#eef2ff';
-    goIntelBtn.innerHTML = `<div class="act-title">🕵️ 마을 탐문으로 첩보 캐러 가기 (추천!)</div><div class="act-desc">순찰·CCTV 채증·어르신 탐문으로 약점 & 기습 보너스 획득!</div>`;
+    goIntelBtn.innerHTML = `<div class="act-title">🕵️ 마을 탐문으로 첩보 캐러 가기 (추천!)</div><div class="act-desc">순찰·CCTV 채증·어르신 탐문으로 [${target.title}] 첩보 즉시 추적!</div>`;
     goIntelBtn.addEventListener('click', () => {
       sfx.click();
+      state.trackedIntelTarget = target;
+      saveGame();
+      showToast(`🎯 [${target.title}] 첩보 추적 시작! 순찰·탐문을 실행하세요.`, 'good');
       openActivityModal(patrolCat);
     });
     elActivityList.appendChild(goIntelBtn);
@@ -5485,12 +5493,17 @@ function render() {
     });
     elChoicesPanel.appendChild(giftBtn);
 
-    // V53.3: 결혼은 (1) 공식 연인 + (2) 스토리 모드 클리어 + (3) 호감 180+ 전부 충족 시 해금!
+    // V53.4: 결혼은 (1) 공식 연인 + (2) 스토리 모드 클리어 + (3) 호감 180+ 전부 충족 시 해금!
+    // 트리플 웨딩은 "한쪽과 결혼 + 나머지 한쪽과도 공식 커플(연인) + 양쪽 180+ & 스토리 클리어" 시 시크릿으로 개방!
     const yLv = state.love?.yuki || 0;
     const cLv = state.love?.chloe || 0;
     const yLover = !!state.lovers?.includes('yuki');
     const cLover = !!state.lovers?.includes('chloe');
     const isStoryCleared = !!(state.storyCleared || (state.clearedActs?.length || 0) >= 4);
+    const hasOneMarriage = state.marriedTo === 'yuki' || state.marriedTo === 'chloe' || state.marriedTo === 'triple'
+      || (state.weddingAlbum || []).includes('wedding_yuki.jpg')
+      || (state.weddingAlbum || []).includes('wedding_chloe.jpg');
+    const tripleSecretUnlocked = hasOneMarriage && yLover && cLover && isStoryCleared && yLv >= 180 && cLv >= 180;
     const getWedLockReason = (isLover, lv) => {
       const lacks = [];
       if (!isLover) lacks.push('고백해서 연애 시작');
@@ -5502,7 +5515,7 @@ function render() {
       const wedDefs = [
         { key: 'yuki', show: yLover || yLv >= 100, ok: yLover && isStoryCleared && yLv >= 180, lock: getWedLockReason(yLover, yLv), label: '💒 유키와 결혼 & 교토 신혼여행', sub: `유키 호감 ${yLv}/200 · 전용 웨딩 & 온천/료칸 2컷 ▶` },
         { key: 'chloe', show: cLover || cLv >= 100, ok: cLover && isStoryCleared && cLv >= 180, lock: getWedLockReason(cLover, cLv), label: '💒 클로이와 결혼 & 몰디브 신혼여행', sub: `클로이 호감 ${cLv}/200 · 전용 웨딩 & 비치/자쿠지 2컷 ▶` },
-        { key: 'triple', show: (yLover && cLover) || (yLv >= 140 && cLv >= 140), ok: yLover && cLover && isStoryCleared && yLv >= 180 && cLv >= 180, lock: getWedLockReason(yLover && cLover, Math.min(yLv, cLv)), label: '👑 유키·클로이 트리플 웨딩 & 풀빌라 허니문!!', sub: '양쪽 연인+스토리클리어+180+ 달성!! 전설의 3인 웨딩 & 리조트 2컷 ▶' },
+        { key: 'triple', show: tripleSecretUnlocked, ok: tripleSecretUnlocked, lock: '', label: '👑 [시크릿 해금!!] 유키·클로이 트리플 웨딩 & 풀빌라 허니문!!', sub: '기혼+양쪽 연인+180+ 달성!! 전설의 3인 웨딩 & 리조트 2컷 ▶' },
       ];
       wedDefs.filter((w) => w.show).forEach((w) => {
         const wBtn = document.createElement('button');
@@ -12330,9 +12343,9 @@ function openWeddingAlbumModal() {
     { file: 'wedding_chloe.jpg', title: '🌇 클로이 선셋 웨딩' },
     { file: 'honeymoon_chloe_1.jpg', title: '🏖️ 클로이 몰디브 비치' },
     { file: 'honeymoon_chloe_2.jpg', title: '🥂 클로이 버블 배스' },
-    { file: 'wedding_triple.jpg', title: '👑 전설의 트리플 웨딩' },
-    { file: 'honeymoon_triple_1.jpg', title: '🏊 인피니티 풀 허니문' },
-    { file: 'honeymoon_triple_2.jpg', title: '☀️ 실크 파자마 모닝' },
+    { file: 'wedding_triple.jpg', title: '👑 전설의 트리플 웨딩', secret: true },
+    { file: 'honeymoon_triple_1.jpg', title: '🏊 인피니티 풀 허니문', secret: true },
+    { file: 'honeymoon_triple_2.jpg', title: '☀️ 실크 파자마 모닝', secret: true },
   ];
 
   allImgs.forEach((it) => {
@@ -12340,9 +12353,11 @@ function openWeddingAlbumModal() {
     const card = document.createElement('div');
     card.className = 'inv-item';
     card.style.opacity = unlocked ? '1' : '0.45';
+    const hiddenTitle = it.secret ? '??? (시크릿 웨딩)' : it.title;
+    const hiddenDesc = it.secret ? '한 명과 결혼 후 다른 히로인과도 연애·조건 달성 시 시크릿 해금' : (it.reqText || '연인+스토리 클리어+호감 180+ 결혼 진행 시 해금');
     card.innerHTML = unlocked
-      ? `<img src="assets/images/romance/${it.file}?v=133" style="width:68px;height:68px;object-fit:cover;border-radius:8px;border:1.5px solid #e11d48;" /><div class="inv-info"><h4>${it.title}</h4><p>✨ 해금 완료 (터치해서 크게 보기)</p></div>`
-      : `<div class="inv-info"><h4>🔒 ${it.title}</h4><p>${it.reqText || '호감 180+ 결혼 & 신혼여행 진행 시 해금'}</p></div>`;
+      ? `<img src="assets/images/romance/${it.file}?v=136" style="width:68px;height:68px;object-fit:cover;border-radius:8px;border:1.5px solid #e11d48;" /><div class="inv-info"><h4>${it.title}</h4><p>✨ 해금 완료 (터치해서 크게 보기)</p></div>`
+      : `<div class="inv-info"><h4>🔒 ${hiddenTitle}</h4><p>${hiddenDesc}</p></div>`;
     if (unlocked) {
       card.style.cursor = 'pointer';
       card.addEventListener('click', () => {
