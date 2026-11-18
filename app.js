@@ -11,7 +11,7 @@ import { CARS, GEAR_UPGRADES, ACHIEVEMENTS } from './data/lifestyle.js';
 import { STREAM_MISSIONS, ROOM_UPGRADES, GUERRILLA_VILLAINS, STOCKS, HEROINE_GIFTS } from './data/v16Systems.js';
 import { COURT_CASES, COSTUMES, CAPSULE_POOL, PET_WALK_EVENTS } from './data/v17Systems.js?v=63';
 import { CLUES, SOME_CRISIS_EVENTS, RIVAL_EVENTS, REFORMED_ALLIES, GETTING_TO_KNOW_EVENTS, STORY_INTERLUDES, WEEKEND_EVENTS } from './data/v19Story.js?v=51';
-import { DIFFICULTIES, RARITY_INFO, GEAR_LOOT_POOL, GEAR_ENCHANTS, PET_JOBS, LOGIC_COUNTERS, generateCommunityPosts } from './data/v24Systems.js?v=61';
+import { DIFFICULTIES, RARITY_INFO, GEAR_LOOT_POOL, GEAR_ENCHANTS, PET_JOBS, LOGIC_COUNTERS, generateCommunityPosts } from './data/v24Systems.js?v=62';
 import { KISS_SCENES, LOVER_ACTIONS, KISS_SCENE_CHOICES } from './data/v25Romance.js?v=71';
 import { SPIRITS_50, SPIRIT_ELEMENTS } from './data/spirits50.js?v=125';
 import { UNLOCK_MILESTONES, isFeatureUnlocked, SEOUL_DISTRICTS, getDistrictIdForEnemy, getClearedDistrictCount } from './data/v26World.js?v=108';
@@ -2455,11 +2455,12 @@ function startBattle(enemyId, isRandomEncounter = false) {
     : (floor > 0 ? baseScaledAtk + floor * 2 : baseScaledAtk);
   const spiritHpBal = enemyLv >= 21 ? 1.28 : (enemyLv >= 9 ? 1.15 : 1.0);
   const spiritAtkBal = enemyLv >= 21 ? 1.15 : (enemyLv >= 9 ? 1.10 : 1.0);
+  const hellLateAtkMult = (diff.id === 'hell' && enemyLv >= 15) ? (1 + Math.min(0.45, (enemyLv - 14) * 0.025)) : 1.0;
   const enemy = {
     ...baseEnemy,
     name: `[Lv.${enemyLv}] ${mod ? `[${mod.label}] ` : ''}${floor > 0 ? `[타워 ${floor}층] ` : ''}${baseEnemy.name}`,
     maxHp: Math.round(rawMaxHp * diff.hpMult * ngMult * spiritHpBal),
-    atk: Math.round(rawAtk * diff.atkMult * ngMult * spiritAtkBal),
+    atk: Math.round(rawAtk * diff.atkMult * ngMult * spiritAtkBal * hellLateAtkMult),
     reward: Math.round((floor > 0 ? 25 + floor * 10 : baseEnemy.reward + Math.min(30, enemyLv)) * diff.rewardMult * modRewardMult),
   };
   const rep = getReputationInfo();
@@ -2696,9 +2697,11 @@ function enemyCounterTurn(enemy, isGuarding = false) {
     }
   }
   if (spBonTurn.perkId === 'turn_heal' && state.hp > 0) {
-    const regenHp = Math.max(4, Math.round(state.maxHp * 0.04) + Math.floor(((spBonTurn.growthLv || 1) - 1) / 2));
+    const healMult = (state.difficulty || 'normal') === 'hell' ? 0.5 : 1.0;
+    const rawRegen = Math.max(4, Math.round(state.maxHp * 0.04) + Math.floor(((spBonTurn.growthLv || 1) - 1) / 2));
+    const regenHp = Math.max(2, Math.round(rawRegen * healMult));
     state.hp = clamp(state.hp + regenHp, 1, state.maxHp);
-    state.log += `\n🫧 [${spBonTurn.spirit.name}] 탄산 재생! 인내심 +${regenHp}`;
+    state.log += `\n🫧 [${spBonTurn.spirit.name}] 탄산 재생! 인내심 +${regenHp}${healMult < 1 ? ' (헬 억제 50%)' : ''}`;
   }
 
   const intentObj = ENEMY_INTENTS.find((i) => i.id === state.enemyIntent) || ENEMY_INTENTS[0];
@@ -2771,14 +2774,21 @@ function enemyCounterTurn(enemy, isGuarding = false) {
   if (isGuarding) {
     dmg = Math.max(1, Math.round(dmg * 0.10));
   }
+  const isHell = (state.difficulty || 'normal') === 'hell';
   const totalDef = (eqBonus.def || 0) + (state.flatDef || 0) + Math.floor(((state.level || 1) - 1) / 3);
-  if (totalDef > 0) {
-    const minDmg = isGuarding ? 2 : Math.max(5, Math.round(scaledAtk * 0.25));
-    const maxFlatBlock = isGuarding ? totalDef : Math.min(totalDef, Math.round(dmg * 0.55));
+  const effectiveDef = (isHell && !isGuarding) ? Math.round(totalDef * 0.7) : totalDef;
+  if (effectiveDef > 0) {
+    const minDmg = isGuarding ? 2 : Math.max(isHell ? 8 : 5, Math.round(scaledAtk * (isHell ? 0.32 : 0.25)));
+    const maxFlatBlock = isGuarding ? effectiveDef : Math.min(effectiveDef, Math.round(dmg * (isHell ? 0.45 : 0.55)));
     const nextDmg = Math.max(minDmg, dmg - maxFlatBlock);
     const blocked = Math.max(0, dmg - nextDmg);
     dmg = nextDmg;
-    if (blocked > 0) state.log += `\n🛡️ [방어력 경감 -${blocked}]`;
+    if (blocked > 0) state.log += `\n🛡️ [방어력 경감 -${blocked}${isHell ? ' · 헬 관통 30%' : ''}]`;
+  }
+  if (isHell && !isGuarding && Math.random() < 0.25 && state.sp > 0) {
+    const spDrain = Math.min(state.sp, Math.max(6, Math.round(state.maxSp * 0.07)));
+    state.sp -= spDrain;
+    state.log += `\n💢 [헬 압박!] 적의 거친 기세에 사이다 -${spDrain} 소모!`;
   }
   const duoSynDef = getSpiritDuoSynergy();
   if (duoSynDef && duoSynDef.defMult < 1 && dmg > 1) dmg = Math.max(1, Math.round(dmg * duoSynDef.defMult));
@@ -3405,9 +3415,10 @@ function performAttack(type, ultPerfect = false) {
     }
   }
   if ((eqBonus.lifesteal || 0) > 0 && dmg > 0) {
-    const ls = Math.max(2, Math.round(dmg * eqBonus.lifesteal));
+    const healMult = (state.difficulty || 'normal') === 'hell' ? 0.5 : 1.0;
+    const ls = Math.max(1, Math.round(dmg * eqBonus.lifesteal * healMult));
     state.hp = clamp(state.hp + ls, 1, state.maxHp);
-    state.log += `\n🩸 [흡혈 각인] 인내심 +${ls} 회복!`;
+    state.log += `\n🩸 [흡혈 각인] 인내심 +${ls} 회복!${healMult < 1 ? ' (헬 -50%)' : ''}`;
   }
 
   if (state.enemyBroken) {

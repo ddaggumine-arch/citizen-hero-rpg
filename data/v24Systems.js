@@ -14,20 +14,20 @@ export const DIFFICULTIES = {
   hard: {
     id: 'hard',
     name: '🔥 하드 (HARD)',
-    desc: '적 체력 1.45배 · 공격 1.35배 | 보상 1.35배 · 드랍 2배',
-    hpMult: 1.45,
-    atkMult: 1.35,
-    rewardMult: 1.35,
+    desc: '적 체력 1.6배 · 공격 1.5배 | 보상 1.45배 · 드랍 2배',
+    hpMult: 1.6,
+    atkMult: 1.5,
+    rewardMult: 1.45,
     uniqueRate: 0.003, // 0.3%
     dropChance: 0.50,
   },
   hell: {
     id: 'hell',
     name: '💀 헬 (HELL)',
-    desc: '적 체력 2.1배 · 공격 1.85배 | 보상 1.85배 · 유니크 확률 3배!',
-    hpMult: 2.1,
-    atkMult: 1.85,
-    rewardMult: 1.85,
+    desc: '적 체력 2.8배 · 공격 2.6배 · 흡혈/자동회복 반감 · 방어관통 30% | 보상 2.2배 · 유니크 3배!',
+    hpMult: 2.8,
+    atkMult: 2.6,
+    rewardMult: 2.2,
     uniqueRate: 0.006, // 일반 0.6%, 보스 3%
     dropChance: 0.65,
   },

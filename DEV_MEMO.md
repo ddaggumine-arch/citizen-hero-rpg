@@ -5,7 +5,12 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V60.1 (GitHub Pages 배포됨)
+## 현재 최신 버전: V61.0 (GitHub Pages 배포됨)
+- **V61.0 (`?v=154`)**:
+  - **하드/헬 난이도 밸런스 대폭 상향 (`v24Systems.js?v=62`, `app.js`)**:
+    - 하드: 적 체력 `1.6배` · 공격 `1.5배` · 보상 `1.45배`.
+    - 헬: 적 체력 `2.8배` · 공격 `2.6배` (+ Lv.15+ 후반 추가 공격 보정 최대 +45%) · 보상 `2.2배`.
+    - 헬 전용 기믹: **흡혈·탄산 자동회복 효율 50% 억제**(우황청심환·칠성사이다 소비 아이템은 100% 그대로 회복), **방어력 30% 관통**, 피격 시 **25% 확률 사이다 압박 소모** 추가!
 - **V60.1 (`?v=153`)**:
   - **결혼 해금 판정 보강**: `isStoryCleared`가 `freePlayMode`, `epilogueSeen`, `chapterIndex >= STORY_CHAPTERS.length`까지 인식하고 `completeChapterOnly`에서도 마지막 챕터 완주 시 `storyCleared`/`freePlayMode`를 세팅하도록 수정. 미해금 시 부족한 고백 세부 조건(어학/데이트/스탯)도 정확히 표시!
 - **V60.0 (`?v=152`)**:
