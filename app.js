@@ -988,12 +988,12 @@ function spawnCombatVfx(vfxOpts, isCrit = false) {
     img.className = `vfx-impact-sprite${isBig ? ' is-big' : ''}`;
     img.alt = '';
     elCombatVfxLayer.appendChild(img);
-    setTimeout(() => img.remove(), 1020);
+    setTimeout(() => img.remove(), 1380);
 
     const ring = document.createElement('div');
     ring.className = 'vfx-hit-ring';
     elCombatVfxLayer.appendChild(ring);
-    setTimeout(() => ring.remove(), 720);
+    setTimeout(() => ring.remove(), 900);
   }
   if (vfxOpts.skillName && (isCrit || vfxOpts.isBreak || vfxOpts.isFever || (vfxOpts.tier || 1) >= 3)) {
     const prevBanner = elCombatVfxLayer.querySelector('.vfx-cutin-banner');
@@ -1002,7 +1002,7 @@ function spawnCombatVfx(vfxOpts, isCrit = false) {
     banner.className = 'vfx-cutin-banner';
     banner.textContent = vfxOpts.isBreak ? `💥 BREAK! ${vfxOpts.skillName}` : vfxOpts.skillName;
     elCombatVfxLayer.appendChild(banner);
-    setTimeout(() => banner.remove(), 1180);
+    setTimeout(() => banner.remove(), 1500);
   }
 }
 
@@ -3386,7 +3386,7 @@ function performAttack(type, ultPerfect = false) {
   const vfxInfo = getSkillVfxInfo(type);
   const tCfg = state.fastBattle
     ? { impact: 40, next: 260, win: 320 }
-    : { impact: 150, next: 900, win: 980 };
+    : { impact: 200, next: 1450, win: 1580 };
   if (elEnemyHpText) elEnemyHpText.textContent = `${state.enemyHp} / ${state.enemyMaxHp}`;
   if (elEnemyHpBar) elEnemyHpBar.style.width = `${(state.enemyHp / Math.max(1, state.enemyMaxHp)) * 100}%`;
   if (elBattleLog) elBattleLog.textContent = (state.quote ? `💬 ${state.quote}\n` : '') + (state.log || '');
