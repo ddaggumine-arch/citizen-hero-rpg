@@ -5562,13 +5562,37 @@ function render() {
       }
     });
 
+    const chloeLoveNow = state.love?.chloe || 0;
+    const chloeSpMilestones = [
+      { req: 110, file: 'chloe_sp_bikini.jpg', title: '👙 클로이 해변 레드 비키니', msg: '"Hey! 해변에서 찍은 베스트 컷인데, 너한테만 먼저 보내줄게~ 어때? 😉"' },
+      { req: 130, file: 'chloe_sp_hoodie.jpg', title: '🪞 클로이 크롭 후드 & 핫팬츠', msg: '"스튜디오 거울 앞에서 핏 체크하다 찍었어! 오늘 밤 나 보러 올 거지? ♥"' },
+      { req: 150, file: 'chloe_sp_rooftop.jpg', title: '🍸 클로이 루프탑 밤수영 시스루', msg: '"남산 보이는 루프탑 풀에서 칵테일 한 잔 중~ 옆자리 비워뒀어!"' },
+      { req: 170, file: 'chloe_sp_morning.jpg', title: '☀️ 클로이 모닝 화이트 셔츠', msg: '"굿모닝~ 네 셔츠 걸쳐 입어봤는데 나한테 딱 맞네? ♥"' },
+    ];
+    chloeSpMilestones.forEach((m) => {
+      if (chloeLoveNow >= m.req) {
+        if (!Array.isArray(state.weddingAlbum)) state.weddingAlbum = [];
+        if (!state.weddingAlbum.includes(m.file)) {
+          state.weddingAlbum.push(m.file);
+          if (!state.dateMessages) state.dateMessages = [];
+          state.dateMessages.unshift({
+            sender: '🇺🇸 클로이',
+            title: `📸 시크릿 포토 해금! (${m.title})`,
+            body: m.msg,
+          });
+          state.unreadMessages = (state.unreadMessages || 0) + 1;
+          showToast(`📸 클로이 시크릿 화보 해금! [${m.title}]`, 'good');
+        }
+      }
+    });
+
     if ((state.weddingAlbum?.length || 0) > 0) {
       const albBtn = document.createElement('button');
       albBtn.className = 'choice-btn row-btn';
       albBtn.style.gridColumn = 'span 2';
       albBtn.style.background = 'linear-gradient(180deg, #fff0f6 0%, #ffe4e6 100%)';
       albBtn.style.borderColor = '#e11d48';
-      albBtn.innerHTML = `<span>📸 유키 시크릿 & 웨딩 스페셜 앨범 (${state.weddingAlbum.length}/13)</span><span class="choice-sub" style="color:#9f1239;">해금된 시크릿 화보 · 웨딩 · 허니문 일러스트 크게 보기</span>`;
+      albBtn.innerHTML = `<span>📸 히로인 시크릿 & 웨딩 스페셜 앨범 (${state.weddingAlbum.length}/17)</span><span class="choice-sub" style="color:#9f1239;">유키·클로이 시크릿 화보 · 웨딩 · 허니문 일러스트 크게 보기</span>`;
       albBtn.addEventListener('click', () => { sfx.click(); openWeddingAlbumModal(); });
       elChoicesPanel.appendChild(albBtn);
     }
@@ -12328,7 +12352,7 @@ const WEDDING_ROUTES = {
 
 function openWeddingAlbumModal() {
   const album = state.weddingAlbum || [];
-  elActivityModalTitle.textContent = `📸 유키 시크릿 & 웨딩 스페셜 앨범 (${album.length}/13)`;
+  elActivityModalTitle.textContent = `📸 히로인 시크릿 & 웨딩 스페셜 앨범 (${album.length}/17)`;
   if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
   elActivityList.innerHTML = '';
 
@@ -12337,6 +12361,10 @@ function openWeddingAlbumModal() {
     { file: 'yuki_sp_denim.jpg', title: '🪞 유키 크롭티 & 데님 핫팬츠', reqText: '유키 호감 130+ 달성 시 해금' },
     { file: 'yuki_sp_pool.jpg', title: '🌙 유키 밤수영 젖은 셔츠', reqText: '유키 호감 150+ 달성 시 해금' },
     { file: 'yuki_sp_yoga.jpg', title: '🧘‍♀️ 유키 모닝 필라테스 스트레칭', reqText: '유키 호감 170+ 달성 시 해금' },
+    { file: 'chloe_sp_bikini.jpg', title: '👙 클로이 해변 레드 비키니', reqText: '클로이 호감 110+ 달성 시 해금' },
+    { file: 'chloe_sp_hoodie.jpg', title: '🪞 클로이 크롭 후드 & 핫팬츠', reqText: '클로이 호감 130+ 달성 시 해금' },
+    { file: 'chloe_sp_rooftop.jpg', title: '🍸 클로이 루프탑 밤수영 시스루', reqText: '클로이 호감 150+ 달성 시 해금' },
+    { file: 'chloe_sp_morning.jpg', title: '☀️ 클로이 모닝 화이트 셔츠', reqText: '클로이 호감 170+ 달성 시 해금' },
     { file: 'wedding_yuki.jpg', title: '🌸 유키 웨딩 마치' },
     { file: 'honeymoon_yuki_1.jpg', title: '♨️ 유키 교토 노천온천' },
     { file: 'honeymoon_yuki_2.jpg', title: '🕯️ 유키 촛불 유카타' },
