@@ -3005,6 +3005,7 @@ function enemyCounterTurn(enemy, isGuarding = false) {
 
 function handleEnemyDefeated(enemy) {
   if ((state.spicyBuffBattles || 0) > 0) state.spicyBuffBattles -= 1;
+  if ((state.pokerCritBattles || 0) > 0) state.pokerCritBattles -= 1;
   state.quote = enemy.defeatQuote;
   const diff = getDiffObj();
   const eqBon = getEquippedBonuses();
@@ -3079,7 +3080,7 @@ function handleEnemyDefeated(enemy) {
       if (enemy.actId === 'jeonju') state.maxHp += 20;
       else if (enemy.actId === 'pyeongtaek') state.bonusDmg += 4;
       else if (enemy.actId === 'dongtan') state.flatDef = (state.flatDef || 0) + 3;
-      else if (enemy.actId === 'incheon') state.critBonus = (state.critBonus || 0) + 0.08;
+      else if (enemy.actId === 'incheon') state.critBonus = ((state.critBonus || 0) + ((state.pokerCritBattles || 0) > 0 ? 0.15 : 0) + ((state.spicyBuffBattles || 0) > 0 ? 0.10 : 0)) + 0.08;
       showToast(`🏆 [지역 제패!!] ${enemy.name} 격파! [${rPick.name}] 획득!`, 'break');
     }
   }
@@ -4822,6 +4823,19 @@ function render() {
         recTitle = '💡 [전투 준비 추천] 편의점 🔥 매운 컵라면 버프!';
         recSub = '40P로 다음 3전투 공격력 +20% 버프 챙기기 ▶';
         recFn = () => openActivityModal(ACTIVITY_CATEGORIES.find((c) => c.id === 'shop'));
+      } else if (getClaimableCodexMilestone()) {
+        const cm = getClaimableCodexMilestone();
+        recTitle = `💡 [도감 보상 대기] 빌런 ${cm}종 수집 달성!`;
+        recSub = '빌런 도감에서 영구 최대HP+30 · 공+4 · 강화석+3 받기 ▶';
+        recFn = () => openVillainCodexModal();
+      } else if (state.lastFreePokerDay !== state.day) {
+        recTitle = '💡 [무료 찬스] 오늘의 지하 포커 무료판 가능!';
+        recSub = '0P 노리스크 도전 → +90P & 3전투 치명타+15% 버프! ▶';
+        recFn = () => openUndergroundPokerModal();
+      } else if (state.lastCommVoteDay !== state.day) {
+        recTitle = '💡 [일일 여론] 서울 익명 커뮤니티 글 남기기!';
+        recSub = '팔로워 +30~40 & 포인트/사이다 즉시 수령 ▶';
+        recFn = () => openCommunityModal();
       } else if ((state.ownedRunes?.length || 0) > 0 && !(state.equippedRunes?.length)) {
         recTitle = '💡 [전력 강화 추천] 미장착 정령석(룬)이 있습니다!';
         recSub = '수호정령 칸에서 룬 장착하고 스탯 올리기 ▶';
@@ -9797,6 +9811,22 @@ function startTimingMinigame(onFinish) {
   btnTimingTap.addEventListener('click', handleTap);
 }
 
+const CODEX_MILESTONES = [5, 10, 15, 20, 30];
+
+function getCodexMetCount() {
+  const regularEnemies = [...VILLAINS, ...GUERRILLA_VILLAINS, ...BOSSES, HIDDEN_BOSS];
+  const allEnemies = [...regularEnemies, ...STORY_BOSSES];
+  const wins = state.villainWins || {};
+  const encounters = state.villainEncounters || {};
+  return allEnemies.filter((v) => (encounters[v.id] || 0) > 0 || (wins[v.id] || 0) > 0).length;
+}
+
+function getClaimableCodexMilestone() {
+  const met = getCodexMetCount();
+  const claimed = state.codexClaimed || [];
+  return CODEX_MILESTONES.find((m) => met >= m && !claimed.includes(m)) || null;
+}
+
 function openVillainCodexModal() {
   const regularEnemies = [...VILLAINS, ...GUERRILLA_VILLAINS, ...BOSSES, HIDDEN_BOSS];
   const allEnemies = [...regularEnemies, ...STORY_BOSSES];
@@ -9810,6 +9840,31 @@ function openVillainCodexModal() {
 
   elEndingsModalTitle.textContent = `📖 빌런 도감 (${totalMet}/${allEnemies.length})`;
   elEndingsList.innerHTML = '';
+
+  const claimableM = getClaimableCodexMilestone();
+  const mCard = document.createElement('div');
+  mCard.className = 'inv-item';
+  mCard.style.background = claimableM ? 'linear-gradient(180deg, #fefce8 0%, #fef3c7 100%)' : '';
+  mCard.innerHTML = `<div class="inv-info"><h4>🏆 도감 수집 마일스톤 (${totalMet}종)</h4><p>${claimableM ? `${claimableM}종 달성 보상 대기 중! (최대HP+30 · 공+4 · 강화석+3)` : '5 / 10 / 15 / 20 / 30종 달성마다 영구 스탯 + 강화석 지급!'}</p></div>`;
+  if (claimableM) {
+    const cBtn = document.createElement('button');
+    cBtn.className = 'use-btn';
+    cBtn.textContent = '보상 받기';
+    cBtn.addEventListener('click', () => {
+      if (!Array.isArray(state.codexClaimed)) state.codexClaimed = [];
+      state.codexClaimed.push(claimableM);
+      state.maxHp += 30;
+      state.hp = clamp(state.hp + 30, 1, state.maxHp);
+      state.bonusDmg += 4;
+      state.scrap = (state.scrap || 0) + 3;
+      sfx.victory();
+      showToast(`🏆 [도감 ${claimableM}종 달성!] 최대HP+30 · 공격+4 · 강화석+3!`, 'break');
+      saveGame();
+      openVillainCodexModal();
+    });
+    mCard.appendChild(cBtn);
+  }
+  elEndingsList.appendChild(mCard);
 
   const renderGroup = (title, list) => {
     if (list.length === 0) return;
@@ -10546,6 +10601,43 @@ function openSpiritModal(filterEl = 'all') {
 function openCommunityModal() {
   elEndingsModalTitle.textContent = '💬 서울 익명 커뮤니티 (에타·블라인드)';
   elEndingsList.innerHTML = '';
+  const canVote = state.lastCommVoteDay !== state.day;
+  const vCard = document.createElement('div');
+  vCard.className = 'inv-item';
+  vCard.style.background = canVote ? 'linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%)' : '';
+  vCard.innerHTML = `<div class="inv-info"><h4>🗳️ 오늘의 여론 참여 ${canVote ? '(가능!)' : '(완료)'}</h4><p>${canVote ? '글을 남기면 팔로워·포인트/사이다 보너스!' : '오늘 여론 참여 완료! 내일 다시 참여하세요.'}</p></div>`;
+  if (canVote) {
+    const b1 = document.createElement('button');
+    b1.className = 'use-btn';
+    b1.textContent = '👍 모범어필';
+    b1.addEventListener('click', () => {
+      state.lastCommVoteDay = state.day;
+      state.followers = (state.followers || 120) + 30;
+      state.points += 25;
+      sfx.powerup();
+      showToast('👍 베댓 선정! 팔로워 +30 · +25P!', 'good');
+      saveGame();
+      openCommunityModal();
+      render();
+    });
+    const b2 = document.createElement('button');
+    b2.className = 'use-btn';
+    b2.style.marginLeft = '4px';
+    b2.textContent = '🔥 썰풀기';
+    b2.addEventListener('click', () => {
+      state.lastCommVoteDay = state.day;
+      state.followers = (state.followers || 120) + 40;
+      state.sp = clamp(state.sp + 25, 0, state.maxSp);
+      sfx.powerup();
+      showToast('🔥 핫글 등극! 팔로워 +40 · 사이다 +25!', 'break');
+      saveGame();
+      openCommunityModal();
+      render();
+    });
+    vCard.appendChild(b1);
+    vCard.appendChild(b2);
+  }
+  elEndingsList.appendChild(vCard);
   const posts = generateCommunityPosts(state);
   posts.forEach((p) => {
     const card = document.createElement('div');
@@ -12009,6 +12101,34 @@ function openUndergroundPokerModal() {
   banner.textContent = `수상한 지하실에 모인 타짜들! 보유: ${state.points}P (주사위 2개 합이 딜러보다 높으면 +120P, 화술/은신 숙련도 보정!)`;
   elActivityList.appendChild(banner);
 
+  if (state.lastFreePokerDay !== state.day) {
+    const freeBtn = document.createElement('button');
+    freeBtn.className = 'activity-item-btn';
+    freeBtn.style.background = 'linear-gradient(180deg, #fefce8 0%, #fef3c7 100%)';
+    freeBtn.innerHTML = '<div class="act-title">🎁 [오늘 1회 무료!] 노리스크 VIP 체험판</div><div class="act-desc">배팅 0P · 승리 시 +90P & 3전투 치명타 +15% 버프! (패배 시 페널티 없음)</div>';
+    freeBtn.addEventListener('click', () => {
+      elActivityModal.classList.add('hidden');
+      state.lastFreePokerDay = state.day;
+      const bonus = Math.floor((state.skills.sneak + state.skills.speech) / 3);
+      const playerRoll = Math.floor(Math.random() * 6) + 1 + Math.floor(Math.random() * 6) + 1 + bonus;
+      const dealerRoll = Math.floor(Math.random() * 6) + 1 + Math.floor(Math.random() * 6) + 1;
+      if (playerRoll >= dealerRoll) {
+        state.points += 90;
+        state.pokerCritBattles = (state.pokerCritBattles || 0) + 3;
+        sfx.victory();
+        showToast(`🃏 무료판 대승!! +90P & 3전투 치명타 +15%!`, 'break');
+        state.log = `🃏 [지하 포커 무료판 승리!] ${playerRoll} vs ${dealerRoll} (+90P · 3전투 치명타 +15% [승부사의 직감]!)`;
+      } else {
+        sfx.click();
+        showToast(`🃏 아쉽지만 무손실 체험 완료! (${playerRoll} vs ${dealerRoll})`, 'good');
+        state.log = `🃏 [지하 포커 무료판] ${playerRoll} vs ${dealerRoll}. 무료판이라 잃은 것 없이 빠져나왔습니다!`;
+      }
+      saveGame();
+      render();
+    });
+    elActivityList.appendChild(freeBtn);
+  }
+
   const playBtn = document.createElement('button');
   playBtn.className = 'activity-item-btn';
   playBtn.disabled = state.points < 50;
@@ -12360,7 +12480,7 @@ function openTradeModal() {
 
   const banner = document.createElement('div');
   banner.className = 'oblivion-banner';
-  banner.textContent = `보유: ${state.points}P | 산지에서는 싸고, 타 도시에서는 비싸게 팔립니다! (시간대 이동 시 시세 갱신)`;
+  banner.textContent = `보유: ${state.points}P | 누적 판매 ${state.tradeSellCount || 0}회 (3회마다 강화석+3 & 룬 1개!)`;
   elActivityList.appendChild(banner);
 
   REGIONAL_GOODS.forEach((g) => {
@@ -12389,6 +12509,14 @@ function openTradeModal() {
     sellBtn.addEventListener('click', () => {
       state.tradeCargo[g.id] -= 1;
       state.points += price;
+      state.tradeSellCount = (state.tradeSellCount || 0) + 1;
+      if (state.tradeSellCount % 3 === 0) {
+        state.scrap = (state.scrap || 0) + 3;
+        const rPick = RUNE_STONES[Math.floor(Math.random() * RUNE_STONES.length)];
+        if (!Array.isArray(state.ownedRunes)) state.ownedRunes = [];
+        state.ownedRunes.push(rPick.id);
+        showToast(`🚚 무역 ${state.tradeSellCount}회 달성! 강화석+3 · [${rPick.name}] 획득!`, 'break');
+      }
       gainSkillXp('speech', 6);
       sfx.powerup();
       saveGame();

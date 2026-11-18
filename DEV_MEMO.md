@@ -5,7 +5,14 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V64.1 (GitHub Pages 배포됨)
+## 현재 최신 버전: V65.0 (GitHub Pages 배포됨)
+- **V65.0 (`?v=159`)**:
+  - **숨은 메뉴 대통합 활성화**:
+    - **빌런 도감 (`openVillainCodexModal`)**: `5/10/15/20/30`종 달성마다 도감 안에서 영구 `최대HP+30 · 공격+4 · 강화석+3` 수령 가능!
+    - **지하 포커 (`openUndergroundPokerModal`)**: 하루 1회 무료 노리스크 VIP판 추가 (승리 시 `+90P` & 3전투 치명타 `+15%` [승부사의 직감] 버프!).
+    - **서울 익명 커뮤니티 (`openCommunityModal`)**: 매일 1회 `👍 모범어필` / `🔥 썰풀기` 여론 참여로 팔로워 +30~40 & 포인트/사이다 수령!
+    - **보부상 무역 (`openTradeModal`)**: 누적 판매 3회마다 `강화석 +3` & 랜덤 정령석(룬) 1개 지급!
+    - **지도 `💡 [오늘 추천]` 배너 확장**: 도감 보상·무료 포커·커뮤니티 참여·룬 장착까지 자동 안내!
 - **V64.1 (`?v=158`)**:
   - **긴급 핫픽스**: `💡 [오늘 추천]` 배너 클릭 시 잘못된 phase(`'life'`)로 이동해 화병 패배 화면으로 빠지던 버그 수정 (`openDailyHubModal()`로 연결 + `'life'` 상태 자동 복구 가드 추가).
 - **V64.0 (`?v=157`)**:
