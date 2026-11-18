@@ -579,7 +579,13 @@ body {
 }
 
 .choices-panel.grid-2 {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  overflow-x: hidden;
+}
+.choices-panel.grid-2 .choice-btn {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .choice-btn {
@@ -2122,8 +2128,15 @@ body[data-time="midnight"] .illustration-frame {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   width: 100%;
+  min-width: 0;
+}
+.skill-top-row > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .pp-pill {
   font-size: 0.65rem;
@@ -2819,12 +2832,13 @@ body[data-time="midnight"] .hud-exp-text {
 }
 .sk-tag {
   display: inline-block;
-  margin-left: 4px;
-  padding: 1px 5px;
-  border-radius: 5px;
-  font-size: 0.64rem;
+  margin-left: 3px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 0.56rem;
   font-weight: 900;
   vertical-align: middle;
+  flex-shrink: 0;
 }
 .sk-tag.is-combo {
   background: linear-gradient(90deg, #6d28d9, #db2777);

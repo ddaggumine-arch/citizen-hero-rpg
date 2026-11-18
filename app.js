@@ -7268,13 +7268,22 @@ function render() {
 
     const getStratTag = (attr) => {
       const st = ENEMY_STANCES[state.enemyStance || 'none'];
-      if (st && st.blockType === attr) return ` <span class="sk-tag is-warn">${st.id === 'counter' ? '😤반사주의' : '🙉태세반감'}</span>`;
+      if (st && st.blockType === attr) return ` <span class="sk-tag is-warn">${st.id === 'counter' ? '😤반사' : '🙉반감'}</span>`;
       if (state.lastSkillType === attr) {
         const nextPen = (state.repeatSkillCount || 0) >= 1 ? '-55%' : '-35%';
-        return ` <span class="sk-tag is-warn">🛡️간파(${nextPen})</span>`;
+        return ` <span class="sk-tag is-warn">🛡️${nextPen}</span>`;
       }
       const cbo = getElementComboInfo(state.lastSkillType, attr);
-      if (cbo) return ` <span class="sk-tag is-combo">⚡${cbo.name}</span>`;
+      if (cbo) {
+        const shortCbo = {
+          '🔥 팩트 격분': '🔥격분',
+          '⚡ 현행범 체포': '⚡체포',
+          '💎 완벽 기소': '💎기소',
+          '🌊 여론 역전': '🌊역전',
+          '✨ 스위치 연계': '✨연계',
+        }[cbo.name] || '⚡연계';
+        return ` <span class="sk-tag is-combo">${shortCbo}</span>`;
+      }
       if (getEffectiveWeakness(enemy) === attr) return ` <span class="sk-tag is-weak">💥약점</span>`;
       return '';
     };
