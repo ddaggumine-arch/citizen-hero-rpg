@@ -3016,22 +3016,24 @@ function render() {
     elChoicesPanel.className = 'choices-panel';
     elChoicesPanel.innerHTML = '';
 
-    // C안: 교감 주파수 타이밍 미니게임
+    // C안: 교감 주파수 타이밍 미니게임 (V45.2: 화면 중앙 대형 오버레이로 스크롤 제로!)
     if (capRes?.status === 'timing') {
-      elBattleLog.innerHTML = `
-        <div class="spirit-timing-wrap">
-          <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;">
-            <span>💫 ${capRes.label} — 중앙 황금존에 맞춰 교감!</span>
-            <span style="color:#fde047;">기본 ${capRes.baseRate}%</span>
+      if (elRomMgOverlay && elRomMgPanel) {
+        elRomMgOverlay.classList.remove('hidden');
+        elRomMgPanel.innerHTML = `
+          <div style="text-align:center;margin-bottom:8px;">
+            <img src="${sp.img}?v=72" alt="${sp.name}" style="width:68px;height:68px;object-fit:contain;" />
+            <div style="font-weight:900;font-size:16px;margin-top:4px;">💫 ${sp.name} — ${capRes.label}</div>
+            <div style="font-size:12px;color:#fde047;font-weight:800;">기본 포획률 ${capRes.baseRate}% · 🎯 중앙 골드존 +25% · ✨ +10%</div>
           </div>
-          <div class="spirit-timing-track">
-            <div class="spirit-timing-cursor" id="spirit-timing-cursor" style="left:50%"></div>
+          <div class="spirit-timing-track" style="height:34px;">
+            <div class="spirit-timing-cursor" id="spirit-timing-cursor" style="left:50%;height:42px;width:10px;"></div>
           </div>
-        </div>
-      `;
+          <button class="rom-mg-big-btn" id="spirit-timing-go">⚡ 지금 교감!! (타이밍 맞추기)</button>
+        `;
+      }
       let pos = 10;
       let dir = 1;
-      const startTs = performance.now();
       const step = (now) => {
         if (state.phase !== 'spirit_encounter' || state.spiritCaptureResult?.status !== 'timing') return;
         const dt = Math.min(40, now - (step.last || now));
@@ -3046,14 +3048,12 @@ function render() {
       if (window._spiritTimingRaf) cancelAnimationFrame(window._spiritTimingRaf);
       window._spiritTimingRaf = requestAnimationFrame(step);
 
-      const stopBtn = document.createElement('button');
-      stopBtn.className = 'choice-btn primary';
-      stopBtn.innerHTML = `<span class="choice-title">⚡ 지금 교감!! (타이밍 맞추기)</span><span class="choice-sub">🎯 중앙 골드존 +25% · ✨ 초록존 +10% 보너스!</span>`;
-      stopBtn.onclick = () => {
+      const handleStop = () => {
         if (window._spiritTimingRaf) {
           cancelAnimationFrame(window._spiritTimingRaf);
           window._spiritTimingRaf = null;
         }
+        if (elRomMgOverlay) elRomMgOverlay.classList.add('hidden');
         let bonus = 0;
         if (pos >= 39 && pos <= 61) {
           bonus = 25;
@@ -3067,7 +3067,8 @@ function render() {
         sfx.powerup?.();
         runResonateCapture(Math.min(100, capRes.baseRate + bonus), capRes.expBonus, capRes.label);
       };
-      elChoicesPanel.appendChild(stopBtn);
+      const bigBtn = document.getElementById('spirit-timing-go');
+      if (bigBtn) bigBtn.onclick = handleStop;
       return;
     }
 

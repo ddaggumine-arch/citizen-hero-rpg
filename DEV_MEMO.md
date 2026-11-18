@@ -5,7 +5,9 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V45.1 (GitHub Pages 배포됨)
+## 현재 최신 버전: V45.2 (GitHub Pages 배포됨)
+- **V45.2 (`?v=114`)**:
+  - **수호정령 포획 타이밍 바 '스크롤 제로' 중앙 대형 오버레이 전환 (`app.js`)**: 정령 포획 시 타이밍 바 + `⚡ 지금 교감!!` 버튼을 `#rom-mg-overlay` 화면 중앙 대형 팝업에 함께 띄워 스크롤 없이 한 손으로 바로 포획 가능!
 - **V45.1 (`?v=113`)**:
   - **스킬 교체 시 PP 100% 완충 & PP 회복 수단 대폭 확대 (`app.js`)**:
     - `openSkillEquipModal`에서 새 스킬로 교체 장착하면 해당 슬롯 PP 즉시 100% 가득 채움!
