@@ -2265,6 +2265,7 @@ function pickLevelAppropriateVillain(pool, heroLv = state.level || 1) {
 }
 
 function startBattle(enemyId, isRandomEncounter = false) {
+  state.isRandomBattle = !!isRandomEncounter;
   state.combatInputLock = false;
   state.battleDamageTaken = 0;
   state.battleChainClears = 0;
@@ -2783,7 +2784,7 @@ function handleEnemyDefeated(enemy) {
   const enemyLv = state.currentEnemyLv || enemy.lv || state.level || 1;
   rollGearDrop(isBossId(enemy.id) || enemy.id === HIDDEN_BOSS.id, enemyLv);
   rollSpiritEncounter(isBossId(enemy.id) || enemy.id === HIDDEN_BOSS.id, enemyLv);
-  if (enemy.actId && enemy.actEp) {
+  if (!state.isRandomBattle && enemy.actId && enemy.actEp) {
     if (!state.actStoryStep) state.actStoryStep = {};
     state.actStoryStep[enemy.actId] = Math.max(state.actStoryStep[enemy.actId] || 0, enemy.actEp);
     state.pendingActAftermath = { actId: enemy.actId, epNum: enemy.actEp, isBoss: !!enemy.isActBoss };
@@ -10369,8 +10370,11 @@ function openDistrictsModal() {
     btn.addEventListener('click', () => {
       sfx.powerup();
       elActivityModal.classList.add('hidden');
-      const mobPool = VILLAINS.filter((v) => getDistrictIdForEnemy(v.id) === d.id).map((v) => v.id);
-      const bossPool = (d.villains || []).filter((id) => GUERRILLA_VILLAINS.some((v) => v.id === id) || BOSSES.some((b) => b.id === id));
+      const mobPool = VILLAINS.filter((v) => !isStoryExclusiveEnemy(v) && getDistrictIdForEnemy(v.id) === d.id).map((v) => v.id);
+      const bossPool = (d.villains || []).filter((id) => {
+        const gv = GUERRILLA_VILLAINS.find((v) => v.id === id);
+        return gv && !isStoryExclusiveEnemy(gv);
+      });
       const pool = [...mobPool, ...bossPool];
       const pickId = pool.length ? pool[Math.floor(Math.random() * pool.length)] : 'shorts_terrorist';
       startBattle(pickId);
@@ -10466,9 +10470,9 @@ function executeActivity(act, cat) {
       triggerRandomEvent();
       return;
     }
-    const pool = VILLAINS.filter((v) => getDistrictIdForEnemy(v.id) === act.battleDistrict);
-    const picked = pool[Math.floor(Math.random() * pool.length)] || VILLAINS[0];
-    startBattle(picked.id);
+    const pool = VILLAINS.filter((v) => !isStoryExclusiveEnemy(v) && getDistrictIdForEnemy(v.id) === act.battleDistrict);
+    const picked = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : pickLevelAppropriateVillain(VILLAINS, state.level || 1);
+    startBattle(picked.id, true);
     return;
   }
 
@@ -12048,7 +12052,7 @@ function executeTravel(act, mode, fastCost = 0) {
   advanceTime();
   const r = Math.random();
   if (r < 0.28) {
-    const mob = ACT_VILLAINS.find((v) => v.actId === act.id && !v.isActBoss) || VILLAINS[0];
+    const mob = pickLevelAppropriateVillain(VILLAINS, state.level || 1);
     elActivityModal.classList.add('hidden');
     showToast('🚨 [이동 중 돌발!!] 열차/버스 민폐 빌런 출현!', 'warn');
     state.log = `🚌 [${act.name}]으로 가는 길, 차내 소란 빌런을 만났습니다!`;

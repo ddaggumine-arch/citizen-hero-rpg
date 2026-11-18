@@ -5,7 +5,9 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V58.1 (GitHub Pages 배포됨)
+## 현재 최신 버전: V58.2 (GitHub Pages 배포됨)
+- **V58.2 (`?v=150`)**:
+  - **랜덤/이동/순찰 인카운터에서 스토리 적 출현 완전 차단 (`app.js`)**: 지역 이동 돌발 기습에서 `ACT_VILLAINS` (`act_jeonju_1` 등) 가 나오던 코드 제거 + 구역 순찰/치안 출동 풀에서 `isStoryExclusiveEnemy` 전면 제외 + `state.isRandomBattle` 2중 가드로 랜덤 전투 시 스토리 후일담 강제 진입 방지!
 - **V58.1 (`?v=149`)**:
   - **쌍방향 회피율 & 기절 내성/면역 & 궁극기 관통 (`app.js`, `index.html`)**:
     - 주인공 회피율(기본 8% ~ 최대 35%, 회피 시 피해 0 + 사이다 +5) & 적 회피율(일반 최대 10%, 보스 최대 20%, 단 기절/필살기/3체인은 100% 필중!).
