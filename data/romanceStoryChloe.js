@@ -110,7 +110,7 @@ export const CHLOE_ROMANCE_STORY = [
 
   {
     ep: 4, act: '기', title: '제4화 · 홍대 네컷사진 부스의 돌발 밀착',
-    img: 'assets/images/couple_chloe_photo.png', fx: 'flash',
+    img: 'assets/images/romance/chloe_ep04_photobooth.jpg', fx: 'flash',
     epilogue: '지갑 속 투명 포켓에 나란히 꽂아둔 네컷사진 한 장. 좁은 부스 안에서 맞닿았던 어깨와 귓가에 울리던 클로이의 웃음소리가 사진 속에서 금방이라도 튀어나올 것 같았다.',
     nextTeaser: '제5화 예고 — 가로등 아래 클로이의 유쾌한 윙크, 그 뒤에 숨긴 진심!',
     scenes: [
@@ -181,7 +181,7 @@ export const CHLOE_ROMANCE_STORY = [
   // ================= 승 (6~10화: 텐션 폭발 썸) =================
   {
     ep: 6, act: '승', title: '제6화 · 한강 야간 러닝과 상쾌한 바람',
-    img: 'assets/images/couple_chloe_walk.png', fx: 'stars',
+    img: 'assets/images/romance/chloe_ep06_running.jpg', fx: 'stars',
     epilogue: '이마에 맺힌 땀을 닦으며 나란히 마신 시원한 사이다 한 캔. 반포대교의 무지개 분수 아래서 소원권을 핑계로 주말 데이트 약속을 받아낸 짜릿한 밤이었다.',
     nextTeaser: '제7화 예고 — 비 오는 날 홍대 오락실, 대형 시바 인형을 건 자존심 대결!',
     scenes: [
@@ -215,7 +215,7 @@ export const CHLOE_ROMANCE_STORY = [
 
   {
     ep: 7, act: '승', title: '제7화 · 홍대 오락실 자존심 승부',
-    img: 'assets/images/chloe_wink.jpg', fx: 'flash',
+    img: 'assets/images/romance/chloe_ep07_arcade.jpg', fx: 'flash',
     epilogue: '커다란 시바 인형을 품에 안고 신나서 방방 뛰던 클로이. 네온 불빛 가득한 오락실 속에서도 가장 눈부셨던 건 게임기 화면이 아니라 바로 그녀의 웃음이었다.',
     nextTeaser: '제8화 예고 — 연남동 주말 플리마켓, 파랑·노랑 실로 엮인 커플 팔찌!',
     scenes: [
@@ -249,7 +249,7 @@ export const CHLOE_ROMANCE_STORY = [
 
   {
     ep: 8, act: '승', title: '제8화 · 연남동 빈티지 플리마켓 산책',
-    img: 'assets/images/couple_chloe_walk.png', fx: 'hearts',
+    img: 'assets/images/romance/chloe_ep08_fleamarket.jpg', fx: 'hearts',
     epilogue: '서로의 손목에 채워진 파란색과 노란색 매듭 팔찌. 작은 실 팔찌 하나였지만, 우리가 같은 편이자 특별한 사이라는 걸 증명해주는 증표처럼 느껴졌다.',
     nextTeaser: '제9화 예고 — 이태원 루프탑 재즈바의 은은한 선율과 칵테일 나잇!',
     scenes: [
@@ -285,7 +285,7 @@ export const CHLOE_ROMANCE_STORY = [
 
   {
     ep: 9, act: '승', title: '제9화 · 이태원 재즈바의 무드 있는 밤',
-    img: 'assets/images/chloe_normal.jpg', fx: 'stars',
+    img: 'assets/images/romance/chloe_ep09_jazzbar.jpg', fx: 'stars',
     epilogue: '은은한 색소폰 선율과 촛불 빛 아래 마주 보던 시선. 평소엔 씩씩하고 활발하기만 하던 클로이의 색다른 매혹에 빠져 시간 가는 줄 몰랐던 밤이었다.',
     nextTeaser: '제10화 예고 — 스포츠카 드라이브 속 털어놓은 뉴욕 귀국 고민과 불길한 협박 메시지!',
     scenes: [
@@ -354,7 +354,7 @@ export const CHLOE_ROMANCE_STORY = [
   // ================= 전 (11~15화: 위기와 액션!) =================
   {
     ep: 11, act: '전', title: '제11화 · [위기] 갤러리 전시 방해 공작!',
-    img: 'assets/images/chloe_sprite.png', fx: 'flash',
+    img: 'assets/images/romance/chloe_ep11_gallery.jpg', fx: 'flash',
     epilogue: '관객들의 박수 속에서 무사히 지켜낸 클로이의 첫 사진전. 하지만 밤이 깊어진 뒤, 그녀는 더 큰 위험에 휘말리지 않게 하려 홀로 위험한 선택을 준비하고 있었다.',
     nextTeaser: '제12화 예고 — [위기 심화] 나까지 다칠까 봐 메모만 남긴 채 사라진 클로이!',
     scenes: [
@@ -458,7 +458,7 @@ export const CHLOE_ROMANCE_STORY = [
 
   {
     ep: 14, act: '전', title: '제14화 · [결단] 뉴욕 본사 스카우트에 대한 답',
-    img: 'assets/images/chloe_sprite.png', fx: 'stars',
+    img: 'assets/images/romance/chloe_ep14_decision.jpg', fx: 'stars',
     epilogue: '"내 최고의 피사체가 여기 있잖아!" 망설임 없이 뉴욕행을 접고 내 손을 선택한 클로이. 그 당당하고 눈부신 미소 앞에 세상의 어떤 스포트라이트도 빛을 잃었다.',
     nextTeaser: '제15화 예고 — 클로이 노트북 속 미공개 비밀 폴더, 수백 장의 사진에 담긴 진심!',
     scenes: [
@@ -494,7 +494,7 @@ export const CHLOE_ROMANCE_STORY = [
 
   {
     ep: 15, act: '전', title: '제15화 · 브이로그에 숨겨져 있던 진심',
-    img: 'assets/images/couple_chloe_photo.png', fx: 'hearts',
+    img: 'assets/images/romance/chloe_ep15_vlog.jpg', fx: 'hearts',
     epilogue: '수백 장의 사진마다 빼곡히 담겨 있던 클로이의 애정 어린 시선. 카메라를 통해 그녀가 바라보던 세상의 중심엔 언제나 내가 서 있었다.',
     nextTeaser: '제16화 예고 — [결(結) 개막] 심야 야시장 호떡 데이트와 달콤한 고백 예고!',
     scenes: [
@@ -634,7 +634,7 @@ export const CHLOE_ROMANCE_STORY = [
 
   {
     ep: 19, act: '결', title: '제19화 · 스튜디오의 설레는 프리뷰',
-    img: 'assets/images/couple_chloe_hug.png', fx: 'hearts',
+    img: 'assets/images/romance/chloe_ep19_studio.jpg', fx: 'hearts',
     epilogue: '카메라를 내려놓고 온전히 내 품에 안겼던 클로이. 귓가에 닿던 그녀의 속삭임과 두근거리는 심장 박동이 내일 밤의 마지막 고백을 향해 카운트다운을 시작하고 있었다.',
     nextTeaser: '최종화 제20화 예고 — 남산 야경 스포트라이트 아래 터지는 직진 키스 & 정식 연인 달성!',
     scenes: [

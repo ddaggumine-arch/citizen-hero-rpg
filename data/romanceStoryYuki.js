@@ -122,7 +122,7 @@ export const YUKI_ROMANCE_STORY = [
 
   {
     ep: 4, act: '기', title: '제4화 · 고양이 카페의 작은 소동',
-    img: 'assets/images/yuki_normal.jpg', fx: 'hearts',
+    img: 'assets/images/romance/yuki_ep04_catcafe.jpg', fx: 'hearts',
     epilogue: '고양이들 사이에서 아이처럼 웃던 유키의 모습. 사진첩 속에 저장된 그 한 장의 스냅샷을 집으로 돌아와 몇 번이나 다시 열어보며 피식 웃고 말았다.',
     nextTeaser: '제5화 예고 — 책장 정리 중 닿은 손끝, 심장 소리가 들릴 것 같은 정적!',
     scenes: [
@@ -196,7 +196,7 @@ export const YUKI_ROMANCE_STORY = [
   // ================= 승 (6~10화: 설레는 썸과 일상) =================
   {
     ep: 6, act: '승', title: '제6화 · 서툰 쿠킹 & 베이킹 데이트',
-    img: 'assets/images/couple_yuki_cafe.png', fx: 'hearts',
+    img: 'assets/images/romance/yuki_ep06_baking.jpg', fx: 'hearts',
     epilogue: '오븐에서 막 꺼낸 마들렌처럼 따끈하고 달콤했던 오후. 유키가 작게 포장해 건네준 상자를 품에 안고 돌아가는 발걸음이 구름 위를 걷는 듯 가벼웠다.',
     nextTeaser: '제7화 예고 — 심야 라멘집의 모락모락 피어나는 김, 그리고 유키의 고백 같은 진심!',
     scenes: [
@@ -298,7 +298,7 @@ export const YUKI_ROMANCE_STORY = [
 
   {
     ep: 9, act: '승', title: '제9화 · 한강 공원 돗자리 피크닉',
-    img: 'assets/images/couple_yuki_walk.png', fx: 'hearts',
+    img: 'assets/images/romance/yuki_ep09_picnic.jpg', fx: 'hearts',
     epilogue: '바람에 날리던 벚꽃 잎과 달콤한 계란말이의 맛. 돗자리 위에서 나란히 하늘을 올려다보며 나누었던 소소한 웃음이 마치 오래된 연인 같았던 오후였다.',
     nextTeaser: '제10화 예고 — 야경이 빛나는 첫 한강 드라이브... 그러나 울려 퍼진 도쿄발 전화벨!',
     scenes: [
@@ -367,7 +367,7 @@ export const YUKI_ROMANCE_STORY = [
   // ================= 전 (11~15화: 위기와 갈등!) =================
   {
     ep: 11, act: '전', title: '제11화 · [위기] 도쿄 귀국 통보와 무거운 침묵',
-    img: 'assets/images/couple_yuki_umbrella.png', fx: 'rain',
+    img: 'assets/images/romance/yuki_ep11_ticket.jpg', fx: 'rain',
     epilogue: '비 내리는 창밖을 바라보며 눈물을 삼키던 유키. 그녀를 돕고 싶었지만, 설상가상으로 북카페 앞에 수상한 검은 양복의 사내들이 어슬렁거리기 시작했다.',
     nextTeaser: '제12화 예고 — [위기 심화] 짐이 되기 싫다며 연락을 끊고 홀로 버티려는 유키!',
     scenes: [
@@ -443,7 +443,7 @@ export const YUKI_ROMANCE_STORY = [
 
   {
     ep: 13, act: '전', title: '제13화 · [위기] 북카페 포위와 팩트 역전',
-    img: 'assets/images/yuki_sprite.png', fx: 'flash',
+    img: 'assets/images/romance/yuki_ep13_protect.jpg', fx: 'flash',
     epilogue: '용역 진상들이 줄행랑을 친 뒤, 텅 빈 카페 안에서 안도의 숨을 내쉰 두 사람. 그날 밤 유키는 내 손목을 잡은 채 아무 말 없이 오래도록 고개를 기대고 있었다.',
     nextTeaser: '제14화 예고 — 도쿄에 계신 유키의 아버지와의 운명의 화상 통화!',
     scenes: [
@@ -479,7 +479,7 @@ export const YUKI_ROMANCE_STORY = [
 
   {
     ep: 14, act: '전', title: '제14화 · [위기 돌파] 도쿄와의 화상 통화',
-    img: 'assets/images/drive_yuki_3.jpg', fx: 'stars',
+    img: 'assets/images/romance/yuki_ep14_videocall.jpg', fx: 'stars',
     epilogue: '엄격하시던 아버지의 입가에 번진 옅은 미소. 통화가 끝나고 안도감에 힘이 풀려 내 어깨에 기댄 유키의 숨결이 어느 때보다 평온하게 느껴졌다.',
     nextTeaser: '제15화 예고 — 폭풍이 지나간 북카페, 새로 시작되는 두 사람의 아침!',
     scenes: [
@@ -585,7 +585,7 @@ export const YUKI_ROMANCE_STORY = [
 
   {
     ep: 17, act: '결', title: '제17화 · 심야 영화관에서의 두근거림',
-    img: 'assets/images/yuki_blush.jpg', fx: 'hearts',
+    img: 'assets/images/romance/yuki_ep17_cinema.jpg', fx: 'hearts',
     epilogue: '엔딩 크레딧이 다 올라갈 때까지 놓지 않았던 손. 극장을 나서며 유키가 장난스레 "사실 주인공들보다 오빠 손만 신경 쓰였어요"라고 고백한 말에 밤하늘이 반짝였다.',
     nextTeaser: '제18화 예고 — 종로 서점 책장 사이의 비밀 데이트와 해피엔딩의 약속!',
     scenes: [
@@ -619,7 +619,7 @@ export const YUKI_ROMANCE_STORY = [
 
   {
     ep: 18, act: '결', title: '제18화 · 서점 책장 사이의 비밀 데이트',
-    img: 'assets/images/couple_yuki_cozy.png', fx: 'stars',
+    img: 'assets/images/romance/yuki_ep18_bookstore.jpg', fx: 'stars',
     epilogue: '책장 사이 작은 틈에서 나눈 달콤한 약속. 이제 우리의 이야기는 프롤로그도 위기도 모두 지나, 오직 해피엔딩만을 향해 마지막 페이지를 넘기고 있었다.',
     nextTeaser: '제19화 예고 — 남산 전망대 아래 뜨거운 포옹, 그리고 내일 밤의 고백 예고!',
     scenes: [
@@ -655,7 +655,7 @@ export const YUKI_ROMANCE_STORY = [
 
   {
     ep: 19, act: '결', title: '제19화 · 눈물과 감사의 뜨거운 포옹',
-    img: 'assets/images/couple_yuki_hug.png', fx: 'hearts',
+    img: 'assets/images/romance/yuki_ep19_hugtears.jpg', fx: 'hearts',
     epilogue: '서울의 불빛을 발아래 두고 서로를 꼭 안았던 밤. 말하지 않아도 느껴지던 온기와 감사함은, 내일 밤 건넬 커플링의 무게보다 훨씬 깊고 단단했다.',
     nextTeaser: '최종화 제20화 예고 — 별빛 아래 고백과 커플링, 영원한 연인의 탄생!',
     scenes: [
