@@ -1463,6 +1463,144 @@ const SKILL_ATTR_LABELS = {
   snap:   '📸 진실',
 };
 
+// ===== V53.0: 현장 변수(1.35배) & 스토리 전 에피소드 서스펜스 첩보 시스템 =====
+const FIELD_CONDITIONS = {
+  none:   { id: 'none',   boostType: null,     badge: '',                        toast: '' },
+  camera: { id: 'camera', boostType: 'snap',   badge: '📸 촬영중(채증↑)',       toast: '📸 행인들이 스마트폰 촬영 시작! (진실/채증 1.35배!)' },
+  siren:  { id: 'siren',  boostType: 'law',    badge: '🚨 사이렌(법질서↑)',     toast: '🚨 순찰차 사이렌 근접! (법질서 1.35배!)' },
+  crowd:  { id: 'crowd',  boostType: 'speech', badge: '📣 시민주목(언변↑)',     toast: '📣 주변 시민들 웅성거림! (언변 1.35배!)' },
+  cheer:  { id: 'cheer',  boostType: 'guts',   badge: '🔥 응원열기(깡다구↑)',   toast: '🔥 구경꾼들 환호! (깡다구 1.35배!)' },
+};
+
+function getActiveIntelTarget() {
+  const curActId = state.currentAct || 'seoul';
+  if (curActId !== 'seoul') {
+    const eps = ACT_STORY_EPISODES[curActId] || [];
+    const step = state.actStoryStep?.[curActId] || 0;
+    if (step < eps.length) {
+      const ep = eps[step];
+      if (ep?.battleBossId) {
+        return {
+          key: `act_${curActId}_${step}`,
+          enemyId: ep.battleBossId,
+          maxLv: ep.isBoss ? 3 : 2,
+          title: ep.title || `제${ep.ep || step + 1}화`,
+        };
+      }
+    }
+  }
+  const guideAct = KOREA_ACTS.find((a) => !state.clearedActs?.includes(a.id) && a.id !== 'seoul');
+  if (guideAct) {
+    const gEps = ACT_STORY_EPISODES[guideAct.id] || [];
+    const gStep = state.actStoryStep?.[guideAct.id] || 0;
+    if (gStep < gEps.length) {
+      const gEp = gEps[gStep];
+      if (gEp?.battleBossId) {
+        return {
+          key: `act_${guideAct.id}_${gStep}`,
+          enemyId: gEp.battleBossId,
+          maxLv: gEp.isBoss ? 3 : 2,
+          title: gEp.title || `${guideAct.name} ${gEp.ep || gStep + 1}화`,
+        };
+      }
+    }
+  }
+  const ch = STORY_CHAPTERS[state.chapterIndex];
+  if (ch && ch.bossId) {
+    return {
+      key: `ch_${ch.chapterNum}`,
+      enemyId: ch.bossId,
+      maxLv: (ch.chapterNum % 5 === 0 || ch.chapterNum >= 28) ? 3 : 2,
+      title: `[제${ch.chapterNum}화] ${ch.title}`,
+    };
+  }
+  return null;
+}
+
+function getIntelLevel(key) {
+  if (!key) return 0;
+  return state.intelMap?.[key] || 0;
+}
+
+function grantIntel(amount = 1, sourceLabel = '') {
+  const target = getActiveIntelTarget();
+  if (!target) return false;
+  if (!state.intelMap) state.intelMap = {};
+  const prev = state.intelMap[target.key] || 0;
+  if (prev >= target.maxLv) return false;
+  const next = Math.min(target.maxLv, prev + amount);
+  state.intelMap[target.key] = next;
+  const enemy = getEnemyById(target.enemyId);
+  const weakLbl = SKILL_ATTR_LABELS[enemy?.weakness || 'speech'] || '언변';
+  if (next === 1) {
+    showToast(`🕵️ [첩보 1/${target.maxLv}] ${enemy.name} 약점 해독 → ${weakLbl}!`, 'good');
+  } else if (next === 2 && target.maxLv === 2) {
+    showToast(`🕵️ [첩보 2/2 완성!] ${enemy.name} 가드 -1칸 + 첫 턴 1.8배 기습 확보!`, 'break');
+  } else if (next === 2) {
+    showToast(`🕵️ [첩보 2/${target.maxLv}] ${enemy.name} 패턴·태세 완벽 파악!`, 'good');
+  } else {
+    showToast(`🕵️ [첩보 3/3 완성!] ${enemy.name} 가드 -1칸 + 첫 턴 1.8배 기습 확보!`, 'break');
+  }
+  return true;
+}
+
+function openIntelBriefingModal(target, onProceed) {
+  if (!target) { onProceed(); return; }
+  const lv = getIntelLevel(target.key);
+  if (lv >= target.maxLv) { onProceed(); return; }
+  const enemy = getEnemyById(target.enemyId);
+  const weakLbl = lv >= 1 ? (SKILL_ATTR_LABELS[enemy?.weakness || 'speech'] || '언변') : '❓ ??? (미확인)';
+  elActivityModalTitle.textContent = `🕵️ 결전 브리핑 · ${target.title}`;
+  if (elActivityModalImg) elActivityModalImg.innerHTML = '';
+  elActivityList.innerHTML = '';
+
+  const infoBox = document.createElement('div');
+  infoBox.className = 'oblivion-banner';
+  infoBox.style.textAlign = 'left';
+  infoBox.style.lineHeight = '1.55';
+  const chk1 = lv >= 1 ? '✅' : '⬜';
+  const chk2 = lv >= 2 ? '✅' : '⬜';
+  const chk3 = lv >= target.maxLv ? '✅' : '⬜';
+  infoBox.innerHTML = `
+    <div style="font-weight:900;font-size:0.9rem;margin-bottom:4px;">🎯 목표: ${enemy.name} (첩보 ${lv}/${target.maxLv})</div>
+    <div style="font-size:0.78rem;">
+      ${chk1} <b>1단계 약점 해독</b>: ${weakLbl}<br/>
+      ${target.maxLv === 3 ? `${chk2} <b>2단계 패턴 분석</b>: ${lv >= 2 ? '특수 기믹·태세 파악 완료' : '❓ 미확인'}<br/>` : ''}
+      ${chk3} <b>완벽 공략 보너스</b>: ${lv >= target.maxLv ? '가드 -1칸 + 첫 턴 1.8배 기습 활성화!' : '전투 시작 가드 -1칸 + 첫 턴 1.8배 기습'}
+    </div>
+    <div style="margin-top:6px;font-size:0.74rem;color:#b45309;font-weight:800;">
+      💡 순찰·탐문, 편의점 알바, 일반 빌런 제압 시 첩보가 자동으로 모입니다!
+    </div>
+  `;
+  elActivityList.appendChild(infoBox);
+
+  const patrolCat = ACTIVITY_CATEGORIES.find((c) => c.id === 'patrol');
+  if (patrolCat) {
+    const goIntelBtn = document.createElement('button');
+    goIntelBtn.className = 'activity-item-btn';
+    goIntelBtn.style.borderColor = '#4f46e5';
+    goIntelBtn.style.background = '#eef2ff';
+    goIntelBtn.innerHTML = `<div class="act-title">🕵️ 마을 탐문으로 첩보 캐러 가기 (추천!)</div><div class="act-desc">순찰·CCTV 채증·어르신 탐문으로 약점 & 기습 보너스 획득!</div>`;
+    goIntelBtn.addEventListener('click', () => {
+      sfx.click();
+      openActivityModal(patrolCat);
+    });
+    elActivityList.appendChild(goIntelBtn);
+  }
+
+  const fightNowBtn = document.createElement('button');
+  fightNowBtn.className = 'activity-item-btn';
+  fightNowBtn.innerHTML = `<div class="act-title">⚔️ 정보 없이 그냥 정면 돌파하기!</div><div class="act-desc">약점 ??? 상태로 돌입 (전투 중 📸 채증으로 실시간 간파 가능)</div>`;
+  fightNowBtn.addEventListener('click', () => {
+    sfx.powerup();
+    elActivityModal.classList.add('hidden');
+    onProceed();
+  });
+  elActivityList.appendChild(fightNowBtn);
+
+  elActivityModal.classList.remove('hidden');
+}
+
 function getElementComboInfo(prevType, curType) {
   if (!prevType || prevType === curType) return null;
   if (!['speech', 'guts', 'law', 'snap'].includes(prevType) || !['speech', 'guts', 'law', 'snap'].includes(curType)) return null;
@@ -1483,22 +1621,23 @@ function getEffectiveWeakness(enemy) {
 function getMatchupInfo(enemy, actionType) {
   const p = getEnemyPersonality(enemy);
   const statVal = getActionStatValue(actionType);
-  const upBonus = statVal >= 50 ? 0.30 : (statVal >= 25 ? 0.15 : 0);
+  const upBonus = statVal >= 50 ? 0.20 : (statVal >= 25 ? 0.10 : 0);
   const downMit = statVal >= 50 ? 0.20 : (statVal >= 25 ? 0.10 : 0);
   const effWeak = getEffectiveWeakness(enemy);
+  const isHidden = state.phase === 'battle' && state.battleIntelRevealed === false;
   const isShiftedUp = state.shiftedWeakness && actionType === effWeak;
   if (isShiftedUp || (!state.shiftedWeakness && p.up.includes(actionType))) {
-    const base = actionType === 'snap' ? 1.75 : (actionType === 'special' || actionType === 'tag' ? 1.45 : 1.60);
-    const spOver = getSpiritBonuses().perkId === 'overdrive' ? 0.25 : 0;
+    const base = actionType === 'snap' ? 1.55 : (actionType === 'special' || actionType === 'tag' ? 1.40 : 1.50);
+    const spOver = getSpiritBonuses().perkId === 'overdrive' ? 0.20 : 0;
     const mult = Number((base + upBonus + spOver).toFixed(2));
-    return { mult, isUp: true, isDown: false, tag: `⬆️ 유리 ${mult}배!`, cls: 'weak' };
+    return { mult, isUp: true, isDown: false, tag: isHidden ? '❓ 미확인' : `🔑 약점 ${mult}배!`, cls: isHidden ? '' : 'weak' };
   }
   if (p.down.includes(actionType) && !isShiftedUp) {
     const base = p.id === 'tyrant' ? 0.80 : 0.70;
     const mult = Number(Math.min(0.95, base + downMit).toFixed(2));
-    return { mult, isUp: false, isDown: true, tag: `⬇️ 반감 ${mult}배`, cls: 'resist' };
+    return { mult, isUp: false, isDown: true, tag: isHidden ? '❓ 미확인' : `⬇️ 반감 ${mult}배`, cls: isHidden ? '' : 'resist' };
   }
-  return { mult: 1.0, isUp: false, isDown: false, tag: '', cls: '' };
+  return { mult: 1.0, isUp: false, isDown: false, tag: isHidden ? '❓ 미확인' : '', cls: '' };
 }
 
 function setStageBg(bgFile) {
@@ -2052,6 +2191,15 @@ function startBattle(enemyId, isRandomEncounter = false) {
   state.repeatSkillCount = 0;
   state.shiftedWeakness = null;
   state.enemyStance = 'none';
+  state.fieldCond = 'none';
+  state.battleTurn = 0;
+  const intelTarget = getActiveIntelTarget();
+  const isTargetMatch = intelTarget && intelTarget.enemyId === baseEnemy.id;
+  const intelLv = isTargetMatch ? getIntelLevel(intelTarget.key) : 0;
+  const isStoryOrBoss = isBossEnemy || isTargetMatch;
+  state.battleIntelLv = intelLv;
+  state.battleIntelRevealed = !isStoryOrBoss || intelLv >= 1;
+  state.intelAmbushReady = !!(isTargetMatch && intelLv >= intelTarget.maxLv);
   state.enemyBroken = false;
   state.citizenAssistUsed = false;
   state.feverTurns = 0;
@@ -2068,6 +2216,12 @@ function startBattle(enemyId, isRandomEncounter = false) {
   if (state.bossGimmick === 'countdown') extraLog += `\n⏰ [보스 기믹] 3턴 광폭 카운트다운 시작! (기절로 초기화!)`;
   if ((state.startSpBonus || 0) > 0) {
     state.sp = clamp(state.sp + state.startSpBonus, 0, state.maxSp);
+  }
+  if (state.intelAmbushReady) {
+    state.enemyGuardShield = 2;
+    extraLog += `\n🕵️ [완벽 첩보 기습!!] 사전 조사 완료! 적 가드 -1칸 + 첫 턴 1.8배 선제 타격 활성화!`;
+  } else if (isStoryOrBoss && !state.battleIntelRevealed) {
+    extraLog += `\n❓ [미확인 적!] 약점이 숨겨져 있습니다! (📸 채증으로 실시간 해독 가능)`;
   }
   if (state.dailyFortune === 'cider') {
     state.sp = clamp(state.sp + 20, 0, state.maxSp);
@@ -2101,6 +2255,15 @@ function rollNextIntent() {
   state.enemyStance = Math.random() < 0.55
     ? stanceKeys[Math.floor(Math.random() * stanceKeys.length)]
     : 'none';
+
+  state.battleTurn = (state.battleTurn || 0) + 1;
+  if (state.battleTurn % 2 === 0) {
+    const condKeys = ['camera', 'siren', 'crowd', 'cheer'];
+    const picked = condKeys[Math.floor(Math.random() * condKeys.length)];
+    state.fieldCond = picked;
+    const fc = FIELD_CONDITIONS[picked];
+    if (fc?.toast) showToast(fc.toast, 'good');
+  }
 }
 
 function triggerMiniEvent(evId) {
@@ -2367,6 +2530,11 @@ function handleEnemyDefeated(enemy) {
   }
   state.pendingReports += 1;
   if (state.pet?.adopted && state.pet.job === 'detective' && Math.random() < 0.5) {
+    if (state.battleIntelRevealed === false) {
+      state.battleIntelRevealed = true;
+      const wLbl = SKILL_ATTR_LABELS[getEffectiveWeakness(enemy)] || '언변';
+      showToast(`📸 채증 성공! 적의 약점이 [${wLbl}](으)로 간파되었습니다!`, 'break');
+    }
     state.pendingReports += 1;
     showToast('🕵️ [탐지견 콩이] 추가 채증 +1 확보!', 'good');
   }
@@ -2408,6 +2576,9 @@ function handleEnemyDefeated(enemy) {
   state.winCount = (state.winCount || 0) + 1;
   advanceDailyQuest('win', 1);
   if (state.equippedSpirit) advanceDailyQuest('spirit_win', 1);
+  if (!isBossId(enemy.id) && !enemy.storyOnly && !enemy.isActBoss) {
+    grantIntel(1, '부하 심문');
+  }
   if (!state.villainWins) state.villainWins = {};
   state.villainWins[enemy.id] = (state.villainWins[enemy.id] || 0) + 1;
   state.enemyBroken = false;
@@ -2944,9 +3115,26 @@ function performAttack(type, ultPerfect = false) {
     state.combatChain = 0;
   }
 
+  // V53.0: 현장 변수(1.35배) & 완벽 첩보 첫 턴 기습(1.8배)
+  const fcNow = FIELD_CONDITIONS[state.fieldCond || 'none'];
+  if (fcNow && fcNow.boostType === type) {
+    dmg = Math.round(dmg * 1.35);
+    state.log += `\n🌍 [${fcNow.badge}] 현장 버프 발동! 피해 1.35배!`;
+  }
+  if (state.intelAmbushReady) {
+    state.intelAmbushReady = false;
+    dmg = Math.round(dmg * 1.80);
+    isCrit = true;
+    state.log += `\n🕵️ [완벽 첩보 기습!!] 첫 턴 1.8배 선제 타격 작렬!!`;
+    showToast('🕵️ 완벽 첩보 기습!! (1.8배 선제 타격!)', 'break');
+  }
+
   let gotBreakBonusTurn = false;
   if (hitWeakness && state.enemyHp > 0) {
-    const shieldDmg = type === 'special' ? 2 : 1;
+    const shieldDmg = (state.repeatSkillCount || 0) >= 1 ? 0 : (type === 'special' ? 3 : 2);
+    if (shieldDmg === 0) {
+      state.log += `\n🛡️ [패턴 간파 중!] 연속 공격으로 가드 실드가 깎이지 않습니다!`;
+    }
     state.enemyGuardShield = Math.max(0, (state.enemyGuardShield ?? 3) - shieldDmg);
     if (state.enemyGuardShield <= 0) {
       state.enemyBroken = true;
@@ -4112,14 +4300,19 @@ function render() {
           showToast(`📅 메인 스토리는 하루 1화씩! 내일(DAY ${state.day + 1})에 이어집니다.`, 'warn');
         });
       } else if (mState.done) {
+        const chTarget = { key: `ch_${currentCh.chapterNum}`, enemyId: currentCh.bossId, maxLv: (currentCh.chapterNum % 5 === 0 || currentCh.chapterNum >= 28) ? 3 : 2, title: `[제${currentCh.chapterNum}화] ${currentCh.title}` };
+        const chIntelLv = getIntelLevel(chTarget.key);
+        const intelBadge = ` · 🕵️첩보 ${chIntelLv}/${chTarget.maxLv}`;
         storyBtn.className = 'choice-btn row-btn story-main-btn';
-        storyBtn.innerHTML = `<span>📖 [제${currentCh.chapterNum}화] ${currentCh.title}</span><span class="choice-sub" style="color:#6e480f;">✨ 해금됨! 진행 ▶</span>`;
+        storyBtn.innerHTML = `<span>📖 [제${currentCh.chapterNum}화] ${currentCh.title}</span><span class="choice-sub" style="color:#6e480f;">✨ 해금됨${intelBadge} · 진행 ▶</span>`;
         storyBtn.addEventListener('click', () => {
           sfx.powerup();
-          state.lastCutscene = null;
-          state.phase = 'story';
-          state.storySceneIndex = 0;
-          render();
+          openIntelBriefingModal(chTarget, () => {
+            state.lastCutscene = null;
+            state.phase = 'story';
+            state.storySceneIndex = 0;
+            render();
+          });
         });
       } else {
         storyBtn.className = 'choice-btn row-btn story-locked-btn';
@@ -4159,7 +4352,10 @@ function render() {
       gBtn.style.borderColor = '#d97706';
       gBtn.className = 'choice-btn';
       gBtn.style.gridColumn = '';
-      gBtn.innerHTML = `<span>📌 ${guideAct.name} ${guideEp.ep || 1}/${guideEps.length}화</span><span class="choice-sub" style="color:#b45309;">추천 Lv.${guideEp.recLv || 1} (내 Lv.${state.level || 1}) ▶</span>`;
+      const gIntelKey = `act_${guideAct.id}_${guideStep}`;
+      const gIntelMax = guideEp.isBoss ? 3 : 2;
+      const gIntelLv = getIntelLevel(gIntelKey);
+      gBtn.innerHTML = `<span>📌 ${guideAct.name} ${guideEp.ep || 1}/${guideEps.length}화</span><span class="choice-sub" style="color:#b45309;">추천 Lv.${guideEp.recLv || 1} · 🕵️첩보 ${gIntelLv}/${gIntelMax} ▶</span>`;
       gBtn.addEventListener('click', () => {
         sfx.click();
         state.currentAct = guideAct.id;
@@ -7026,7 +7222,14 @@ function render() {
       const passiveBadges = [];
       const gShield = state.enemyGuardShield ?? 3;
       activeBadges.push({ cls: 'is-combo', txt: `🛡️ 가드 ${'◆'.repeat(gShield)}${'◇'.repeat(Math.max(0, 3 - gShield))}` });
-      if (state.shiftedWeakness) activeBadges.push({ cls: 'is-break', txt: `🔄 약점:${SKILL_ATTR_LABELS[state.shiftedWeakness] || state.shiftedWeakness}` });
+      if (state.battleIntelRevealed === false) {
+        activeBadges.push({ cls: 'is-warn', txt: '❓ 약점: ??? (📸채증 해독)' });
+      } else {
+        activeBadges.push({ cls: 'is-break', txt: `${state.shiftedWeakness ? '🔄 약점' : '🔑 약점'}:${SKILL_ATTR_LABELS[getEffectiveWeakness(enemy)] || ''}` });
+      }
+      const fcBadge = FIELD_CONDITIONS[state.fieldCond || 'none']?.badge;
+      if (fcBadge) activeBadges.push({ cls: 'is-combo', txt: fcBadge });
+      if (state.intelAmbushReady) activeBadges.push({ cls: 'is-break', txt: '🕵️ 첫턴 1.8배 기습!' });
       if (state.lastSkillType) activeBadges.push({ cls: 'is-combo', txt: `직전:${SKILL_ATTR_LABELS[state.lastSkillType] || ''}${(state.repeatSkillCount || 0) >= 1 ? '(연속↓)' : ''}` });
       if (state.nextGuaranteedCrit) activeBadges.push({ cls: 'is-break', txt: '📺 다음 타 확정치명!' });
       if (state.snapExposed) activeBadges.push({ cls: 'is-break', txt: '📸 약점노출 1.4배!' });
@@ -7214,7 +7417,12 @@ function render() {
         sfx.powerup();
         state.citizenAssistUsed = true;
         state.sp = clamp(state.sp + 25, 0, state.maxSp);
-        state.pendingReports += 1;
+        if (state.battleIntelRevealed === false) {
+      state.battleIntelRevealed = true;
+      const wLbl = SKILL_ATTR_LABELS[getEffectiveWeakness(enemy)] || '언변';
+      showToast(`📸 채증 성공! 적의 약점이 [${wLbl}](으)로 간파되었습니다!`, 'break');
+    }
+    state.pendingReports += 1;
         state.log = '📢 [시민 제보 수령!] "저 아저씨 아까부터 저랬어요!" (사이다 +25 · 채증 +1)';
         showToast('📢 시민 제보! 사이다 +25 & 채증 +1!', 'good');
         render();
@@ -7284,7 +7492,9 @@ function render() {
         }[cbo.name] || '⚡연계';
         return ` <span class="sk-tag is-combo">${shortCbo}</span>`;
       }
-      if (getEffectiveWeakness(enemy) === attr) return ` <span class="sk-tag is-weak">💥약점</span>`;
+      if (state.battleIntelRevealed !== false && getEffectiveWeakness(enemy) === attr) return ` <span class="sk-tag is-weak">🔑약점</span>`;
+      const fcNowBtn = FIELD_CONDITIONS[state.fieldCond || 'none'];
+      if (fcNowBtn && fcNowBtn.boostType === attr) return ` <span class="sk-tag is-combo">🌍현장↑</span>`;
       return '';
     };
 
@@ -7375,7 +7585,12 @@ function render() {
           state.log = `📸 [PERFECT 채증!!] 가드 2칸 파쇄 + 약점 노출(다음 타 1.4배)! (멘탈 -${dmg} · 사이다+25)`;
           checkAchievements();
         } else {
-          state.pendingReports += 1;
+          if (state.battleIntelRevealed === false) {
+      state.battleIntelRevealed = true;
+      const wLbl = SKILL_ATTR_LABELS[getEffectiveWeakness(enemy)] || '언변';
+      showToast(`📸 채증 성공! 적의 약점이 [${wLbl}](으)로 간파되었습니다!`, 'break');
+    }
+    state.pendingReports += 1;
           state.log = `📸 [채증 촬영] 흔들렸지만 증거는 남겼습니다. (멘탈 -${dmg} · 채증+1)`;
         }
         checkStreamMission('snap');
@@ -9742,6 +9957,9 @@ function executeActivity(act, cat) {
     state.patrolCount = (state.patrolCount || 0) + 1;
     advanceDailyQuest('patrol', 1);
   }
+  if (act.isPatrol || cat?.id === 'patrol' || act.id === 'work_cvs' || act.id === 'work_delivery') {
+    grantIntel(1, '마을 탐문');
+  }
   if (act.sleep || cat?.id === 'heal') {
     advanceDailyQuest('care', 1);
     if (cat?.id === 'heal' && !act.sleep) {
@@ -10996,9 +11214,17 @@ function openActStoryModal(actId) {
   const ep = eps[step];
   if (ep && ep.scenes) {
     elActivityModal.classList.add('hidden');
-    state.activeActStory = { actId, epIdx: step, sceneIdx: 0, reply: '', preDamagePct: 0 };
-    state.phase = 'act_story';
-    render();
+    const actTarget = ep.battleBossId ? {
+      key: `act_${actId}_${step}`,
+      enemyId: ep.battleBossId,
+      maxLv: ep.isBoss ? 3 : 2,
+      title: ep.title || `제${ep.ep || step + 1}화`,
+    } : null;
+    openIntelBriefingModal(actTarget, () => {
+      state.activeActStory = { actId, epIdx: step, sceneIdx: 0, reply: '', preDamagePct: 0 };
+      state.phase = 'act_story';
+      render();
+    });
     return;
   }
   const curActObj = KOREA_ACTS.find((a) => a.id === actId);
