@@ -820,8 +820,9 @@ function handleNewDayRollover() {
 
 function advanceTime() {
   state.timeIndex += 1;
+  restoreSkillPp(1);
   if (state.timeIndex >= TIME_SLOTS.length) {
-    restoreSkillPp(2);
+    restoreSkillPp(4);
     handleNewDayRollover();
     const hTier = state.houseTier || 0;
     if (hTier >= 3) {
@@ -2129,9 +2130,11 @@ function handleEnemyDefeated(enemy) {
   if (state.equippedSpirit) {
     gainSpiritExp(state.equippedSpirit, Math.max(15, Math.round(expGain * 0.85)));
   }
+  const winPp = isBossId(enemy.id) || enemy.isActBoss ? 2 : 1;
+  restoreSkillPp(winPp);
   if (getSpiritBonuses().perkId === 'pp_refund') {
-    restoreSkillPp(1);
-    state.log = (state.log ? state.log + '\n' : '') + `🎵 [${getSpiritBonuses().spirit.name}] 승리의 여운으로 전 기술 PP +1 환급!`;
+    restoreSkillPp(2);
+    state.log = (state.log ? state.log + '\n' : '') + `🎵 [${getSpiritBonuses().spirit.name}] 승리의 여운으로 전 기술 PP +2 추가 환급!`;
   }
   if (getSpiritBonuses().perkId === 'drop_up') {
     state.scrap = (state.scrap || 0) + 1;
@@ -5524,6 +5527,7 @@ function render() {
     const finishEpisode = (replyText = '') => {
       sfx.victory();
       advanceDailyQuest('care', 1);
+      restoreSkillPp(3);
       if (!state.romanceStory) state.romanceStory = { yuki: { ep: 0, cleared: false }, chloe: { ep: 0, cleared: false } };
       if (!state.lovers) state.lovers = [];
       if (!state.someCleared) state.someCleared = { yuki: false, chloe: false };
@@ -9464,7 +9468,8 @@ function useCustomPotionInCombat(enemy) {
   } else {
     state.hp = clamp(state.hp + pot.power, 1, state.maxHp);
     state.sp = clamp(state.sp + 25, 0, state.maxSp);
-    state.log = `🧪 [${pot.name}] 원샷! 인내심 +${pot.power} · 사이다 +25! (턴 소모 없음)`;
+    restoreSkillPp(4);
+    state.log = `🧪 [${pot.name}] 원샷! 인내심 +${pot.power} · 사이다 +25 · 전 기술 PP +4! (턴 소모 없음)`;
   }
   showToast(`🧪 ${pot.name} 사용!`, 'good');
   saveGame();
@@ -9731,7 +9736,8 @@ function openLocationMenu(locId) {
       gainSkillXp('speech', 10);
       state.hp = clamp(state.hp + 25, 1, state.maxHp);
       gainIngredient('cold_brew', 1);
-      state.log = '🍱 알바생이 "영웅님 드세요!" 하며 폐기 도시락과 콜드브루를 챙겨줬습니다! (HP +25 · 콜드브루 +1)';
+      restoreSkillPp(3);
+      state.log = '🍱 알바생이 "영웅님 드세요!" 하며 폐기 도시락과 콜드브루를 챙겨줬습니다! (HP +25 · 콜드브루 +1 · 전 기술 PP +3)';
       sfx.powerup();
       advanceTime();
       saveGame();
@@ -10572,8 +10578,9 @@ function executeTravel(act, mode, fastCost = 0) {
     state.points -= fastCost;
     state.hp = clamp(state.hp + 15, 1, state.maxHp);
     state.sp = clamp(state.sp + 15, 0, state.maxSp);
+    restoreSkillPp(3);
     sfx.powerup();
-    showToast(`🚄 [${act.name}] 쾌속 도착! (HP/SP +15)`, 'good');
+    showToast(`🚄 [${act.name}] 쾌속 도착! (HP/SP +15 · PP +3)`, 'good');
     state.log = `🚄 쾌속 이동으로 [${act.name}]에 상쾌하게 도착했습니다!`;
     elActivityModal.classList.add('hidden');
     saveGame();
@@ -10721,7 +10728,7 @@ function openSkillEquipModal(activeTab = 'speech') {
     btn.textContent = !unlocked ? `🔒Lv.${sk.reqLv}` : (isEquipped ? '장착중' : '장착');
     btn.addEventListener('click', () => {
       state.equippedSkills[sk.slot] = sk.id;
-      if (state.skillPp) state.skillPp[sk.slot] = Math.min(state.skillPp[sk.slot] ?? sk.maxPp, getMaxSkillPp(sk.slot));
+      if (state.skillPp) state.skillPp[sk.slot] = getMaxSkillPp(sk.slot);
       sfx.powerup();
       showToast(`⚡ [${sk.name}] 장착 완료!`, 'good');
       saveGame();
