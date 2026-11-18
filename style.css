@@ -2860,3 +2860,193 @@ body[data-time="midnight"] .hud-exp-text {
   color: #b45309;
   border: 1px solid #f59e0b;
 }
+
+/* ===== V55.0 시네마틱 오프닝 인트로 & TOUCH TO START ===== */
+.intro-splash-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #05070e;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+.intro-splash-overlay.is-leaving {
+  opacity: 0;
+  transform: scale(1.06);
+  pointer-events: none;
+}
+.intro-splash-overlay.hidden {
+  display: none !important;
+}
+.intro-bg-layer {
+  position: absolute;
+  inset: -6%;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.72;
+  transition: opacity 0.45s ease;
+  animation: introKenBurns 6s ease-in-out infinite alternate;
+}
+@keyframes introKenBurns {
+  0%   { transform: scale(1.0) translate(0, 0); }
+  100% { transform: scale(1.12) translate(-1.5%, -1.5%); }
+}
+.intro-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(10, 15, 30, 0.15) 20%, rgba(2, 4, 12, 0.88) 92%);
+  pointer-events: none;
+}
+.intro-speedlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.03) 0deg 2deg, transparent 2deg 8deg);
+  opacity: 0.45;
+  animation: introSpinSlow 24s linear infinite;
+  pointer-events: none;
+}
+@keyframes introSpinSlow {
+  from { transform: rotate(0deg) scale(1.4); }
+  to   { transform: rotate(360deg) scale(1.4); }
+}
+.intro-skip-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 20;
+  padding: 6px 12px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(15, 23, 42, 0.72);
+  color: #f8fafc;
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+.intro-stage {
+  position: relative;
+  z-index: 5;
+  width: min(92vw, 440px);
+  height: 300px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.intro-hero-cast {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+.intro-cut-img {
+  max-height: 250px;
+  max-width: 82%;
+  border-radius: 14px;
+  border: 2px solid rgba(253, 224, 71, 0.75);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.75);
+  object-fit: cover;
+  animation: introCutPop 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.intro-cut-sprite {
+  height: 235px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 22px rgba(250, 204, 21, 0.75));
+  animation: introCutPop 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes introCutPop {
+  from { opacity: 0; transform: scale(1.22) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.intro-vfx-burst {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+}
+.intro-vfx-img {
+  width: 240px;
+  height: 240px;
+  object-fit: contain;
+  mix-blend-mode: screen;
+  animation: vfxImpactBurst 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.intro-logo-wrap {
+  text-align: center;
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: rgba(10, 15, 30, 0.76);
+  border: 2px solid #f59e0b;
+  box-shadow: 0 0 40px rgba(245, 158, 11, 0.5), inset 0 0 20px rgba(124, 58, 237, 0.35);
+  animation: introLogoDrop 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes introLogoDrop {
+  from { opacity: 0; transform: scale(1.45); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.intro-logo-sub {
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  color: #38bdf8;
+  margin-bottom: 6px;
+}
+.intro-logo-main {
+  font-size: 1.55rem;
+  font-weight: 900;
+  color: #fef08a;
+  text-shadow: 0 2px 14px rgba(245, 158, 11, 0.85);
+}
+.intro-logo-ver {
+  margin-top: 6px;
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #dc2626, #f59e0b);
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+.intro-caption-box {
+  position: relative;
+  z-index: 6;
+  margin-top: 14px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f8fafc;
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-align: center;
+  max-width: 88vw;
+}
+.intro-touch-prompt {
+  position: absolute;
+  bottom: 34px;
+  z-index: 10;
+  padding: 8px 18px;
+  border-radius: 99px;
+  background: rgba(15, 23, 42, 0.78);
+  border: 1.5px solid #fde047;
+  color: #fef08a;
+  font-size: 0.86rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  animation: introTouchPulse 1.35s ease-in-out infinite;
+}
+@keyframes introTouchPulse {
+  0%, 100% { opacity: 0.55; transform: scale(0.98); }
+  50%      { opacity: 1;    transform: scale(1.04); box-shadow: 0 0 18px rgba(253, 224, 71, 0.65); }
+}

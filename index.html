@@ -7,9 +7,27 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Serif+KR:wght@500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=130" />
+  <link rel="stylesheet" href="style.css?v=140" />
 </head>
 <body>
+  <!-- V55.0: 시네마틱 오프닝 인트로 & TOUCH TO START -->
+  <div id="intro-splash-overlay" class="intro-splash-overlay" role="button" tabindex="0" aria-label="오프닝 인트로">
+    <div class="intro-bg-layer" id="intro-bg-layer"></div>
+    <div class="intro-vignette"></div>
+    <div class="intro-speedlines"></div>
+    <button type="button" id="intro-skip-btn" class="intro-skip-btn">SKIP ⏭</button>
+    <div class="intro-stage" id="intro-stage">
+      <div class="intro-hero-cast" id="intro-hero-cast"></div>
+      <div class="intro-vfx-burst" id="intro-vfx-burst"></div>
+      <div class="intro-logo-wrap hidden" id="intro-logo-wrap">
+        <div class="intro-logo-sub">SEOUL 2026 · TEXT ACTION RPG</div>
+        <div class="intro-logo-main">🛡️ 시민영웅: 예절 수호자</div>
+        <div class="intro-logo-ver">DELUXE EDITION</div>
+      </div>
+    </div>
+    <div class="intro-caption-box" id="intro-caption-box">2026년, 무질서와 민폐가 뒤덮인 도시...</div>
+    <div class="intro-touch-prompt" id="intro-touch-prompt">✨ 화면을 터치하세요 · TOUCH TO START ✨</div>
+  </div>
   <div class="app-shell">
     <div class="book-page">
       <div class="toast-container" id="toast-container"></div>
@@ -339,6 +357,6 @@
     <div class="rom-mg-panel" id="rom-mg-panel"></div>
   </div>
 
-  <script type="module" src="app.js?v=139"></script>
+  <script type="module" src="app.js?v=140"></script>
 </body>
 </html>

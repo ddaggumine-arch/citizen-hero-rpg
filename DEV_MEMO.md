@@ -5,7 +5,13 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V54.0 (GitHub Pages 배포됨)
+## 현재 최신 버전: V55.0 (GitHub Pages 배포됨)
+- **V55.0 (`?v=140`)**:
+  - **시네마틱 5막 오프닝 인트로 & TOUCH TO START (`index.html`, `style.css`, `app.js`)**: 새로고침/접속 시 풀스크린 오프닝 몽타주(배경·영웅·유키·클로이·16종 VFX 폭발·타이틀 로고 착지) + `✨ 화면을 터치하세요 · TOUCH TO START ✨` + 우측 상단 `SKIP ⏭` 버튼 추가.
+- **V54.4 (`?v=139`)**:
+  - 유키·클로이 시크릿 화보 각 4종(총 8장) + 유키/클로이 신혼여행 추가 화끈 컷 7장 + 트리플 웨딩 시크릿 히든 해금 + 27장 스페셜 앨범 완성.
+- **V54.1 (`?v=136`)**:
+  - 스토리 첩보 타겟 추적(`state.trackedIntelTarget`) 수정 — 선택한 화/현재 액트에 정확히 첩보 누적.
 - **V54.0 (`?v=135`)**:
   - **4대 재미 폭발 업데이트 (`app.js`, `index.html`)**:
     1. **🤝 갱생 빌런 아지트 6인 (`REFORMED_ALLIES_DATA`)**: 카페/주차/층간소음/영화관/헬스장/무단투기 빌런 3승 시 아군 동료 합류 + 매일 사이다+25, 공격+5, 피격-10%, 고철+1 등 영구 버프 + 출동 허브 아지트 모달!

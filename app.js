@@ -12512,4 +12512,124 @@ if (elSeoulMinimap && !elSeoulMinimap.dataset.pinBound) {
   });
 }
 
+// ===== V55.0: 시네마틱 오프닝 인트로 & TOUCH TO START =====
+function initCinematicIntro() {
+  const overlay = document.getElementById('intro-splash-overlay');
+  if (!overlay) return;
+  const bgEl = document.getElementById('intro-bg-layer');
+  const castEl = document.getElementById('intro-hero-cast');
+  const vfxEl = document.getElementById('intro-vfx-burst');
+  const logoEl = document.getElementById('intro-logo-wrap');
+  const capEl = document.getElementById('intro-caption-box');
+  const touchEl = document.getElementById('intro-touch-prompt');
+  const skipBtn = document.getElementById('intro-skip-btn');
+
+  const scenes = [
+    {
+      bg: 'assets/images/bg_boss_final.jpg?v=140',
+      castHtml: `<img src="assets/images/bg_gangnam.jpg?v=140" class="intro-cut-img" alt="혼돈의 도시" />`,
+      vfx: '',
+      caption: '2026년, 무질서와 민폐가 뒤덮인 대한민국...',
+      showLogo: false,
+    },
+    {
+      bg: 'assets/images/act_patrol.jpg?v=140',
+      castHtml: `<img src="assets/images/hero_attack.png?v=140" class="intro-cut-sprite" alt="시민영웅" />`,
+      vfx: 'assets/images/vfx/vfx_speech_4.png?v=140',
+      caption: '단 하나의 노란 완장이 어둠을 가른다!!',
+      showLogo: false,
+    },
+    {
+      bg: 'assets/images/bg_seongsu.jpg?v=140',
+      castHtml: `<img src="assets/images/romance/triple_picnic.jpg?v=140" class="intro-cut-img" alt="동료들" />`,
+      vfx: '',
+      caption: '유키, 클로이, 콩이... 그리고 수호정령들과 함께!',
+      showLogo: false,
+    },
+    {
+      bg: 'assets/images/bg_gangnam.jpg?v=140',
+      castHtml: `<img src="assets/images/romance/chloe_ep04_photobooth.jpg?v=140" class="intro-cut-img" style="max-width:44%;" /><img src="assets/images/romance/yuki_ep19_hugtears.jpg?v=140" class="intro-cut-img" style="max-width:44%;" />`,
+      vfx: 'assets/images/vfx/vfx_snap_4.png?v=140',
+      caption: '전국 5대 도시를 제패할 최강의 참교육이 시작된다!!',
+      showLogo: false,
+    },
+    {
+      bg: 'assets/images/bg_yeouido.jpg?v=140',
+      castHtml: '',
+      vfx: 'assets/images/vfx/vfx_law_4.png?v=140',
+      caption: '전주 · 평택 · 동탄 · 인천 · 서울 — 예절을 지켜라!',
+      showLogo: true,
+    },
+  ];
+
+  let curIdx = 0;
+  let closed = false;
+  let timer = null;
+
+  const renderIntroScene = (idx) => {
+    const s = scenes[idx];
+    if (!s) return;
+    if (bgEl) bgEl.style.backgroundImage = `url('${s.bg}')`;
+    if (castEl) castEl.innerHTML = s.castHtml || '';
+    if (vfxEl) vfxEl.innerHTML = s.vfx ? `<img src="${s.vfx}" class="intro-vfx-img" alt="" />` : '';
+    if (capEl) capEl.textContent = s.caption;
+    if (logoEl) logoEl.classList.toggle('hidden', !s.showLogo);
+    if (touchEl) {
+      touchEl.textContent = s.showLogo
+        ? '✨ 화면을 터치하세요 · TOUCH TO START ✨'
+        : '✨ 터치하면 타이틀로 · SKIP으로 바로 시작 ✨';
+    }
+  };
+
+  const closeIntro = () => {
+    if (closed) return;
+    closed = true;
+    if (timer) clearInterval(timer);
+    try { sfx.powerup(); } catch {}
+    overlay.classList.add('is-leaving');
+    setTimeout(() => overlay.classList.add('hidden'), 560);
+  };
+
+  renderIntroScene(0);
+  timer = setInterval(() => {
+    if (closed) return;
+    if (curIdx < scenes.length - 1) {
+      curIdx += 1;
+      renderIntroScene(curIdx);
+    } else {
+      clearInterval(timer);
+    }
+  }, 2100);
+
+  if (skipBtn) {
+    skipBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeIntro();
+    });
+  }
+  overlay.addEventListener('click', () => {
+    if (curIdx < scenes.length - 1) {
+      curIdx = scenes.length - 1;
+      if (timer) clearInterval(timer);
+      try { sfx.click(); } catch {}
+      renderIntroScene(curIdx);
+    } else {
+      closeIntro();
+    }
+  });
+  overlay.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (curIdx < scenes.length - 1) {
+        curIdx = scenes.length - 1;
+        if (timer) clearInterval(timer);
+        renderIntroScene(curIdx);
+      } else {
+        closeIntro();
+      }
+    }
+  });
+}
+
+initCinematicIntro();
 render();
