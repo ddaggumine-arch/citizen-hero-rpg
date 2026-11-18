@@ -5,7 +5,11 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V56.0 (GitHub Pages 배포됨)
+## 현재 최신 버전: V56.1 (GitHub Pages 배포됨)
+- **V56.1 (`?v=143`)**:
+  - **29종 정령(`spirit_69.png` 천마 포함) 인접 조각 자동 클리닝**: 가장자리 삐져나온 옆 정령 날개·발톱 제거 & 중앙 재정렬.
+  - **스토리 적 vs 필드 돌발 적 100% 분리 (`isStoryExclusiveEnemy`)**: 순찰·112 속보·지명수배·던전 매복에서 스토리/액트/보스 적이 뜬금없이 등장하지 않도록 차단.
+  - **아지트 침투 ↔ 스토리 보스 유기적 연계 (`startActDungeon`)**: 던전 4층 침투 완료 시 `💣 보급로 폭파 & 첩보 탈취` → 현재 스토리 보스 첩보 +1 & 다음 보스전 시작 HP -15% 약화 + 전용 대사 발동!
 - **V56.0 (`?v=142`)**:
   - **오프닝 인트로 이미지 누락 수정 & 수호정령 추가 (`app.js`, `index.html`)**: 누락된 `romance/triple_picnic.jpg` 경로를 `assets/images/triple_picnic.jpg` 로 수정하고, `spirit_43/50/100.png` 수호정령 스프라이트를 오프닝에 정식 합류.
   - **통합 시네마틱 아웃트로 엔진 (`playCinematicSequence`) + 10종 아웃트로 추가**:

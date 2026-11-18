@@ -331,7 +331,10 @@ function rollBreakingNews() {
   const availDists = SEOUL_DISTRICTS.filter((d) => (d.minLv || 1) <= heroLv + 4);
   const distPool = availDists.length > 0 ? availDists : [SEOUL_DISTRICTS[0]];
   const dist = distPool[Math.floor(Math.random() * distPool.length)];
-  const pool = (dist.villains || []).filter((id) => VILLAINS.some((v) => v.id === id) || GUERRILLA_VILLAINS.some((v) => v.id === id));
+  const pool = (dist.villains || []).filter((id) => {
+    const v = VILLAINS.find((x) => x.id === id) || GUERRILLA_VILLAINS.find((x) => x.id === id);
+    return v && !isStoryExclusiveEnemy(v);
+  });
   const enemyId = pool.length ? pool[Math.floor(Math.random() * pool.length)] : 'shorts_terrorist';
   const enemy = getEnemyById(enemyId);
   state.breakingNews = {
@@ -2171,19 +2174,29 @@ function getGearPowerScore(g, plus = 0) {
   return (g.atk || 0) + plus * 3 + ((g.def || 0) + plus * 2) * 0.9 + (g.crit || 0) * 80 + (g.reflect || 0) * 60 + (g.spRegen || 0) * 1.5;
 }
 
+function isStoryExclusiveEnemy(v) {
+  if (!v) return false;
+  if (v.storyOnly || v.isActBoss || isBossId(v.id) || v.id === HIDDEN_BOSS.id) return true;
+  if (String(v.id || '').startsWith('act_')) return true;
+  if (STORY_CHAPTERS.some((c) => c.bossId === v.id)) return true;
+  if (ACT_VILLAINS.some((a) => a.id === v.id)) return true;
+  return false;
+}
+
 function pickLevelAppropriateVillain(pool, heroLv = state.level || 1) {
-  const lv = Math.max(1, Number(heroLv) || 1);
-  const filtered = pool.filter((v) => {
+  const nonStoryPool = pool.filter((v) => !isStoryExclusiveEnemy(v));
+  const safePool = nonStoryPool.length > 0 ? nonStoryPool : VILLAINS.filter((v) => !isStoryExclusiveEnemy(v));
+  const filtered = safePool.filter((v) => {
     const dId = v.district || getDistrictIdForEnemy(v.id);
     const dInfo = SEOUL_DISTRICTS.find((d) => d.id === dId);
     return (dInfo?.minLv || 1) <= lv + 4;
   });
-  const candidates = filtered.length > 0 ? filtered : pool.filter((v) => {
+  const candidates = filtered.length > 0 ? filtered : safePool.filter((v) => {
     const dId = v.district || getDistrictIdForEnemy(v.id);
     const dInfo = SEOUL_DISTRICTS.find((d) => d.id === dId);
     return (dInfo?.minLv || 1) <= 15;
   });
-  const finalPool = candidates.length > 0 ? candidates : pool;
+  const finalPool = candidates.length > 0 ? candidates : safePool;
   return finalPool[Math.floor(Math.random() * finalPool.length)] || VILLAINS[0];
 }
 
@@ -2285,7 +2298,15 @@ function startBattle(enemyId, isRandomEncounter = false) {
     state.sp = clamp((state.sp || 0) + 15, 0, state.maxSp);
     extraLog += '\n👻 [정령 Lv.10+ 각성] 전투 시작 사이다 +15 충전!';
   }
-  state.enemyMaxHp = enemy.maxHp;
+  let sabHp = enemy.maxHp;
+  const sabKey = baseEnemy.actId || state.currentAct || 'seoul';
+  if (isBossEnemy && state.infiltrationSabotage?.[sabKey]) {
+    sabHp = Math.max(1, Math.round(sabHp * 0.85));
+    state.infiltrationSabotage[sabKey] = false;
+    extraLog += `\n💣 [아지트 침투 연계!!] 사전 보급로 파괴! 보스 멘탈 -15% 약화 상태로 돌입!`;
+    state.infiltrationQuoteOverride = '"크윽... 방금 네 녀석이 우리 아지트 보급로를 털고 왔다면서?!"';
+  }
+  state.enemyMaxHp = sabHp;
   state.enemyStunned = false;
   state.enemyExcuseShield = false;
   state.enemyGuardShield = 3;
@@ -2347,7 +2368,8 @@ function startBattle(enemyId, isRandomEncounter = false) {
   state.tagSkillUsedThisBattle = false;
   state.streamMission = STREAM_MISSIONS[Math.floor(Math.random() * STREAM_MISSIONS.length)];
   state.goldenMission = Math.random() < 0.22;
-  state.quote = enemy.introQuote || enemy.banterQuotes?.[0] || '"뭐야 넌?!"';
+  state.quote = state.infiltrationQuoteOverride || enemy.introQuote || enemy.banterQuotes?.[0] || '"뭐야 넌?!"';
+  state.infiltrationQuoteOverride = null;
   state.log = `[${enemy.location}]에서 [${enemy.name}]과(와) 마주쳤습니다!${extraLog}`;
   saveGame();
   render();
@@ -3600,7 +3622,7 @@ function render() {
         }
       };
       delete elWildSpiritSprite.dataset.retried;
-      elWildSpiritSprite.src = `${sp.img}?v=123`;
+      elWildSpiritSprite.src = `${sp.img}?v=143`;
       elWildSpiritSprite.className = 'wild-spirit-sprite';
       if (capRes?.status === 'resonating') elWildSpiritSprite.classList.add('is-resonating');
       else if (capRes?.status === 'caught') elWildSpiritSprite.classList.add('is-caught-fly');
@@ -3683,7 +3705,7 @@ function render() {
         elRomMgOverlay.classList.remove('hidden');
         elRomMgPanel.innerHTML = `
           <div style="text-align:center;margin-bottom:8px;">
-            <img src="${sp.img}?v=123" alt="${sp.name}" style="width:68px;height:68px;object-fit:contain;" />
+            <img src="${sp.img}?v=143" alt="${sp.name}" style="width:68px;height:68px;object-fit:contain;" />
             <div style="font-weight:900;font-size:16px;margin-top:4px;">💫 ${sp.name} — ${capRes.label}</div>
             <div style="font-size:12px;color:#fde047;font-weight:800;">기본 포획률 ${capRes.baseRate}% · 🎯 중앙 골드존 +25% · ✨ +10%</div>
           </div>
@@ -7578,7 +7600,7 @@ function render() {
     const eqSpCombat = getSpiritBonuses().spirit;
     if (elSpiritSprite) {
       elSpiritSprite.classList.toggle('hidden', !eqSpCombat);
-      if (eqSpCombat) elSpiritSprite.src = `${eqSpCombat.img}?v=123`;
+      if (eqSpCombat) elSpiritSprite.src = `${eqSpCombat.img}?v=143`;
     }
     elQuoteBubble.classList.add('hidden');
     elBattleLog.textContent = (state.quote ? `💬 ${state.quote}\n` : '') + (state.log || '');
@@ -9809,7 +9831,7 @@ function openSpiritModal(filterEl = 'all') {
       const spLive = getSpiritBonuses(sp.id);
       const spMs = prog.lv >= 20 ? '🌟만렙각성(협공1.5배)' : (prog.lv >= 10 ? '⚡시작SP+15' : (prog.lv >= 5 ? '💥협공률+10%' : 'Lv.5 협공↑'));
       card.innerHTML = `
-        <img src="${sp.img}?v=123" alt="${sp.name}" class="item-thumb" style="width:44px;height:44px;object-fit:contain;" />
+        <img src="${sp.img}?v=143" alt="${sp.name}" class="item-thumb" style="width:44px;height:44px;object-fit:contain;" />
         <div class="inv-info">
           <h4 style="color:${rInfo.color};">[${rInfo.short}] ${getSpiritDisplayName(sp)} <span style="color:#0369a1;">Lv.${prog.lv}/20</span> · ★${lv}/5 ${isEq ? '✅동행중' : ''} ${spLive.isLucky ? `<span style="background:#10b981;color:#fff;padding:1px 5px;border-radius:6px;font-size:0.65rem;">🍀행운×${spLive.luckyMult}</span>` : ''}</h4>
           <p><b style="color:#0f766e;">⚡ 현재 버프: 공격 +${spLive.atk}${spLive.spRegen ? ` · 사이다+${spLive.spRegen}` : ''}${spLive.crit ? ` · 치명+${(spLive.crit * 100).toFixed(1)}%` : ''} · 속성+${Math.round(spLive.elemBoost * 100)}%</b> <span style="font-size:0.68rem;color:#b45309;">[${spMs}]</span><br/>${sp.desc}<br/><span style="color:#1e40af;font-size:0.68rem;">📍 출몰: ${sp.zoneHint}</span></p>
@@ -11592,10 +11614,21 @@ function startActDungeon(act, depth = 1) {
   if (depth >= 4) {
     const bossBtn = document.createElement('button');
     bossBtn.className = 'activity-item-btn';
-    bossBtn.innerHTML = '<div class="act-title">👑 던전 보스방 돌입!!</div><div class="act-desc">지역 보스 격파 & 정령석 획득 찬스!</div>';
+    bossBtn.style.borderColor = '#dc2626';
+    bossBtn.style.background = '#fef2f2';
+    bossBtn.innerHTML = `<div class="act-title">💣 [${act.name}] 아지트 보급로 폭파 & 보스 첩보 탈취!!</div><div class="act-desc">스토리 보스 HP -15% 약화 + 첩보 해독 + 80P · 고철+2 획득!</div>`;
     bossBtn.addEventListener('click', () => {
+      if (!state.infiltrationSabotage) state.infiltrationSabotage = {};
+      state.infiltrationSabotage[act.id] = true;
+      state.points += 80;
+      state.scrap = (state.scrap || 0) + 2;
+      grantIntel(1, '아지트 침투');
+      sfx.victory();
       elActivityModal.classList.add('hidden');
-      startBattle(act.bossId);
+      showToast(`💣 [${act.name}] 침투 작전 성공!! 다음 스토리 보스 HP -15% 약화 & 첩보+1!`, 'break');
+      state.log = `💣 [${act.dungeonName}] 보급로를 완벽히 파괴했습니다! (+80P · 고철+2 · 다음 스토리 보스 멘탈 -15% 약화!)`;
+      saveGame();
+      render();
     });
     elActivityList.appendChild(bossBtn);
     return;
@@ -11613,7 +11646,7 @@ function startActDungeon(act, depth = 1) {
     btn.addEventListener('click', () => {
       const r = Math.random();
       if (r < 0.35) {
-        const mob = ACT_VILLAINS.find((v) => v.actId === act.id && !v.isActBoss) || VILLAINS[0];
+        const mob = pickLevelAppropriateVillain(VILLAINS, state.level || 1);
         elActivityModal.classList.add('hidden');
         showToast('⚔️ 던전 매복 빌런 출현!', 'warn');
         startBattle(mob.id, true);
