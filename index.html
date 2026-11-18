@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Serif+KR:wght@500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=152" />
+  <link rel="stylesheet" href="style.css?v=155" />
 </head>
 <body>
   <!-- V55.0: 시네마틱 오프닝 인트로 & TOUCH TO START -->
@@ -105,6 +105,12 @@
           </div>
           <div class="bar-track enemy-track">
             <div class="bar-fill enemy-fill" id="enemy-hp-bar" style="width: 100%"></div>
+          </div>
+          <div class="rt-gauge-wrap hidden" id="rt-enemy-gauge-wrap">
+            <div class="rt-gauge-track">
+              <div class="rt-gauge-fill" id="rt-enemy-gauge-bar" style="width: 0%"></div>
+            </div>
+            <span class="rt-gauge-text" id="rt-enemy-gauge-text">⏳ 행동 준비 0%</span>
           </div>
           <div class="enemy-intent-bar hidden" id="enemy-intent-bar"></div>
           <div class="combat-badges" id="combat-badges"></div>
@@ -274,6 +280,13 @@
         </div>
         <div class="inv-item">
           <div class="inv-info">
+            <h4>⏱️ 전투 진행 방식</h4>
+            <p>실시간(즉시 발동·게이지 예고) / 전략적 턴제 전환</p>
+          </div>
+          <button class="use-btn" id="toggle-combat-mode">실시간</button>
+        </div>
+        <div class="inv-item">
+          <div class="inv-info">
             <h4>💾 10슬롯 저장 / 불러오기</h4>
             <p>10개의 세이브 슬롯에 저장하거나 불러옵니다</p>
           </div>
@@ -358,6 +371,6 @@
     <div class="rom-mg-panel" id="rom-mg-panel"></div>
   </div>
 
-  <script type="module" src="app.js?v=154"></script>
+  <script type="module" src="app.js?v=155"></script>
 </body>
 </html>

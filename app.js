@@ -68,9 +68,9 @@ function shuffle(arr) {
 function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return { sound: true, bgm: true, vibrate: true, ...JSON.parse(raw) };
+    if (raw) return { sound: true, bgm: true, vibrate: true, combatMode: 'realtime', ...JSON.parse(raw) };
   } catch (_) {}
-  return { sound: true, bgm: true, vibrate: true };
+  return { sound: true, bgm: true, vibrate: true, combatMode: 'realtime' };
 }
 
 function saveSettings() {
@@ -493,6 +493,10 @@ const btnCloseSettings = document.getElementById('close-settings');
 const btnToggleSound = document.getElementById('toggle-sound');
 const btnToggleBgm = document.getElementById('toggle-bgm');
 const btnToggleVibrate = document.getElementById('toggle-vibrate');
+const btnToggleCombatMode = document.getElementById('toggle-combat-mode');
+const elRtGaugeWrap = document.getElementById('rt-enemy-gauge-wrap');
+const elRtGaugeBar = document.getElementById('rt-enemy-gauge-bar');
+const elRtGaugeText = document.getElementById('rt-enemy-gauge-text');
 const btnGoTitle = document.getElementById('btn-go-title');
 const elActivityModal = document.getElementById('activity-modal');
 const elActivityModalTitle = document.getElementById('activity-modal-title');
@@ -1247,6 +1251,127 @@ function openEnemyInspectModal() {
     if (state.phase === 'combat') openEnemyInspectModal();
   });
 });
+
+
+const rtState = {
+  enemyGauge: 0,
+  gcdUntil: 0,
+  cdEnd: {},
+  guardUntil: 0,
+  guardCdUntil: 0,
+  stunUntil: 0,
+};
+
+function isRealtimeCombat() {
+  return state?.phase === 'combat' && (settings?.combatMode || 'realtime') === 'realtime';
+}
+
+function resetRtCombat() {
+  rtState.enemyGauge = 0;
+  rtState.gcdUntil = 0;
+  rtState.cdEnd = {};
+  rtState.guardUntil = 0;
+  rtState.guardCdUntil = 0;
+  rtState.stunUntil = 0;
+}
+
+function isRtPaused() {
+  if (!isRealtimeCombat()) return true;
+  if (state.combatInputLock || state.bossPhase2Pending) return true;
+  const modals = [elActivityModal, elInvModal, elSettingsModal, elTraitsModal, elPhoneModal, elTimingModal, elAchModal, elEndingsModal, elSaveModal];
+  return modals.some((m) => m && !m.classList.contains('hidden'));
+}
+
+function getRtSkillCdMs(key) {
+  const feverMult = (state.feverTurns || 0) > 0 ? 0.5 : 1.0;
+  if (key === 'special') return Math.round(7000 * feverMult);
+  if (key === 'tag') return Math.round(3000 * feverMult);
+  return Math.round(1600 * feverMult);
+}
+
+function updateRtUiTick() {
+  if (!isRealtimeCombat()) {
+    if (elRtGaugeWrap) elRtGaugeWrap.classList.add('hidden');
+    return;
+  }
+  const now = Date.now();
+  if (elRtGaugeWrap) elRtGaugeWrap.classList.remove('hidden');
+
+  // Update skill cooldown overlays without full DOM re-render
+  if (elChoicesPanel) {
+    elChoicesPanel.querySelectorAll('[data-rt-cd-key]').forEach((btn) => {
+      const k = btn.getAttribute('data-rt-cd-key');
+      const remMs = Math.max(0, (rtState.cdEnd[k] || 0) - now, rtState.gcdUntil - now);
+      const tag = btn.querySelector('.rt-cd-tag');
+      if (remMs > 0) {
+        btn.classList.add('is-rt-cd');
+        if (tag) tag.textContent = ` · ⏳${(remMs / 1000).toFixed(1)}s`;
+      } else {
+        btn.classList.remove('is-rt-cd');
+        if (tag) tag.textContent = '';
+      }
+    });
+    const gBtn = document.getElementById('rt-guard-btn');
+    if (gBtn) {
+      const gActive = rtState.guardUntil > now;
+      const gCd = Math.max(0, rtState.guardCdUntil - now);
+      gBtn.classList.toggle('is-rt-guard-active', gActive);
+      gBtn.classList.toggle('is-rt-cd', !gActive && gCd > 0);
+      const gSub = gBtn.querySelector('.choice-sub');
+      if (gSub) {
+        if (gActive) gSub.textContent = `🛡️ 가드/패링 대기 중! (${((rtState.guardUntil - now) / 1000).toFixed(1)}s)`;
+        else if (gCd > 0) gSub.textContent = `⏳ 재사용 대기 ${(gCd / 1000).toFixed(1)}s`;
+        else gSub.textContent = '게이지 75%+ 빨간 경고 시 누르면 90% 차단 + 역관광!';
+      }
+    }
+  }
+
+  if (isRtPaused()) return;
+  const enemy = getEnemyById(state.currentEnemyId);
+  if (!enemy || state.enemyHp <= 0) return;
+
+  if (state.enemyStunned || (state.enemyApologyTurns || 0) > 0) {
+    if (rtState.stunUntil <= now) rtState.stunUntil = now + 3500;
+    const rem = Math.max(0.1, (rtState.stunUntil - now) / 1000).toFixed(1);
+    if (elRtGaugeBar) {
+      elRtGaugeBar.style.width = `${Math.min(100, rtState.enemyGauge)}%`;
+      elRtGaugeBar.classList.remove('is-danger');
+      elRtGaugeBar.classList.add('is-stun');
+    }
+    if (elRtGaugeText) elRtGaugeText.textContent = `💫 행동 정지 (${rem}s)`;
+    if (now >= rtState.stunUntil) {
+      state.enemyStunned = false;
+      if ((state.enemyApologyTurns || 0) > 0) state.enemyApologyTurns -= 1;
+      rtState.stunUntil = 0;
+    }
+    return;
+  }
+
+  const intentObj = ENEMY_INTENTS.find((i) => i.id === state.enemyIntent) || ENEMY_INTENTS[0];
+  const step = intentObj.isDanger ? 2.2 : 2.6;
+  rtState.enemyGauge = Math.min(100, rtState.enemyGauge + step);
+  const pct = Math.round(rtState.enemyGauge);
+  if (elRtGaugeBar) {
+    elRtGaugeBar.style.width = `${pct}%`;
+    elRtGaugeBar.classList.remove('is-stun');
+    elRtGaugeBar.classList.toggle('is-danger', pct >= 70);
+  }
+  if (elRtGaugeText) {
+    elRtGaugeText.textContent = pct >= 70 ? `⚠️ 공격 임박 ${pct}%!` : `⏳ 행동 준비 ${pct}%`;
+  }
+
+  if (rtState.enemyGauge >= 100) {
+    rtState.enemyGauge = 0;
+    if (rtState.guardUntil > now) {
+      rtState.guardUntil = 0;
+      performGuard(true);
+    } else {
+      enemyCounterTurn(enemy, false);
+    }
+  }
+}
+
+setInterval(updateRtUiTick, 100);
 
 function renderCombatLevelOverlays(show) {
   if (elEnemyInspectHint) {
@@ -2392,6 +2517,7 @@ function pickLevelAppropriateVillain(pool, heroLv = state.level || 1) {
 }
 
 function startBattle(enemyId, isRandomEncounter = false) {
+  resetRtCombat();
   state.isRandomBattle = !!isRandomEncounter;
   state.combatInputLock = false;
   state.battleDamageTaken = 0;
@@ -3152,7 +3278,7 @@ function handleEnemyDefeated(enemy) {
   render();
 }
 
-function performGuard() {
+function performGuard(fromRt = false) {
   const enemy = getEnemyById(state.currentEnemyId);
   const counterDmg = Math.round(22 + state.stats.guts * 3.5 + state.bonusDmg);
   state.sp = clamp(state.sp + 25, 0, state.maxSp);
@@ -3178,7 +3304,11 @@ function performGuard() {
     handleEnemyDefeated(enemy);
     return;
   }
-  if (gotBonusTurn) {
+  if (gotBonusTurn || fromRt) {
+    if (fromRt) {
+      rtState.enemyGauge = 0;
+      rollNextIntent();
+    }
     saveGame();
     render();
     return;
@@ -3613,6 +3743,21 @@ function performAttack(type, ultPerfect = false) {
   setTimeout(() => {
     triggerEnemyHit(dmg, isCrit, { ...vfxInfo, isWeak: hitWeakness, isBreak: gotBreakBonusTurn, isFever });
   }, tCfg.impact);
+
+  if (isRealtimeCombat()) {
+    const now = Date.now();
+    const feverGcd = (state.feverTurns || 0) > 0 ? 450 : 850;
+    rtState.gcdUntil = now + feverGcd;
+    rtState.cdEnd[type] = now + getRtSkillCdMs(type);
+    state.combatInputLock = false;
+    if (state.enemyHp <= 0) {
+      setTimeout(() => handleEnemyDefeated(enemy), 220);
+      return;
+    }
+    saveGame();
+    render();
+    return;
+  }
 
   const stepDelay = state.enemyHp <= 0 ? tCfg.win : tCfg.next;
   setTimeout(() => {
@@ -7889,6 +8034,20 @@ function render() {
         render();
       });
       elCombatBadges.appendChild(spdTog);
+
+      const modeTog = document.createElement('span');
+      modeTog.className = 'combat-badge is-toggle';
+      modeTog.textContent = isRealtimeCombat() ? '⏱️ 실시간' : '🎯 턴제';
+      modeTog.title = '터치해 실시간 / 턴제 전투 방식 전환';
+      modeTog.addEventListener('click', () => {
+        sfx.click();
+        settings.combatMode = isRealtimeCombat() ? 'turn' : 'realtime';
+        saveSettings();
+        resetRtCombat();
+        showToast(settings.combatMode === 'realtime' ? '⏱️ 실시간 전투 모드 ON!' : '🎯 전략적 턴제 모드 ON!', 'good');
+        render();
+      });
+      elCombatBadges.appendChild(modeTog);
     }
 
     showEnemyVisual(enemy);
@@ -8045,12 +8204,30 @@ function render() {
       elChoicesPanel.appendChild(feverBtn);
     }
 
-    if (intentObj.isDanger) {
+    if (isRealtimeCombat()) {
+      const guardBtn = document.createElement('button');
+      guardBtn.id = 'rt-guard-btn';
+      guardBtn.className = 'choice-btn row-btn guard-btn';
+      guardBtn.style.gridColumn = 'span 2';
+      guardBtn.innerHTML = `<span>${uiImg('skill_parry')}실시간 가드 · 저스트 패링 (1.4초 태세)</span><span class="choice-sub">게이지 75%+ 빨간 경고 시 누르면 90% 차단 + 역관광!</span>`;
+      guardBtn.addEventListener('click', () => {
+        const now = Date.now();
+        if (rtState.guardCdUntil > now) {
+          sfx.click();
+          return;
+        }
+        sfx.powerup();
+        rtState.guardUntil = now + 1400;
+        rtState.guardCdUntil = now + 2600;
+        updateRtUiTick();
+      });
+      elChoicesPanel.appendChild(guardBtn);
+    } else if (intentObj.isDanger) {
       const guardBtn = document.createElement('button');
       guardBtn.className = 'choice-btn row-btn guard-btn';
       guardBtn.style.gridColumn = 'span 2';
       guardBtn.innerHTML = `<span>${uiImg('skill_parry')}저스트 패링!! (강공격 90% 차단 + 역관광)</span><span class="choice-sub">피해 -90% · 반격 · 사이다+25 · 피버+30%</span>`;
-      guardBtn.addEventListener('click', performGuard);
+      guardBtn.addEventListener('click', () => performGuard(false));
       elChoicesPanel.appendChild(guardBtn);
     }
 
@@ -8097,6 +8274,7 @@ function render() {
 
     const skills = [
       {
+        rtKey: 'speech',
         title: `${uiImg('skill_fact')}${getEquippedSkill('speech').name}`,
         ppKey: 'speech',
         sub: `${getStratTag('speech')}${muSpeech.tag ? `${muSpeech.tag} · ${getEquippedSkill('speech').mechTag}` : `${getEquippedSkill('speech').mechTag}`}`,
@@ -8105,6 +8283,7 @@ function render() {
         action: () => performAttack('speech'),
       },
       {
+        rtKey: 'guts',
         title: `${uiImg('skill_mirror')}${getEquippedSkill('guts').name}`,
         ppKey: 'guts',
         sub: `${getStratTag('guts')}${muGuts.tag ? `${muGuts.tag} · ${getEquippedSkill('guts').mechTag}` : `${getEquippedSkill('guts').mechTag} · 사이다↑`}`,
@@ -8113,6 +8292,7 @@ function render() {
         action: () => performAttack('guts'),
       },
       {
+        rtKey: 'law',
         title: `${uiImg('skill_law')}${getEquippedSkill('law').name}`,
         ppKey: 'law',
         sub: `${getStratTag('law')}${muLaw.tag ? `${muLaw.tag} · ${getEquippedSkill('law').mechTag}` : `${getEquippedSkill('law').mechTag} · 🎲12+ 기절`}`,
@@ -8121,6 +8301,7 @@ function render() {
         action: () => performAttack('law'),
       },
       {
+        rtKey: 'special',
         title: `${uiImg('skill_cider')}${getSkillEvolution('special').title.replace(/^[^\s]+\s*/, '')}`,
         ppKey: null,
         sub: state.sp >= ((state.feverTurns || 0) > 0 ? 20 : 40)
@@ -8136,11 +8317,18 @@ function render() {
       const btn = document.createElement('button');
       btn.className = 'choice-btn';
       btn.disabled = !!sk.disabled;
+      if (sk.rtKey) btn.setAttribute('data-rt-cd-key', sk.rtKey);
       const topHtml = sk.ppKey
         ? `<span class="skill-top-row"><span>${sk.title}</span>${mkPpHtml(sk.ppKey)}</span>`
         : `<span>${sk.title}</span>`;
-      btn.innerHTML = `${topHtml}<span class="choice-sub ${sk.subClass}">${sk.disabled && sk.ppKey ? '횟수 소진 (휴식/아이템 복구)' : sk.sub}</span>`;
-      btn.addEventListener('click', sk.action);
+      btn.innerHTML = `${topHtml}<span class="choice-sub ${sk.subClass}">${sk.disabled && sk.ppKey ? '횟수 소진 (휴식/아이템 복구)' : sk.sub}<span class="rt-cd-tag"></span></span>`;
+      btn.addEventListener('click', () => {
+        if (isRealtimeCombat() && sk.rtKey) {
+          const now = Date.now();
+          if (Math.max(rtState.cdEnd[sk.rtKey] || 0, rtState.gcdUntil) > now) return;
+        }
+        sk.action();
+      });
       elChoicesPanel.appendChild(btn);
     });
 
@@ -8150,8 +8338,15 @@ function render() {
     const snapPp = ppMap.snap ?? getMaxSkillPp('snap');
     snapBtn.disabled = snapPp <= 0;
     const skSnap = getEquippedSkill('snap');
-    snapBtn.innerHTML = `<span class="skill-top-row"><span>${uiImg('skill_snap')}${skSnap.name}</span>${mkPpHtml('snap')}</span><span class="choice-sub ${muSnap.cls}">${snapPp <= 0 ? '횟수 소진 (휴식/아이템 복구)' : `${getStratTag('snap')}${muSnap.tag ? `${muSnap.tag} · ${skSnap.mechTag}` : `${skSnap.mechTag} · 즉시 발동 + 채증+1`}`}</span>`;
-    snapBtn.addEventListener('click', () => performAttack('snap'));
+    snapBtn.setAttribute('data-rt-cd-key', 'snap');
+    snapBtn.innerHTML = `<span class="skill-top-row"><span>${uiImg('skill_snap')}${skSnap.name}</span>${mkPpHtml('snap')}</span><span class="choice-sub ${muSnap.cls}">${snapPp <= 0 ? '횟수 소진 (휴식/아이템 복구)' : `${getStratTag('snap')}${muSnap.tag ? `${muSnap.tag} · ${skSnap.mechTag}` : `${skSnap.mechTag} · 즉시 발동 + 채증+1`}`}<span class="rt-cd-tag"></span></span>`;
+    snapBtn.addEventListener('click', () => {
+      if (isRealtimeCombat()) {
+        const now = Date.now();
+        if (Math.max(rtState.cdEnd.snap || 0, rtState.gcdUntil) > now) return;
+      }
+      performAttack('snap');
+    });
     if (false) {
     snapBtn.addEventListener('click', () => {
       const curPp = ensureSkillPp();
@@ -9000,6 +9195,30 @@ function appendVictoryExpCard(container) {
 
   if (state.phase === 'gameover') {
     const fee = Math.min(state.points || 0, 30);
+    if ((settings.combatMode || 'realtime') === 'realtime') {
+      const btnTurnSwitch = document.createElement('button');
+      btnTurnSwitch.className = 'choice-btn row-btn';
+      btnTurnSwitch.style.background = 'linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%)';
+      btnTurnSwitch.style.borderColor = '#3b82f6';
+      btnTurnSwitch.innerHTML = `<span>🎯 실시간이 어렵다면 [턴제 모드]로 바꾸시겠습니까?</span><span class="choice-sub" style="color:#1e40af;">턴제 모드로 전환 + 컨디션 100% 회복 후 ${state.currentEnemyId ? '바로 재도전!' : '지도 복귀'} (진료비 ${fee}P)</span>`;
+      btnTurnSwitch.addEventListener('click', () => {
+        sfx.powerup();
+        settings.combatMode = 'turn';
+        saveSettings();
+        state.points = Math.max(0, (state.points || 0) - fee);
+        state.hp = state.maxHp;
+        state.sp = state.maxSp;
+        restoreSkillPp('full');
+        showToast('🎯 전략적 턴제 모드로 전환되었습니다!', 'good');
+        if (state.currentEnemyId) startBattle(state.currentEnemyId);
+        else {
+          state.phase = 'map';
+          saveGame();
+          render();
+        }
+      });
+      elChoicesPanel.appendChild(btnTurnSwitch);
+    }
     const btnRevive = document.createElement('button');
     btnRevive.className = 'choice-btn row-btn story-main-btn';
     btnRevive.innerHTML = `<span>🏥 응급 치료 받고 지도로 복귀 (레벨·스탯·아이템 100% 유지!)</span><span class="choice-sub">HP·사이다·PP 풀회복 (진료비 ${fee}P) · 정비 후 재도전! ▶</span>`;
@@ -9301,6 +9520,7 @@ function openSettingsModal() {
   btnToggleSound.textContent = settings.sound ? '켜짐' : '꺼짐';
   if (btnToggleBgm) btnToggleBgm.textContent = settings.bgm !== false ? '켜짐' : '꺼짐';
   btnToggleVibrate.textContent = settings.vibrate ? '켜짐' : '꺼짐';
+  if (btnToggleCombatMode) btnToggleCombatMode.textContent = (settings.combatMode || 'realtime') === 'realtime' ? '실시간' : '턴제';
   elSettingsModal.classList.remove('hidden');
 }
 
@@ -9347,6 +9567,18 @@ btnToggleVibrate.addEventListener('click', () => {
   btnToggleVibrate.textContent = settings.vibrate ? '켜짐' : '꺼짐';
   if (settings.vibrate) vibrate(30);
 });
+
+if (btnToggleCombatMode) {
+  btnToggleCombatMode.addEventListener('click', () => {
+    sfx.click();
+    settings.combatMode = (settings.combatMode || 'realtime') === 'realtime' ? 'turn' : 'realtime';
+    saveSettings();
+    btnToggleCombatMode.textContent = settings.combatMode === 'realtime' ? '실시간' : '턴제';
+    resetRtCombat();
+    showToast(settings.combatMode === 'realtime' ? '⏱️ 실시간 전투 모드 ON!' : '🎯 전략적 턴제 모드 ON!', 'good');
+    if (state?.phase === 'combat') render();
+  });
+}
 
 btnGoTitle.addEventListener('click', () => {
   sfx.click();
