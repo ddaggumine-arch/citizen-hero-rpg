@@ -3,7 +3,7 @@ import { SKILLS_100, getSkillById, getUnlockedSkillsForLevel } from './data/skil
 import { YUKI_DMS_50, CHLOE_DMS_50 } from './data/heroineDms.js?v=112';
 import { KOREA_ACTS, REGIONAL_GOODS, RUNE_STONES, ACT_VILLAINS, ACT_STORY_EPISODES, ACT_PIN_LABELS, RELAY_QUESTS } from './data/koreaActs.js?v=120';
 import { STORY_CHAPTERS } from './data/storyChapters.js?v=48';
-import { ACTIVITY_CATEGORIES } from './data/activities.js?v=48';
+import { ACTIVITY_CATEGORIES } from './data/activities.js?v=125';
 import { MINI_EVENTS, ENEMY_INTENTS, createFeedForVictory } from './data/liveEvents.js';
 import { ENDINGS, evaluateEnding, buildFullEndingText } from './data/endings.js?v=82';
 import { HEROINES, LANG_QUIZZES, DATE_EVENTS } from './data/romance.js?v=63';
@@ -13,7 +13,7 @@ import { COURT_CASES, COSTUMES, CAPSULE_POOL, PET_WALK_EVENTS } from './data/v17
 import { CLUES, SOME_CRISIS_EVENTS, RIVAL_EVENTS, REFORMED_ALLIES, GETTING_TO_KNOW_EVENTS, STORY_INTERLUDES, WEEKEND_EVENTS } from './data/v19Story.js?v=51';
 import { DIFFICULTIES, RARITY_INFO, GEAR_LOOT_POOL, GEAR_ENCHANTS, PET_JOBS, LOGIC_COUNTERS, generateCommunityPosts } from './data/v24Systems.js?v=61';
 import { KISS_SCENES, LOVER_ACTIONS, KISS_SCENE_CHOICES } from './data/v25Romance.js?v=71';
-import { SPIRITS_50, SPIRIT_ELEMENTS } from './data/spirits50.js?v=76';
+import { SPIRITS_50, SPIRIT_ELEMENTS } from './data/spirits50.js?v=125';
 import { UNLOCK_MILESTONES, isFeatureUnlocked, SEOUL_DISTRICTS, getDistrictIdForEnemy, getClearedDistrictCount } from './data/v26World.js?v=108';
 import { STORY_BOSSES } from './data/storyBosses.js?v=45';
 import { STORY_AFTERMATHS } from './data/storyAftermath.js?v=81';

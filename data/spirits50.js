@@ -151,10 +151,10 @@ const raw = [
 ];
 
 const ZONE_MAP = {
-  common: '마포·전구역 (Lv.1~10)',
-  rare:   '성수·종로 (Lv.11~25)',
-  epic:   '종로·강남 (Lv.21~40)',
-  unique: '강남·여의도·마계 (Lv.31+)',
+  common: '전주·전구역 (Lv.1~10)',
+  rare:   '평택·동탄 (Lv.11~25)',
+  epic:   '동탄·인천 (Lv.21~40)',
+  unique: '인천·서울·마계 (Lv.31+)',
 };
 
 export const SPIRITS_50 = raw.map(([id, element, rarity, name, atk, spRegen, crit, elemBoost, perkId, greet], i) => {
