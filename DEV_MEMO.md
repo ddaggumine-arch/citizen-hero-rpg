@@ -5,7 +5,9 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V50.0 (GitHub Pages 배포됨)
+## 현재 최신 버전: V50.1 (GitHub Pages 배포됨)
+- **V50.1 (`?v=120`)**:
+  - **50종 액트 적 스프라이트 정밀 누끼 & 스마트 거터 재컷팅 (`assets/images/acts/*.png`)**: 다리·테이블·전선·팔 안쪽에 갇혀 있던 내부 흰 배경(enclosed white pockets)까지 전부 투명화하고, 1px 흰 테두리(halo) 제거 및 열/행 여백 자동 탐색으로 인접 캐릭터 잘림 현상 완전 해결!
 - **V50.0 (`?v=119`)**:
   - **50화 전체 초장편 기승전결 스토리 엔진 구축 (`data/actStoriesRich.js`, `data/koreaActs.js`, `app.js`)**:
     - 전주(5화)·평택(10화)·동탄(15화)·마계 인천(20화) **전 에피소드를 10장면 풀 본편(탐문 선택지 + 빌런 등장 흔들림 + 3왕복 설전 + 기선제압 선택지 + 플래시 결전) + 4장면 멀티 후일담(`aftermathScenes`) = 14장면 풀 챕터**로 대폭 확장!

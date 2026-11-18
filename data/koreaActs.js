@@ -217,7 +217,7 @@ Object.entries(RAW_ROSTER).forEach(([actId, list]) => {
     const id = `act_${actId}_${epNum}`;
     const spot = locFlavor[idx % locFlavor.length];
     const nextRow = list[idx + 1];
-    const spriteUrl = `assets/images/acts/${row[2]}?v=118`;
+    const spriteUrl = `assets/images/acts/${row[2]}?v=120`;
 
     ACT_VILLAINS.push({
       id,
