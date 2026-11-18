@@ -1656,7 +1656,7 @@ function openIntelBriefingModal(target, onProceed) {
   const enemy = getEnemyById(target.enemyId);
   const weakLbl = lv >= 1 ? (SKILL_ATTR_LABELS[enemy?.weakness || 'speech'] || '언변') : '❓ ??? (미확인)';
   elActivityModalTitle.textContent = `🕵️ 결전 브리핑 · ${target.title}`;
-  if (elActivityModalImg) elActivityModalImg.innerHTML = '';
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
   elActivityList.innerHTML = '';
 
   const infoBox = document.createElement('div');
@@ -4508,7 +4508,7 @@ function render() {
     // V36.0: 4대 핵심 허브 (2×2 그리드) + 모달 내 6대 활동/전투 통합
     function openCombatHubModal() {
       elActivityModalTitle.textContent = '⚔️ 출동 · 전투 허브';
-      if (elActivityModalImg) elActivityModalImg.innerHTML = uiImg('pin_patrol');
+      if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
       elActivityList.innerHTML = '';
 
       const patrolCat = ACTIVITY_CATEGORIES.find((c) => c.id === 'patrol');
@@ -4610,7 +4610,7 @@ function render() {
 
     function openDailyHubModal() {
       elActivityModalTitle.textContent = '🏠 일상 · 성장 허브';
-      if (elActivityModalImg) elActivityModalImg.innerHTML = uiImg('pin_home');
+      if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
       elActivityList.innerHTML = '';
 
       const gearUnlocked = isFeatureUnlocked(state, 'gear');
