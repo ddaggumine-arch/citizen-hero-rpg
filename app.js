@@ -2298,15 +2298,14 @@ function startBattle(enemyId, isRandomEncounter = false) {
     state.sp = clamp((state.sp || 0) + 15, 0, state.maxSp);
     extraLog += '\n👻 [정령 Lv.10+ 각성] 전투 시작 사이다 +15 충전!';
   }
-  let sabHp = enemy.maxHp;
+  state.enemyMaxHp = enemy.maxHp;
   const sabKey = baseEnemy.actId || state.currentAct || 'seoul';
   if (isBossEnemy && state.infiltrationSabotage?.[sabKey]) {
-    sabHp = Math.max(1, Math.round(sabHp * 0.85));
+    state.enemyHp = Math.max(1, Math.round(state.enemyHp * 0.85));
     state.infiltrationSabotage[sabKey] = false;
     extraLog += `\n💣 [아지트 침투 연계!!] 사전 보급로 파괴! 보스 멘탈 -15% 약화 상태로 돌입!`;
     state.infiltrationQuoteOverride = '"크윽... 방금 네 녀석이 우리 아지트 보급로를 털고 왔다면서?!"';
   }
-  state.enemyMaxHp = sabHp;
   state.enemyStunned = false;
   state.enemyExcuseShield = false;
   state.enemyGuardShield = 3;
