@@ -7774,6 +7774,41 @@ function render() {
     elChoicesPanel.appendChild(ngBox);
   }
 
+  if (state.phase === 'gameover') {
+    const fee = Math.min(state.points || 0, 30);
+    const btnRevive = document.createElement('button');
+    btnRevive.className = 'choice-btn row-btn story-main-btn';
+    btnRevive.innerHTML = `<span>🏥 응급 치료 받고 지도로 복귀 (레벨·스탯·아이템 100% 유지!)</span><span class="choice-sub">HP·사이다·PP 풀회복 (진료비 ${fee}P) · 정비 후 재도전! ▶</span>`;
+    btnRevive.addEventListener('click', () => {
+      sfx.powerup();
+      state.points = Math.max(0, (state.points || 0) - fee);
+      state.hp = state.maxHp;
+      state.sp = state.maxSp;
+      restoreSkillPp('full');
+      state.phase = 'map';
+      state.log = '🏥 응급실 치료를 마치고 컨디션을 100% 회복했습니다! 레벨업·장비 강화·스킬 정비 후 다시 도전해보세요!';
+      showToast('🏥 HP·사이다·PP 100% 회복 완료!', 'good');
+      saveGame();
+      render();
+    });
+    elChoicesPanel.appendChild(btnRevive);
+
+    if (state.currentEnemyId) {
+      const btnRetry = document.createElement('button');
+      btnRetry.className = 'choice-btn row-btn guard-btn';
+      btnRetry.innerHTML = `<span>🔥 컨디션 100% 회복 & 바로 재도전!!</span><span class="choice-sub">진료비 ${fee}P · 현재 적에게 즉시 다시 붙기</span>`;
+      btnRetry.addEventListener('click', () => {
+        sfx.powerup();
+        state.points = Math.max(0, (state.points || 0) - fee);
+        state.hp = state.maxHp;
+        state.sp = state.maxSp;
+        restoreSkillPp('full');
+        startBattle(state.currentEnemyId);
+      });
+      elChoicesPanel.appendChild(btnRetry);
+    }
+  }
+
   const btnTitle = document.createElement('button');
   btnTitle.className = 'choice-btn row-btn';
   btnTitle.innerHTML = '<span>🏠 타이틀 화면으로 돌아가기</span><span class="choice-sub">메인</span>';

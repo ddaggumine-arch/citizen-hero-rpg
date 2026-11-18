@@ -5,7 +5,9 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V50.1 (GitHub Pages 배포됨)
+## 현재 최신 버전: V50.2 (GitHub Pages 배포됨)
+- **V50.2 (`?v=121`)**:
+  - **전투 패배 시 타이틀 강제 복귀 제거 → 응급실 재기 시스템 (`app.js`)**: 적에게 패배해도 레벨·스탯·아이템·스토리 진행도가 날아가지 않고, 응급실 화면에서 **`🏥 응급 치료 받고 지도로 복귀(HP·SP·PP 100% 회복)`** 또는 **`🔥 바로 재도전`**을 선택해 즉시 정비/재도전 가능!
 - **V50.1 (`?v=120`)**:
   - **50종 액트 적 스프라이트 정밀 누끼 & 스마트 거터 재컷팅 (`assets/images/acts/*.png`)**: 다리·테이블·전선·팔 안쪽에 갇혀 있던 내부 흰 배경(enclosed white pockets)까지 전부 투명화하고, 1px 흰 테두리(halo) 제거 및 열/행 여백 자동 탐색으로 인접 캐릭터 잘림 현상 완전 해결!
 - **V50.0 (`?v=119`)**:
