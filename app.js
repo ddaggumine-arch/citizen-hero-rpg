@@ -1,7 +1,7 @@
 import { TIME_SLOTS, ITEMS, TRAITS, VILLAINS, BOSSES, HIDDEN_BOSS, WEATHERS, RANDOM_EVENTS, STORY_MESSAGES } from './data/gameData.js?v=111';
 import { SKILLS_100, getSkillById, getUnlockedSkillsForLevel } from './data/skills100.js?v=111';
 import { YUKI_DMS_50, CHLOE_DMS_50 } from './data/heroineDms.js?v=112';
-import { KOREA_ACTS, REGIONAL_GOODS, RUNE_STONES, ACT_VILLAINS, ACT_STORY_EPISODES, ACT_PIN_LABELS, RELAY_QUESTS } from './data/koreaActs.js?v=118';
+import { KOREA_ACTS, REGIONAL_GOODS, RUNE_STONES, ACT_VILLAINS, ACT_STORY_EPISODES, ACT_PIN_LABELS, RELAY_QUESTS } from './data/koreaActs.js?v=119';
 import { STORY_CHAPTERS } from './data/storyChapters.js?v=48';
 import { ACTIVITY_CATEGORIES } from './data/activities.js?v=48';
 import { MINI_EVENTS, ENEMY_INTENTS, createFeedForVictory } from './data/liveEvents.js';
@@ -7541,12 +7541,17 @@ function render() {
   }
 
   if (state.phase === 'act_aftermath') {
-    const am = state.pendingActAftermath || { actId: 'jeonju', epNum: 1 };
+    const am = state.pendingActAftermath || { actId: 'jeonju', epNum: 1, idx: 0 };
     const eps = ACT_STORY_EPISODES[am.actId] || [];
     const ep = eps.find((e) => e.ep === am.epNum) || eps[0];
     const actObj = KOREA_ACTS.find((a) => a.id === am.actId);
+    const amScenes = ep?.aftermathScenes || [{ speaker: '✨ 에필로그', text: ep?.aftermathText || '현장의 소란이 깔끔하게 정리되었습니다!' }];
+    const amIdx = Math.min(am.idx || 0, amScenes.length - 1);
+    const curAm = amScenes[amIdx];
+    const isFinalAm = amIdx >= amScenes.length - 1;
+
     elLocation.textContent = `DAY ${state.day} · ${timeLabel} · ${actObj?.name || ''}`;
-    elSceneTag.textContent = `제${am.epNum}화 클리어!`;
+    elSceneTag.textContent = `후일담 (${amIdx + 1}/${amScenes.length})`;
     elSceneTag.className = 'scene-tag victory';
     elSceneTitle.textContent = ep ? ep.title : '사건 해결!';
     if (elFrame && actObj?.bg) {
@@ -7555,14 +7560,22 @@ function render() {
       elFrame.style.backgroundSize = 'cover';
       elFrame.style.backgroundPosition = 'center';
     }
-    elBattleLog.textContent = ep?.aftermathText || '현장의 소란이 깔끔하게 정리되었습니다!';
+    elBattleLog.textContent = `[${curAm.speaker}]\n${curAm.text}`;
     const doneBtn = document.createElement('button');
     doneBtn.className = 'choice-btn row-btn story-main-btn';
     doneBtn.style.gridColumn = 'span 2';
-    doneBtn.innerHTML = am.isBoss
-      ? `<span>🏆 ${actObj?.name || '지역'} 제패 완료!! 지도로 복귀 ▶</span><span class="choice-sub">다음 지역 및 신규 시스템 해금!</span>`
-      : `<span>✨ 사건 마무리 & 지도로 복귀 ▶</span><span class="choice-sub">다음 화 해금 완료!</span>`;
+    doneBtn.innerHTML = !isFinalAm
+      ? `<span>다음 후일담 ▶</span><span class="choice-sub">${amIdx + 1}/${amScenes.length}</span>`
+      : (am.isBoss
+        ? `<span>🏆 ${actObj?.name || '지역'} 제패 완료!! 지도로 복귀 ▶</span><span class="choice-sub">다음 지역 및 신규 시스템 해금!</span>`
+        : `<span>✨ 사건 마무리 & 지도로 복귀 ▶</span><span class="choice-sub">다음 화 해금 완료!</span>`);
     doneBtn.addEventListener('click', () => {
+      if (!isFinalAm) {
+        sfx.click();
+        state.pendingActAftermath = { ...am, idx: amIdx + 1 };
+        render();
+        return;
+      }
       state.pendingActAftermath = null;
       state.phase = 'map';
       sfx.victory();

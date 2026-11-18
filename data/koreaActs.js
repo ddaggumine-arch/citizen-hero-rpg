@@ -1,5 +1,6 @@
-// V41.0: 전국 5대 액트 대장정 (전주 5화 + 평택 10화 + 동탄 15화 + 마계 인천 20화 + 서울 30화 = 80화)
+// V50.0: 전국 5대 액트 대장정 (전주 5화 + 평택 10화 + 동탄 15화 + 마계 인천 20화 + 서울 30화 = 80화)
 // + 50명 전용 스프라이트, 추천 레벨 곡선, 지역 배경 4종, 무역/던전/지부/정령석 데이터
+import { buildDeepEpisode } from './actStoriesRich.js?v=119';
 
 export const KOREA_ACTS = [
   {
@@ -237,6 +238,20 @@ Object.entries(RAW_ROSTER).forEach(([actId, list]) => {
       defeatQuote: isBoss ? '"크윽... 전국구 시민영웅의 완장, 인정한다!"' : '"죄송합니다! 두 번 다시 민폐 안 끼칠게요!"',
     });
 
+    const deep = buildDeepEpisode({
+      ep: epNum,
+      recLv,
+      isBoss,
+      actId,
+      actName: actObj?.name || actId,
+      bg: actObj?.bg || '',
+      sprite: spriteUrl,
+      title: `제${epNum}화 · ${row[0]}`,
+      battleBossId: id,
+      villainName: row[0],
+      weakness: row[1],
+      quote: row[3],
+    });
     ACT_STORY_EPISODES[actId].push({
       ep: epNum,
       recLv,
@@ -247,60 +262,8 @@ Object.entries(RAW_ROSTER).forEach(([actId, list]) => {
       sprite: spriteUrl,
       title: `제${epNum}화 · ${row[0]}`,
       battleBossId: id,
-      scenes: [
-        {
-          speaker: `📍 ${spot} — 현장 도착`,
-          text: isBoss
-            ? `먹구름이 낮게 깔린 ${spot}. 평소와 다른 무거운 공기가 거리 전체를 짓누르고 있다.\n수많은 소란의 배후로 지목되던 [${row[0]}]이(가) 마침내 이곳에 모습을 드러냈다는 긴급 제보가 날아들었다!`
-            : `선선한 바람이 스치는 ${spot}을(를) 순찰하던 중, 저 멀리서 날카로운 고성과 함께 인파가 웅성거리는 소리가 들려왔다.\n발걸음을 재촉해 다가가 보니, 누군가 주위 시선은 아랑곳하지 않은 채 거리를 난장판으로 만들고 있었다.`,
-        },
-        {
-          speaker: `😰 ${drama.witness}`,
-          text: `${drama.witnessLine}\n\n사태의 전말을 들은 순간, 내 안의 사이다 게이지가 뜨겁게 끓어올랐다.\n${drama.heroVow}`,
-        },
-        {
-          speaker: row[0],
-          showSprite: true,
-          fx: 'shake',
-          text: `⚡ [강적 출현!!] 지면을 울리는 기세와 함께 [${row[0]}]이(가) 정면으로 모습을 드러냈다!\n\n${row[3]}\n\n"네깟 노란 완장 나부랭이가 내 구역에서 감히 훈수를 둬?! 어디 한 번 말로든 주먹으로든 덤벼보시지!!"`,
-        },
-        {
-          speaker: '🎯 결정적 대치 순간',
-          showSprite: true,
-          text: `[${row[0]}]의 기세가 심상치 않다. 본격적인 참교육 결전에 돌입하기 직전, 어떤 방식으로 기선을 제압할까?`,
-          choices: [
-            {
-              label: '🗣️ "법과 상식부터 다시 배우시죠." (화술↑)',
-              sub: '사이다 +20 · 화술 숙련도 +14 · 명성 +1',
-              effect: 'speech',
-              reply: `"지금 당신이 저지른 행동, 관련 조항만 세 개가 넘습니다!"\n내 차갑고 정확한 팩트 폭격에 [${row[0]}]의 눈동자가 흔들리기 시작했다! "뭐, 뭐야 이 인간?!" (사이다 +20 · 명성 +1)`,
-            },
-            {
-              label: '🥊 노란 완장을 휘날리며 정면 압박! (격투↑)',
-              sub: '전투 시 적 HP -15% 선제 피해 · 격투 숙련도 +14',
-              effect: 'guts',
-              reply: `"말 길게 할 필요 없지. 오늘 제대로 참교육해 주마!"\n압도적인 투기를 내뿜으며 한 걸음 내딛자 [${row[0]}]이(가) 흠칫 뒤로 물러섰다! (적 체력 -15% 상태로 결전 시작!)`,
-            },
-            {
-              label: '📸 몰래 증거 영상부터 4K로 박제! (은신↑)',
-              sub: '채증 +1 · 은신 숙련도 +14 · +25P',
-              effect: 'sneak',
-              reply: `셔터 소리와 함께 [${row[0]}]의 만행이 고화질로 완벽히 저장되었다!\n"방금 다 찍혔으니 빠져나갈 생각 마세요!" (채증 +1 · +25P 확보)`,
-            },
-          ],
-        },
-        {
-          speaker: `🔥 결전 직전 · ${row[0]}`,
-          showSprite: true,
-          fx: 'flash',
-          text: isBoss
-            ? `"크하하하! 좋다!! 이 구역의 최종 보스 [${row[0]}]을(를) 상대로 버틸 수 있는지 똑똑히 시험해 주마!!"\n주변 공기가 진동한다. 이제 물러설 곳 없는 총력전이다!`
-            : `"이판사판이다! 내 자존심을 걸고 절대 물러서지 않겠다!!"\n[${row[0]}]이(가) 최후의 발악을 시작한다. 노란 완장의 이름으로 완벽하게 제압하자!`,
-        },
-      ],
-      aftermathText: isBoss
-        ? `🏆 [${actObj?.name} 최종 보스 격파!!]\n\n거칠게 숨을 몰아쉬던 [${row[0]}]이(가) 결국 무릎을 꿇고 두 손을 들었다.\n"졌다... 네 녀석의 완장에는 진짜 시민들의 마음이 담겨 있군."\n\n${drama.afterCitizen}\n📰 [#${drama.snsTag}] "전설의 노란 완장, 마침내 ${actObj?.name}의 보스까지 완벽 참교육!!"`
-        : `✨ [제${epNum}화 사건 해결 완료!]\n\n결국 꼬리를 내린 [${row[0]}]이(가) 연신 사과를 남기고 현장을 말끔히 치운 뒤 사라졌다.\n${drama.afterCitizen}\n\n📰 [#${drama.snsTag}] 베댓: "오늘도 노란 완장 폼 미쳤다 ㅋㅋ 속이 뻥 뚫리네!"\n${nextRow ? `🔮 [다음 화 예고] 거리 너머에서 [${nextRow[0]}]의 심상치 않은 움직임이 포착되었다...` : '🌟 지역 평화가 한 걸음 더 가까워졌습니다!'}`,
+      scenes: deep.scenes,
+      aftermathScenes: deep.aftermathScenes,
     });
   });
 });
