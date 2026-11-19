@@ -5,7 +5,13 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V66.0 (GitHub Pages 배포됨)
+## 현재 최신 버전: V67.0 (GitHub Pages 배포됨)
+- **V67.0 (`?v=161`)**:
+  - **복잡함 없는 도파민·주스 장치 5종 추가**:
+    - **✨ 황금 빌런(8%) & 🔥 연승 스트릭(`winStreak`)**: 황금빛 빌런 처치 시 포인트 3배 + 강화석+3, 연승마다 포인트 보너스(+5%/연승, 최대 +50%) + 5연승마다 강화석+2!
+    - **⚖️ 막타 `참교육 완료!!` 스탬프(`.ko-stamp`) & 빌런 치명타 비명**: 적 HP 0 도달 시 붉은 도장 팝업 + 치명타 시 유머 비명 대사 출력.
+    - **🐾 파트너 전투 깜짝 난입(14%)**: 콩이(적 게이지-40%·멘탈-15), 유키(HP+12%), 클로이(다음 타 확정 치명) 자동 지원!
+    - **🎰 아침 기상 무료 럭키 보너스 (`handleNewDayRollover`)** & **📰 1줄 유머 서울 속보** 추가!
 - **V66.0 (`?v=160`)**:
   - **랜덤 인카운터 스토리 적 출몰/후일담 오발동 원천 차단**:
     - `pickLevelAppropriateVillain` 내 `lv` 미정의(`ReferenceError`) 버그를 `heroLv`로 수정, 배틀타워 풀에서도 `isStoryExclusiveEnemy` 제외.

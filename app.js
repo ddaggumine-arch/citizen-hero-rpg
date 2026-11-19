@@ -731,6 +731,15 @@ function handleNewDayRollover() {
       state.luckySpirit = { id: pickId, untilDay: state.day + 1, mult, goldBonus };
     }
   }
+  const morningRoll = [
+    { label: '💊 [아침 럭키!] 약국 사은품 [우황청심환] +1', fn: () => { state.inventory.push('cheongsimhwan'); } },
+    { label: '🫧 [아침 럭키!] 냉장고 속 [칠성사이다] +1', fn: () => { state.inventory.push('cold_soda'); } },
+    { label: '⚒️ [아침 럭키!] 길가에서 반짝이는 [강화석 +2] 발견!', fn: () => { state.scrap = (state.scrap || 0) + 2; } },
+    { label: '💰 [아침 럭키!] 모범시민 장려금 [+120P] 입금!', fn: () => { state.points += 120; } },
+    { label: '⚡ [아침 럭키!] 상쾌한 기상! 피버 게이지 +40% 충전!', fn: () => { addFever(40); } },
+  ][Math.floor(Math.random() * 5)];
+  morningRoll.fn();
+  showToast(morningRoll.label, 'good');
   const ds = state.dailyStats || { wins: 0, loveGain: 0 };
 
   // V16.0: 자취방 인테리어 패시브 회복
@@ -1033,6 +1042,13 @@ function triggerEnemyHit(dmg, isCrit = false, vfxOpts = null) {
   showFloatingText(isCrit ? `💥 치명 -${dmg}!!${weakTag}` : `-${dmg}${weakTag}`, isCrit ? 'crit' : 'hit');
   sfx.hit(isCrit);
   vibrate(isCrit ? [45, 30, 85] : 35);
+  if (state.enemyHp <= 0 && elFrame && !elFrame.querySelector('.ko-stamp')) {
+    const stamp = document.createElement('div');
+    stamp.className = 'ko-stamp';
+    stamp.textContent = '⚖️ 참교육 완료!!';
+    elFrame.appendChild(stamp);
+    setTimeout(() => stamp.remove(), 1200);
+  }
 }
 
 function triggerPlayerDamage(dmg, isGuard = false) {
@@ -2533,6 +2549,8 @@ function pickLevelAppropriateVillain(pool, heroLv = state.level || 1) {
 function startBattle(enemyId, isRandomEncounter = false) {
   resetRtCombat();
   state.isRandomBattle = !!isRandomEncounter;
+  state.partnerAssistDone = false;
+  state.isGoldenVillain = false;
   state.combatInputLock = false;
   state.battleDamageTaken = 0;
   state.battleChainClears = 0;
@@ -2552,6 +2570,9 @@ function startBattle(enemyId, isRandomEncounter = false) {
     ? ENEMY_MODIFIERS[Math.floor(Math.random() * ENEMY_MODIFIERS.length)]
     : null;
   state.enemyModifier = mod ? mod.id : null;
+  if (isRandomEncounter && !isBossEnemy && Math.random() < 0.08) {
+    state.isGoldenVillain = true;
+  }
   const heroLv = state.level || 1;
   const distId = baseEnemy.district || getDistrictIdForEnemy(baseEnemy.id);
   const distInfo = SEOUL_DISTRICTS.find((d) => d.id === distId);
@@ -2601,7 +2622,7 @@ function startBattle(enemyId, isRandomEncounter = false) {
   const hellLateAtkMult = (diff.id === 'hell' && enemyLv >= 15) ? (1 + Math.min(0.45, (enemyLv - 14) * 0.025)) : 1.0;
   const enemy = {
     ...baseEnemy,
-    name: `[Lv.${enemyLv}] ${mod ? `[${mod.label}] ` : ''}${floor > 0 ? `[타워 ${floor}층] ` : ''}${baseEnemy.name}`,
+    name: `[Lv.${enemyLv}] ${state.isGoldenVillain ? '✨[황금] ' : ''}${mod ? `[${mod.label}] ` : ''}${floor > 0 ? `[타워 ${floor}층] ` : ''}${baseEnemy.name}`,
     maxHp: Math.round(rawMaxHp * diff.hpMult * ngMult * spiritHpBal),
     atk: Math.round(rawAtk * diff.atkMult * ngMult * spiritAtkBal * hellLateAtkMult),
     reward: Math.round((floor > 0 ? 25 + floor * 10 : baseEnemy.reward + Math.min(30, enemyLv)) * diff.rewardMult * modRewardMult),
@@ -3013,6 +3034,7 @@ function enemyCounterTurn(enemy, isGuarding = false) {
   }
 
   if (state.hp <= 0) {
+    state.winStreak = 0;
     state.phase = 'gameover';
     state.log = `혈압이 한계치를 돌파했습니다... (${enemy.name}에게 패배)`;
     vibrate([200, 80, 200]);
@@ -3039,7 +3061,24 @@ function handleEnemyDefeated(enemy) {
   const spNowBon = getSpiritBonuses();
   const goldSpBonus = spNowBon.perkId === 'gold_up' ? Math.round(baseReward * 0.25) : 0;
   const luckyGold = spNowBon.isLucky ? Math.round(baseReward * (spNowBon.luckyGoldBonus || 0.2)) : 0;
-  state.points += baseReward + nightBonus + dustBonus + goldSpBonus + luckyGold;
+  state.winStreak = (state.winStreak || 0) + 1;
+  const streakMult = Math.min(0.50, (state.winStreak - 1) * 0.05);
+  const streakBonus = Math.round(baseReward * streakMult);
+  const goldenMultPts = state.isGoldenVillain ? baseReward * 2 : 0;
+  if (state.isGoldenVillain) {
+    state.scrap = (state.scrap || 0) + 3;
+    showToast(`✨ [황금 빌런 격파!!] 포인트 3배 + 강화석 +3!`, 'break');
+  } else if (state.winStreak >= 5 && state.winStreak % 5 === 0) {
+    state.scrap = (state.scrap || 0) + 2;
+    showToast(`🔥 [${state.winStreak}연승 돌파!!] 보너스 강화석 +2 획득!`, 'break');
+  }
+  state.points += baseReward + nightBonus + dustBonus + goldSpBonus + luckyGold + streakBonus + goldenMultPts;
+  const newsPool = [
+    `📰 [서울 속보] ${enemy.name} 참교육 현장 목격담 쇄도! (🔥 ${state.winStreak}연승 중)`,
+    state.spicyBuffBattles > 0 ? '📰 [화제] 매운 컵라면 먹고 불 뿜는 시민영웅 포착?!' : '📰 [시민 게시판] "우리 동네 질서 요즘 왜 이렇게 클린하죠?"',
+    '📰 [베댓] "법규랑 팩트로 두들겨 패는 폼이 거의 판사님 수준 ㄹㅇ"',
+  ];
+  state.rumor = newsPool[Math.floor(Math.random() * newsPool.length)];
   const expSpMult = getSpiritBonuses().perkId === 'exp_up' ? 1.35 : 1;
   const expGain = Math.round((24 + (enemy.reward || 30) * 0.65) * ((isBossId(enemy.id) || enemy.storyOnly) ? 1.6 : 1) * (1 + (eqBon.expMult || 0)) * expSpMult);
   const prevLvSnap = state.level || 1;
@@ -3775,6 +3814,45 @@ function performAttack(type, ultPerfect = false) {
     state.feverTurns = Math.max(0, (state.feverTurns || 0) - 1);
   } else if (type !== 'special') {
     addFever(hitWeakness ? 25 : 14);
+  }
+  if (isCrit && state.enemyHp > 0) {
+    const screams = [
+      '"으악!! 내 자존심이 산산조각!!"',
+      '"이, 이건 반칙 아니냐고!!"',
+      '"잠깐만! 변호사 부를게!!"',
+      '"팩트 너무 아파서 눈물 난다!!"',
+      '"아이고 내 멘탈이야!!"',
+    ];
+    state.quote = screams[Math.floor(Math.random() * screams.length)];
+  }
+  if (state.enemyHp > 0 && !state.partnerAssistDone && Math.random() < 0.14) {
+    state.partnerAssistDone = true;
+    const assists = [];
+    if (state.pet?.adopted) {
+      assists.push(() => {
+        rtState.enemyGauge = Math.max(0, rtState.enemyGauge - 40);
+        const kDmg = 15;
+        state.enemyHp = clamp(state.enemyHp - kDmg, 0, state.enemyMaxHp);
+        triggerPartnerCallout('kongi', '발목 물기! 🐾', true);
+        state.log += `\n🐶 [콩이 깜짝 난입!] 빌런 발목을 물고 흔들었습니다! (적 게이지 -40% · 멘탈 -${kDmg})`;
+      });
+    }
+    if (state.lovers?.includes('yuki') && !state.sulky?.yuki) {
+      assists.push(() => {
+        const yHeal = Math.max(15, Math.round(state.maxHp * 0.12));
+        state.hp = clamp(state.hp + yHeal, 1, state.maxHp);
+        triggerPartnerCallout('yuki', '조심해! 💚', true);
+        state.log += `\n💚 [유키 깜짝 난입!] 몰래 구급약을 건네줬습니다! (인내심 +${yHeal})`;
+      });
+    }
+    if (state.lovers?.includes('chloe') && !state.sulky?.chloe) {
+      assists.push(() => {
+        state.nextGuaranteedCrit = true;
+        triggerPartnerCallout('chloe', 'Smile~! 📸', true);
+        state.log += `\n📸 [클로이 깜짝 난입!] 굴욕샷 박제! (다음 공격 확정 치명타!)`;
+      });
+    }
+    if (assists.length > 0) assists[Math.floor(Math.random() * assists.length)]();
   }
   checkStreamMission(type);
   const vfxInfo = getSkillVfxInfo(type);
@@ -8059,6 +8137,7 @@ function render() {
     elQuoteBubble.textContent = lc.claim;
     elQuoteBubble.classList.remove('hidden');
     showEnemyVisual(enemy);
+    if (elSceneImage) elSceneImage.classList.toggle('golden-villain', !!state.isGoldenVillain);
     elBattleLog.textContent = '빌런이 말도 안 되는 억지를 부립니다! 정확한 팩트 반박을 골라 한 방에 멘붕시키세요!';
     elChoicesPanel.className = 'choices-panel';
     shuffle(lc.options).forEach((opt) => {
