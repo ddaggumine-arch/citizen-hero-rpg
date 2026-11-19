@@ -5,7 +5,9 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V67.0 (GitHub Pages 배포됨)
+## 현재 최신 버전: V68.0 (GitHub Pages 배포됨)
+- **V68.0 (`?v=162`)**:
+  - **내 시민영웅 전적 명함 (`openHeroCardModal`, `.hero-id-card`)**: 스마트폰 메뉴(`📱`)에서 열람 가능! 총 참교육 횟수, 최고 연승(`bestWinStreak`), 최고 한방 데미지(`maxSingleDmg`), 황금 빌런 포획 수(`goldenVillainsKilled`), 팔로워, 타워/마계 최고층, 결혼/연인, 수호정령 보유 수를 한눈에 보고 텍스트로 복사 공유 가능.
 - **V67.0 (`?v=161`)**:
   - **복잡함 없는 도파민·주스 장치 5종 추가**:
     - **✨ 황금 빌런(8%) & 🔥 연승 스트릭(`winStreak`)**: 황금빛 빌런 처치 시 포인트 3배 + 강화석+3, 연승마다 포인트 보너스(+5%/연승, 최대 +50%) + 5연승마다 강화석+2!

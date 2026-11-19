@@ -3266,3 +3266,56 @@ body[data-time="midnight"] .hud-exp-text {
 .golden-villain {
   filter: drop-shadow(0 0 12px #facc15) saturate(1.5) brightness(1.12);
 }
+
+/* ===== V68.0 내 시민영웅 전적 명함 ===== */
+.hero-id-card {
+  background: linear-gradient(145deg, #1e1b2e 0%, #2d243b 60%, #3b2832 100%);
+  color: #fff8ea;
+  border: 2px solid #f59e0b;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+}
+.hero-id-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px dashed rgba(253, 230, 138, 0.4);
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+}
+.hero-id-title {
+  font-size: 0.98rem;
+  font-weight: 900;
+  color: #fde68a;
+}
+.hero-id-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.22);
+  border: 1px solid #fbbf24;
+  color: #fef3c7;
+}
+.hero-id-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+.hero-id-cell {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 9px;
+  padding: 7px 9px;
+}
+.hero-id-k {
+  font-size: 0.68rem;
+  color: #e5d5b5;
+}
+.hero-id-v {
+  font-size: 0.86rem;
+  font-weight: 900;
+  color: #ffffff;
+  margin-top: 2px;
+}

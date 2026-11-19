@@ -3062,6 +3062,8 @@ function handleEnemyDefeated(enemy) {
   const goldSpBonus = spNowBon.perkId === 'gold_up' ? Math.round(baseReward * 0.25) : 0;
   const luckyGold = spNowBon.isLucky ? Math.round(baseReward * (spNowBon.luckyGoldBonus || 0.2)) : 0;
   state.winStreak = (state.winStreak || 0) + 1;
+  if (state.winStreak > (state.bestWinStreak || 0)) state.bestWinStreak = state.winStreak;
+  if (state.isGoldenVillain) state.goldenVillainsKilled = (state.goldenVillainsKilled || 0) + 1;
   const streakMult = Math.min(0.50, (state.winStreak - 1) * 0.05);
   const streakBonus = Math.round(baseReward * streakMult);
   const goldenMultPts = state.isGoldenVillain ? baseReward * 2 : 0;
@@ -3809,6 +3811,7 @@ function performAttack(type, ultPerfect = false) {
 
   if (!state.records) state.records = { maxHitDmg: 0, fastestWinTurns: 99, noDmgWins: 0, speedWins: 0, chainWins: 0 };
   if (dmg > (state.records.maxHitDmg || 0)) state.records.maxHitDmg = dmg;
+  if (dmg > (state.maxSingleDmg || 0)) state.maxSingleDmg = dmg;
   state.enemyHp = clamp(state.enemyHp - dmg, 0, state.enemyMaxHp);
   if (isFever) {
     state.feverTurns = Math.max(0, (state.feverTurns || 0) - 1);
@@ -9562,6 +9565,27 @@ function renderPhoneModal() {
   elPhoneBody.appendChild(reportCard);
 
   // 2.5. 엔딩 도감 & 힌트 카드
+  const hcCard = document.createElement('div');
+  hcCard.className = 'inv-item';
+  hcCard.style.background = 'linear-gradient(180deg, #fefce8 0%, #fef3c7 100%)';
+  hcCard.innerHTML = `
+    <div class="inv-info">
+      <h4>🪪 내 시민영웅 전적 명함</h4>
+      <p>최고 연승 · 최고 한방 · 황금 빌런 · 타워 기록 한눈에 보기</p>
+    </div>
+  `;
+  const hcBtn = document.createElement('button');
+  hcBtn.className = 'use-btn';
+  hcBtn.style.background = '#d97706';
+  hcBtn.textContent = '명함';
+  hcBtn.addEventListener('click', () => {
+    sfx.click();
+    elPhoneModal.classList.add('hidden');
+    openHeroCardModal();
+  });
+  hcCard.appendChild(hcBtn);
+  elPhoneBody.appendChild(hcCard);
+
   const unlockedEndings = loadUnlockedEndings();
   const endCard = document.createElement('div');
   endCard.className = 'inv-item';
@@ -9939,6 +9963,68 @@ function getClaimableCodexMilestone() {
   const met = getCodexMetCount();
   const claimed = state.codexClaimed || [];
   return CODEX_MILESTONES.find((m) => met >= m && !claimed.includes(m)) || null;
+}
+
+
+function openHeroCardModal() {
+  elEndingsModalTitle.textContent = '🪪 내 시민영웅 전적 명함';
+  elEndingsList.innerHTML = '';
+  const totalWins = Object.values(state.villainWins || {}).reduce((a, b) => a + (Number(b) || 0), 0);
+  const bestStreak = Math.max(state.bestWinStreak || 0, state.winStreak || 0);
+  const spOwned = Object.values(state.spirits || {}).filter((x) => (x || 0) > 0).length;
+  const rep = getReputationInfo();
+  const diff = getDiffObj();
+  const wedLabel = state.marriedTo === 'triple'
+    ? '👑 트리플 웨딩'
+    : state.marriedTo === 'yuki'
+      ? '💍 유키와 결혼'
+      : state.marriedTo === 'chloe'
+        ? '💍 클로이와 결혼'
+        : ((state.lovers?.length || 0) > 0 ? `💘 연인 ${state.lovers.length}명` : '솔로 수호자');
+
+  const card = document.createElement('div');
+  card.className = 'hero-id-card';
+  const rows = [
+    ['⚔️ 총 참교육', `${totalWins.toLocaleString()}회`],
+    ['🔥 최고 연승', `${bestStreak}연승 (현재 ${state.winStreak || 0})`],
+    ['💥 최고 한방', `${(state.maxSingleDmg || 0).toLocaleString()} DMG`],
+    ['✨ 황금 빌런', `${state.goldenVillainsKilled || 0}마리`],
+    ['📱 팔로워', `${(state.followers || 120).toLocaleString()}명`],
+    ['🗼 타워 / 마계', `${state.bestTowerFloor || 0}층 / ${state.bestNightmareFloor || 0}층`],
+    ['💍 연애 · 결혼', wedLabel],
+    ['👻 수호정령', `${spOwned}/${SPIRITS_50.length}종`],
+  ];
+  card.innerHTML = `
+    <div class="hero-id-head">
+      <div>
+        <div class="hero-id-title">🛡️ Lv.${state.level || 1} · ${getHeroRankTitle(state.level || 1)}</div>
+        <div style="font-size:0.72rem;color:#e5d5b5;margin-top:2px;">DAY ${state.day} · ${rep.label} · 명성 ${state.fame || 0}</div>
+      </div>
+      <span class="hero-id-badge">${diff.name.split(' ')[0]} ${diff.name.split(' ')[1] || ''}</span>
+    </div>
+    <div class="hero-id-grid">
+      ${rows.map(([k, v]) => `<div class="hero-id-cell"><div class="hero-id-k">${k}</div><div class="hero-id-v">${v}</div></div>`).join('')}
+    </div>
+  `;
+  elEndingsList.appendChild(card);
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'choice-btn row-btn story-main-btn';
+  copyBtn.style.marginTop = '10px';
+  copyBtn.innerHTML = '<span>📋 내 전적 명함 텍스트 복사</span><span class="choice-sub">친구에게 자랑하기 좋은 한눈 요약!</span>';
+  copyBtn.addEventListener('click', () => {
+    const txt = `[시민영웅 전적 명함] Lv.${state.level || 1} ${getHeroRankTitle(state.level || 1)} (${diff.name}) | DAY ${state.day}\n`
+      + `⚔️ 참교육 ${totalWins}회 · 🔥 최고 ${bestStreak}연승 · 💥 최고 한방 ${state.maxSingleDmg || 0}\n`
+      + `✨ 황금빌런 ${state.goldenVillainsKilled || 0} · 📱 팔로워 ${(state.followers || 120).toLocaleString()} · ${wedLabel}`;
+    try {
+      navigator.clipboard?.writeText(txt);
+      showToast('📋 전적 명함이 클립보드에 복사되었습니다!', 'good');
+    } catch (_) {
+      showToast('📋 복사 준비 완료!', 'good');
+    }
+  });
+  elEndingsList.appendChild(copyBtn);
+  elEndingsModal.classList.remove('hidden');
 }
 
 function openVillainCodexModal() {
