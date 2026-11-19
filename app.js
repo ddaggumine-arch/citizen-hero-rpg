@@ -5810,7 +5810,15 @@ function render() {
         advanceTime();
         state.lastCutscene = { image: 'assets/images/fun_kongi_bath.jpg?v=156', animClass: 'cutscene-heal' };
         markDailyRoutine('careOrLuck');
-        state.log = `🐕 콩이와 한강 산책 완료! (콩이 Lv.${state.pet.level} · HP+8 · 사이다+12)`;
+        const kLogs = [
+          { msg: '🐶 콩이가 비둘기랑 눈싸움에서 이기고 500원 동전을 물어왔다! (+15P)', fn: () => { state.points += 15; } },
+          { msg: '🐶 콩이가 동네 강아지들에게 골목대장 인사를 받고 왔다! (사이다+10)', fn: () => { state.sp = clamp(state.sp + 10, 0, state.maxSp); } },
+          { msg: '🐶 콩이가 거품 목욕을 거부하다가 나까지 흠뻑 젖어버렸다! (모범+5)', fn: () => { state.lawful += 5; } },
+          { msg: '🐶 콩이가 산책 중 반짝이는 강화석 조각을 파냈다! (강화석+1)', fn: () => { state.scrap = (state.scrap || 0) + 1; } },
+        ];
+        const kp = kLogs[Math.floor(Math.random() * kLogs.length)];
+        kp.fn();
+        state.log = `🐕 콩이와 한강 산책 완료! (콩이 Lv.${state.pet.level} · HP+8 · 사이다+12)\n${kp.msg}`;
         saveGame();
         render();
       });
@@ -11192,6 +11200,47 @@ function markDailyRoutine(slot) {
   }
 }
 
+
+const CUSTOMER_GAGS = [
+  {
+    q: '🏪 진상 손님: "이 삼각김밥 왜 차가워요?! 환불해줘요!!"',
+    a1: { t: '😊 전자레인지 30초 친절 안내', d: '+25P · 모범 +5', fn: () => { state.points += 25; state.lawful += 5; } },
+    a2: { t: '🗣️ 포장지 "냉장보관" 팩트 짚어주기', d: '언변 +1 · +15P', fn: () => { state.stats.speech += 1; state.points += 15; } },
+  },
+  {
+    q: '🛵 배달 요청사항: "벨 누르지 말고 초인종만 눌러주세요(?)"',
+    a1: { t: '📱 센스 있게 사진 찍고 문자 발송', d: '+30P · 팔로워 +20', fn: () => { state.points += 30; state.followers = (state.followers || 120) + 20; } },
+    a2: { t: '⚡ 노크 1회 후 광속 철수', d: '사이다 +15 · +15P', fn: () => { state.sp = clamp(state.sp + 15, 0, state.maxSp); state.points += 15; } },
+  },
+  {
+    q: '🏪 취객 손님: "내가 누군지 알아?! 여기 사장 데려와!"',
+    a1: { t: '🟡 노란 완장 쓱 보여주며 미소', d: '배짱 +1 · +20P', fn: () => { state.stats.guts += 1; state.points += 20; } },
+    a2: { t: '📜 영업방해 조항 차분히 읊어주기', d: '법률 +1 · 모범 +6', fn: () => { state.stats.law += 1; state.lawful += 6; } },
+  },
+];
+
+function openCustomerGagModal() {
+  const g = CUSTOMER_GAGS[Math.floor(Math.random() * CUSTOMER_GAGS.length)];
+  elActivityModalTitle.textContent = '😅 돌발! 1초 손님 응대 찬스';
+  if (elActivityModalImg) elActivityModalImg.classList.add('hidden');
+  elActivityList.innerHTML = `<div class="oblivion-banner" style="margin-bottom:10px;">${g.q}</div>`;
+  [g.a1, g.a2].forEach((opt) => {
+    const b = document.createElement('button');
+    b.className = 'activity-item-btn';
+    b.innerHTML = `<div class="act-title">${opt.t}</div><div class="act-desc">${opt.d}</div>`;
+    b.addEventListener('click', () => {
+      sfx.powerup();
+      opt.fn();
+      elActivityModal.classList.add('hidden');
+      showToast(`✨ ${opt.d}`, 'good');
+      saveGame();
+      render();
+    });
+    elActivityList.appendChild(b);
+  });
+  elActivityModal.classList.remove('hidden');
+}
+
 function executeActivity(act, cat) {
   if (!state.flags) state.flags = [];
   if (act.cost) {
@@ -11292,7 +11341,17 @@ function executeActivity(act, cat) {
       state.sp = clamp(state.sp + 25, 0, state.maxSp);
       showToast('☕ [갱생 동료 · 카페 바리스타] 모닝 아이스 아메리카노! (사이다 +25)', 'good');
     }
-    state.log = act.msg + ' (전 기술 PP 100% 완충!)';
+    let homeVisitNote = '';
+    if (state.lovers?.includes('yuki') && !state.sulky?.yuki && Math.random() < 0.5) {
+      state.hp = state.maxHp;
+      homeVisitNote = '\n💚 [홈 스윗 홈] 유키: "오빠 오늘 라면 물 내가 맞춰볼까? ♥"';
+    } else if (state.lovers?.includes('chloe') && !state.sulky?.chloe && Math.random() < 0.5) {
+      state.followers = (state.followers || 120) + 25;
+      homeVisitNote = '\n📸 [홈 스윗 홈] 클로이: "우리 집 브이로그 올렸더니 조회수 폭발! (팔로워+25)"';
+    } else if (state.pet?.adopted) {
+      homeVisitNote = '\n🐶 [홈 스윗 홈] 콩이가 이불 속으로 파고들어 함께 꿀잠을 잤습니다!';
+    }
+    state.log = act.msg + ' (전 기술 PP 100% 완충!)' + homeVisitNote;
     saveGame();
     render();
     return;
@@ -11397,7 +11456,24 @@ function executeActivity(act, cat) {
   }
 
   advanceTime();
-  state.log = act.msg;
+  let snsNote = '';
+  if (act.image) {
+    const tagMap = {
+      work_delivery: '#배달영웅질주 #떡볶이사수',
+      train_pullup: '#3대500도전 #근손실방지',
+      shop_spicy: '#매운라면불뿜기 #야식도핑',
+      heal_hangang: '#한강치맥힐링 #오늘도평화로운서울',
+      luck_cat_treat: '#한옥길고양이집사 #츄르조공성공',
+      luck_lotto: '#인생역전가즈아 #시민영웅일상',
+    };
+    const tag = tagMap[act.id] || '#시민영웅일상 #서울수호';
+    state.followers = (state.followers || 120) + 15;
+    snsNote = `\n📸 [SNS 업로드 ${tag}] 좋아요 폭발! (팔로워 +15)`;
+  }
+  state.log = act.msg + snsNote;
+  if ((cat?.id === 'work' || cat?.id === 'shop') && !act.uniqueItem && Math.random() < 0.22) {
+    setTimeout(() => { if (state.phase === 'map') openCustomerGagModal(); }, 180);
+  }
 
   // V10.0: 민폐 오염도 100% 도달 시 혼돈의 서울(히든 배드엔딩) 발동!
   if ((state.chaosLevel ?? 25) >= 100) {
@@ -12599,9 +12675,14 @@ function openActStoryModal(actId) {
   }
 }
 
-function startActDungeon(act, depth = 1) {
+function startActDungeon(act, depth = 1, eventImg = null) {
   ensureNationalState();
   elActivityModalTitle.textContent = `🕸️ ${act.dungeonName} (${depth}/4층)`;
+  if (elActivityModalImg) {
+    const defaultImg = depth >= 3 ? 'assets/images/dungeon_neon.jpg?v=163' : 'assets/images/dungeon_alley.jpg?v=163';
+    elActivityModalImg.src = eventImg || defaultImg;
+    elActivityModalImg.classList.remove('hidden');
+  }
   elActivityList.innerHTML = '';
 
   const banner = document.createElement('div');
@@ -12651,20 +12732,36 @@ function startActDungeon(act, depth = 1) {
         showToast('⚔️ 던전 매복 빌런 출현!', 'warn');
         startBattle(mob.id, true);
         return;
-      } else if (r < 0.52) {
+      }
+      let nextImg = d.label.includes('네온') ? 'assets/images/dungeon_neon.jpg?v=163' : null;
+      if (r < 0.52) {
         const rPick = RUNE_STONES.find((x) => x.id === `rune_${act.id}`) || RUNE_STONES[0];
         state.ownedRunes.push(rPick.id);
         sfx.victory();
         showToast(`💎 [${rPick.name}] 발견!!`, 'break');
+        nextImg = 'assets/images/dungeon_treasure.jpg?v=163';
+      } else if (r < 0.67) {
+        const dodged = Math.random() < 0.5;
+        if (dodged) {
+          state.points += 15;
+          sfx.powerup();
+          showToast('🎭 깜짝 상자 함정 회피! (+15P 줍줍)', 'good');
+        } else {
+          state.hp = Math.max(1, state.hp - 8);
+          sfx.damage();
+          showToast('💥 앗! 깜짝 펀치 상자 함정!! (HP -8)', 'warn');
+        }
+        nextImg = 'assets/images/dungeon_trap.jpg?v=163';
       } else {
         const pGain = 25 + depth * 12;
         state.points += pGain;
         gainSkillXp('sneak', 8);
         sfx.powerup();
         showToast(`💰 던전 보물상자! +${pGain}P`, 'good');
+        nextImg = 'assets/images/dungeon_treasure.jpg?v=163';
       }
       saveGame();
-      startActDungeon(act, depth + 1);
+      startActDungeon(act, depth + 1, nextImg);
     });
     elActivityList.appendChild(btn);
   });

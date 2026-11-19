@@ -5,7 +5,13 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V68.0 (GitHub Pages 배포됨)
+## 현재 최신 버전: V69.0 (GitHub Pages 배포됨)
+- **V69.0 (`?v=163`)**:
+  - **던전 탐험 4종 전용 일러스트 & 함정 이벤트 (`startActDungeon`)**: 어두운 골목(`dungeon_alley.jpg`), 네온 뒷골목(`dungeon_neon.jpg`), 보물/정령석 발견(`dungeon_treasure.jpg`), 깜짝 펀치 상자 함정(`dungeon_trap.jpg`) 4컷 이미지 생성 및 층별·이벤트별 동적 표시!
+  - **비전투 일상 메뉴 재미 보강**:
+    - **🏪 알바·편의점 1초 손님 응대 미니 상황 (`openCustomerGagModal`)**: 22% 확률로 유쾌한 손님 응대 선택지 등장.
+    - **🐶 콩이 랜덤 산책 일지**: 산책마다 비둘기 눈싸움·거품목욕·강화석 파내기 등 랜덤 개그 일지 + 소소한 보너스.
+    - **🏠 홈 스윗 홈 1컷 & 📸 SNS 해시태그 반응**: 집 휴식 시 연인·콩이 깜짝 대화, 컷신 일상 활동 시 `#해시태그` SNS 업로드 & 팔로워 +15!
 - **V68.0 (`?v=162`)**:
   - **내 시민영웅 전적 명함 (`openHeroCardModal`, `.hero-id-card`)**: 스마트폰 메뉴(`📱`)에서 열람 가능! 총 참교육 횟수, 최고 연승(`bestWinStreak`), 최고 한방 데미지(`maxSingleDmg`), 황금 빌런 포획 수(`goldenVillainsKilled`), 팔로워, 타워/마계 최고층, 결혼/연인, 수호정령 보유 수를 한눈에 보고 텍스트로 복사 공유 가능.
 - **V67.0 (`?v=161`)**:
