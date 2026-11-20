@@ -7407,7 +7407,9 @@ function render() {
     elEnemyHpWrap.classList.add('hidden');
     elQuoteBubble.textContent = '"어라? 오늘 나랑 만나기로 하지 않았어요?" / "Hey! 나랑 먼저 약속했잖아!!"';
     elQuoteBubble.classList.remove('hidden');
-    setSceneImage('assets/images/triple_picnic.jpg?v=142');
+    elSceneImage.src = 'assets/images/triple_picnic.jpg?v=142';
+    elSceneImage.className = 'scene-image';
+    elSceneImage.classList.remove('hidden');
     setLogText('양쪽 팔짱을 꽉 끼고 불꽃 튀는 눈빛으로 나를 올려다보는 유키와 클로이! 과연 이 수라장을 어떻게 돌파할까?!', true);
     elChoicesPanel.className = 'choices-panel';
     [

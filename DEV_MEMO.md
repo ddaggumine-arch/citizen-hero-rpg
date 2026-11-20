@@ -5,7 +5,9 @@
 - **저장소**: `https://github.com/ddaggumine-arch/citizen-hero-rpg.git` (`main` 브랜치 푸시 시 GitHub Pages 자동 배포)
 - **기술 스택**: 순수 HTML / CSS / Vanilla JS ES Modules (React / Remotion 미사용)
 
-## 현재 최신 버전: V69.0 (GitHub Pages 배포됨)
+## 현재 최신 버전: V69.1 (GitHub Pages 배포됨)
+- **V69.1 (`?v=164`)**:
+  - **긴급 핫픽스**: `love_triangle_chaos`(유키 vs 클로이 러브코미디 수라장 이벤트)에서 존재하지 않는 `setSceneImage()` 호출로 이미지가 비고 선택지가 안 뜨던 `ReferenceError` 수정 (`elSceneImage` 직접 세팅).
 - **V69.0 (`?v=163`)**:
   - **던전 탐험 4종 전용 일러스트 & 함정 이벤트 (`startActDungeon`)**: 어두운 골목(`dungeon_alley.jpg`), 네온 뒷골목(`dungeon_neon.jpg`), 보물/정령석 발견(`dungeon_treasure.jpg`), 깜짝 펀치 상자 함정(`dungeon_trap.jpg`) 4컷 이미지 생성 및 층별·이벤트별 동적 표시!
   - **비전투 일상 메뉴 재미 보강**:
